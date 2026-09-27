@@ -1,0 +1,1 @@
+ALTER TABLE sections ADD COLUMN default_negative_marks DECIMAL(5,2) NULL;

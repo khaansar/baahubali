@@ -61,7 +61,7 @@ public class AdminSectionServiceImpl {
             sq.setQuestion(question);
             sq.setSequenceOrder(currentMaxSequence);
             sq.setPositiveMarksOverride(request.positiveMarksOverride());
-            sq.setNegativeMarksOverride(request.negativeMarksOverride());
+            sq.setNegativeMarksOverride(request.negativeMarksOverride() != null ? request.negativeMarksOverride() : section.getDefaultNegativeMarks());
             sq.setCreatedBy(adminId);
             sq.setUpdatedBy(adminId);
             
@@ -82,6 +82,21 @@ public class AdminSectionServiceImpl {
             throw new ResourceConflictException("Cannot add sections to a PUBLISHED test. Revert to DRAFT first.");
         }
 
+        if (dto.durationMinutes() != null && test.getDurationMinutes() != null) {
+            int currentTotalDuration = test.getSections().stream()
+                    .mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0)
+                    .sum();
+            
+            if (currentTotalDuration + dto.durationMinutes() > test.getDurationMinutes()) {
+                throw new ValidationException(String.format(
+                        "Total section duration (%d min) cannot exceed test duration (%d min). You have %d min left.",
+                        currentTotalDuration + dto.durationMinutes(), 
+                        test.getDurationMinutes(),
+                        Math.max(0, test.getDurationMinutes() - currentTotalDuration)
+                ));
+            }
+        }
+
         // Auto-assign sequence order
         int nextOrder = test.getSections().stream()
                 .mapToInt(Section::getSequenceOrder)
@@ -93,11 +108,56 @@ public class AdminSectionServiceImpl {
         section.setTitle(dto.title());
         section.setDurationMinutes(dto.durationMinutes());
         section.setShuffleQuestions(dto.shuffleQuestions());
+        section.setDefaultNegativeMarks(dto.defaultNegativeMarks());
         section.setSequenceOrder(nextOrder);
         section.setCreatedBy(adminId);
         section.setUpdatedBy(adminId);
 
         return sectionRepository.save(section).getId();
+    }
+
+    @Transactional
+    public AdminSectionDetailDto updateSection(UUID sectionId, SectionCreateDto dto, String adminId) {
+        Section section = sectionRepository.findById(sectionId)
+                .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
+
+        MockTest test = section.getMockTest();
+        if (test.getStatus() == Status.PUBLISHED) {
+            throw new ResourceConflictException("Cannot modify sections in a PUBLISHED test. Revert to DRAFT first.");
+        }
+
+        if (dto.durationMinutes() != null && test.getDurationMinutes() != null) {
+            int currentTotalDuration = test.getSections().stream()
+                    .filter(s -> !s.getId().equals(sectionId))
+                    .mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0)
+                    .sum();
+            
+            if (currentTotalDuration + dto.durationMinutes() > test.getDurationMinutes()) {
+                throw new ValidationException(String.format(
+                        "Total section duration (%d min) cannot exceed test duration (%d min). You have %d min left.",
+                        currentTotalDuration + dto.durationMinutes(), 
+                        test.getDurationMinutes(),
+                        Math.max(0, test.getDurationMinutes() - currentTotalDuration)
+                ));
+            }
+        }
+
+        section.setTitle(dto.title());
+        section.setDurationMinutes(dto.durationMinutes());
+        section.setShuffleQuestions(dto.shuffleQuestions());
+        section.setDefaultNegativeMarks(dto.defaultNegativeMarks());
+        section.setUpdatedBy(adminId);
+        
+        if (dto.defaultNegativeMarks() != null) {
+            for (SectionQuestion sq : section.getSectionQuestions()) {
+                sq.setNegativeMarksOverride(dto.defaultNegativeMarks());
+            }
+        }
+        
+        test.setUpdatedAt(java.time.Instant.now());
+        sectionRepository.save(section);
+        
+        return getSectionDetail(sectionId);
     }
 
     @Transactional(readOnly = true)
@@ -112,6 +172,7 @@ public class AdminSectionServiceImpl {
                 section.getSequenceOrder(),
                 section.getDurationMinutes(),
                 section.isShuffleQuestions(),
+                section.getDefaultNegativeMarks(),
                 section.getSectionQuestions().size(),
                 section.getCreatedAt(),
                 section.getUpdatedAt(),

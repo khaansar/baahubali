@@ -31,6 +31,9 @@ public class Section extends BaseEntity {
     @Column(name = "shuffle_questions")
     private boolean shuffleQuestions;
 
+    @Column(name = "default_negative_marks", precision = 5, scale = 2)
+    private java.math.BigDecimal defaultNegativeMarks;
+
     @OneToMany(mappedBy = "section", cascade = CascadeType.ALL, orphanRemoval = true)
     @OrderBy("sequenceOrder ASC")
     private List<SectionQuestion> sectionQuestions = new ArrayList<>();
