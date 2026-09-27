@@ -127,6 +127,7 @@ public class AdminQuestionServiceImpl {
         int imported = 0;
         int failed = 0;
         List<BulkImportResultDto.ImportError> errors = new ArrayList<>();
+        List<java.util.UUID> createdIds = new ArrayList<>();
 
         for (int i = 0; i < rows.size(); i++) {
             QuestionCreateDto row = rows.get(i);
@@ -171,13 +172,14 @@ public class AdminQuestionServiceImpl {
                 question.setTranslations(translations);
                 questionRepository.save(question);
                 imported++;
+                createdIds.add(question.getId());
 
             } catch (Exception e) {
                 failed++;
                 errors.add(new BulkImportResultDto.ImportError(i + 1, e.getMessage()));
             }
         }
-        return new BulkImportResultDto(imported, failed, errors);
+        return new BulkImportResultDto(imported, failed, errors, createdIds);
     }
 
     @Transactional

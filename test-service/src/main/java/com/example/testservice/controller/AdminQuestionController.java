@@ -1,6 +1,7 @@
 package com.example.testservice.controller;
 
 import com.example.testservice.dto.ApiResponse;
+import com.example.testservice.dto.admin.BulkImportResultDto;
 import com.example.testservice.dto.admin.QuestionCreateDto;
 import com.example.testservice.dto.admin.QuestionDetailDto;
 import com.example.testservice.dto.admin.QuestionListDto;
@@ -11,6 +12,7 @@ import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.List;
 import java.util.UUID;
 
 @RestController
@@ -28,6 +30,15 @@ public class AdminQuestionController {
         UUID questionId = adminQuestionService.createQuestion(request, adminId);
         QuestionDetailDto response = adminQuestionService.getQuestionById(questionId);
         return ResponseEntity.status(201).body(ApiResponse.success(201, response));
+    }
+
+    @PostMapping("/bulk")
+    public ResponseEntity<ApiResponse<BulkImportResultDto>> bulkImportQuestions(
+            @Valid @RequestBody List<QuestionCreateDto> request,
+            @RequestHeader("x-user-id") String adminId) {
+        
+        BulkImportResultDto response = adminQuestionService.bulkImportQuestions(request, adminId);
+        return ResponseEntity.status(201).body(ApiResponse.success(201, "Bulk import completed", response));
     }
 
     @GetMapping
