@@ -45,6 +45,7 @@ import java.util.List;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.Executors;
 import java.util.concurrent.ScheduledExecutorService;
+import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
 import java.util.UUID;
@@ -68,6 +69,11 @@ public class AttemptService {
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread thread = new Thread(r, "attempt-sse-heartbeat");
+        thread.setDaemon(true);
+        return thread;
+    });
+    private final ExecutorService emitterPushExecutor = Executors.newCachedThreadPool(r -> {
+        Thread thread = new Thread(r, "attempt-sse-push");
         thread.setDaemon(true);
         return thread;
     });
@@ -371,15 +377,17 @@ public class AttemptService {
                     .map(hash -> hash.getStartedAt() + hash.getDurationSec() - Instant.now().getEpochSecond())
                     .orElse(Long.MIN_VALUE);
             for (SseEmitter emitter : entry.getValue()) {
-                try {
-                    if (remaining >= 0 && remaining <= 300 && remaining != Long.MIN_VALUE) {
-                        emitter.send(SseEmitter.event().name("time_warning").data(Map.of("remainingSeconds", remaining)));
-                    } else {
-                        emitter.send(SseEmitter.event().comment("ping"));
+                emitterPushExecutor.submit(() -> {
+                    try {
+                        if (remaining >= 0 && remaining <= 300 && remaining != Long.MIN_VALUE) {
+                            emitter.send(SseEmitter.event().name("time_warning").data(Map.of("remainingSeconds", remaining)));
+                        } else {
+                            emitter.send(SseEmitter.event().comment("ping"));
+                        }
+                    } catch (Exception e) {
+                        emitter.completeWithError(e);
                     }
-                } catch (Exception e) {
-                    emitter.completeWithError(e);
-                }
+                });
             }
         }
     }
