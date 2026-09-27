@@ -24,6 +24,7 @@
         <module>iam-service</module>
         <module>test-service</module>
         <module>attempt-service</module>
+        <module>community-service</module>
     </modules>
 
     <properties>

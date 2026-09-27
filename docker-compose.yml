@@ -50,7 +50,6 @@ services:
       - "8080:8080"
     env_file:
       - .env
-      - ./api-gateway/.env
     networks:
       - backend-network
     depends_on:
@@ -68,7 +67,6 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-      - ./iam-service/.env
     networks:
       - backend-network
     depends_on:
@@ -88,7 +86,6 @@ services:
       - "8082:8080"
     env_file:
       - .env
-      - ./test-service/.env
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
     networks:
@@ -109,7 +106,26 @@ services:
     restart: unless-stopped
     env_file:
       - .env
-      - ./attempt-service/.env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+    
+  community-service:
+    build:
+      context: .
+      dockerfile: community-service/Dockerfile
+    container_name: community-service
+    restart: unless-stopped
+    env_file:
+      - .env
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
     networks:

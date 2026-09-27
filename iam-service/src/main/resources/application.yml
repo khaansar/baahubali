@@ -31,7 +31,7 @@ spring:
   flyway:
     enabled: true
     baseline-on-migrate: true
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:iam_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${IAM_SERVICE_DATABASE:iam_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
     user: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
 
@@ -44,6 +44,10 @@ app:
     cookie-domain: ${COOKIE_DOMAIN:}
     cookie-secure: ${COOKIE_SECURE:true}
     cookie-same-site: ${COOKIE_SAME_SITE:Strict}
+
+internal:
+  allowed-clients:
+    attempt-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
 
 springdoc:
   api-docs:

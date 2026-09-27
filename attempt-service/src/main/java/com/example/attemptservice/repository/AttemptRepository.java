@@ -17,4 +17,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, String> {
     Page<Attempt> findByUserId(String userId, Pageable pageable);
     
     List<Attempt> findByStatus(AttemptStatus status);
+
+    boolean existsByUserIdAndTestIdAndStatus(String userId, String testId, com.example.attemptservice.entity.AttemptStatus status);
 }

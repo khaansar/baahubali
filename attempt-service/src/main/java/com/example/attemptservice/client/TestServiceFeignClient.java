@@ -9,7 +9,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 
 @FeignClient(
     name = "test-service",
-    url = "${internal.test-service.base-url}",
+    url = "${internal.services.test-url}",
     configuration = TestServiceFeignConfig.class
 )
 public interface TestServiceFeignClient {
