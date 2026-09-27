@@ -31,6 +31,15 @@ public class AdminSectionController {
         return ResponseEntity.status(201).body(ApiResponse.success(201, response));
     }
 
+    @PutMapping("/sections/{sectionId}")
+    public ResponseEntity<ApiResponse<AdminSectionDetailDto>> updateSection(
+            @PathVariable UUID sectionId,
+            @RequestBody SectionCreateDto request,
+            @RequestHeader("x-user-id") String adminId) {
+        AdminSectionDetailDto response = adminSectionService.updateSection(sectionId, request, adminId);
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
+
     @PutMapping("/mock-tests/{testId}/sections/reorder")
     public ResponseEntity<ApiResponse<List<AdminSectionDetailDto>>> reorderSections(
             @PathVariable UUID testId,

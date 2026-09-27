@@ -195,6 +195,15 @@ public class AdminMockTestServiceImpl {
             }
         }
 
+        if (dto.durationMinutes() != null) {
+            int currentTotalDuration = test.getSections().stream()
+                    .mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0)
+                    .sum();
+            if (currentTotalDuration > dto.durationMinutes()) {
+                throw new ValidationException(String.format("Cannot reduce test duration to %d min. Current sections already total %d min.", dto.durationMinutes(), currentTotalDuration));
+            }
+        }
+
         test.setTitle(dto.title());
         test.setDurationMinutes(dto.durationMinutes());
         test.setSectionOrderStrict(dto.isSectionOrderStrict());

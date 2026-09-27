@@ -12,6 +12,7 @@ public record AdminSectionDetailDto(
         Integer sequenceOrder,
         Integer durationMinutes,
         boolean shuffleQuestions,
+        BigDecimal defaultNegativeMarks,
         int questionCount,
         Instant createdAt,
         Instant updatedAt,

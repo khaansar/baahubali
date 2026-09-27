@@ -16,8 +16,11 @@ public class QuestionSpecifications {
     }
 
     private static Specification<Question> searchLike(String search) {
-        return (root, query, cb) -> search == null || search.isBlank() ? null :
-                cb.like(cb.lower(root.get("questionText")), "%" + search.toLowerCase() + "%");
+        return (root, query, cb) -> {
+            if (search == null || search.isBlank()) return null;
+            query.distinct(true);
+            return cb.like(cb.lower(root.join("translations").get("questionText")), "%" + search.toLowerCase() + "%");
+        };
     }
 
     private static Specification<Question> typeEquals(String type) {
