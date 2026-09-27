@@ -30,4 +30,12 @@ public class UserController {
         UserResponse data = UserResponse.from(user);
         return ApiResponse.success(HttpStatus.OK.value(), "User retrieved successfully", data);
     }
+
+    @GetMapping
+    public ApiResponse<org.springframework.data.domain.Page<UserResponse>> getAllUsers(
+            org.springframework.data.domain.Pageable pageable) {
+        org.springframework.data.domain.Page<UserResponse> users = userRepository.findAll(pageable)
+                .map(UserResponse::from);
+        return ApiResponse.success(HttpStatus.OK.value(), "Users retrieved successfully", users);
+    }
 }
