@@ -273,11 +273,6 @@ public class AttemptService {
     }
 
     public Long patchAttempt(String attemptId, PatchAttemptRequest request) {
-        if (request.getQuestionId() == null || request.getQuestionId().isBlank()
-                || request.getVersion() == null || request.getCurrentQuestionIndex() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST,
-                    "questionId, currentQuestionIndex and version are required");
-        }
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
         if (existing.getStartedAt() == null || existing.getDurationSec() == null

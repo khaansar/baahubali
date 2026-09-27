@@ -10,6 +10,7 @@ import com.example.attemptservice.dto.StartAttemptRequest;
 import com.example.attemptservice.dto.StartAttemptResponse;
 import com.example.attemptservice.dto.SubmitAttemptResponse;
 import com.example.attemptservice.service.AttemptService;
+import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -38,7 +39,7 @@ public class AttemptController {
     @PostMapping
     public ResponseEntity<ApiResponse<StartAttemptResponse>> startAttempt(
             @RequestHeader(value = "X-User-Id", required = false) String headerUserId, 
-            @RequestBody StartAttemptRequest request) {
+            @Valid @RequestBody StartAttemptRequest request) {
         
         // Ensure request body adopts the secured header ID
         if (headerUserId != null && !headerUserId.isEmpty()) {
@@ -62,7 +63,7 @@ public class AttemptController {
 
     @PatchMapping("/{id}")
     public ResponseEntity<ApiResponse<PatchAttemptResponse>> patchAttempt(@PathVariable String id,
-                                                               @RequestBody PatchAttemptRequest request) {
+                                                               @Valid @RequestBody PatchAttemptRequest request) {
         Long attemptVersion = attemptService.patchAttempt(id, request);
         return ResponseEntity.ok(ApiResponse.success(200, "Attempt updated successfully",
                 PatchAttemptResponse.builder().success(true).build(), java.util.Map.of("attemptVersion", attemptVersion)));
