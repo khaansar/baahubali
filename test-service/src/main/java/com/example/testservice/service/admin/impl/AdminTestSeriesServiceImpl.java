@@ -97,7 +97,8 @@ public class AdminTestSeriesServiceImpl {
                 s.getStatus(),
                 s.getCategory() != null ? s.getCategory().getName() : null,
                 s.getCreatedAt(),
-                s.getUpdatedAt()
+                s.getUpdatedAt(),
+                s.getDeletedAt()
         )).toList();
 
         return new PaginatedResponseDto<>(data, new com.example.testservice.dto.common.PageMetaDto(
@@ -116,7 +117,8 @@ public class AdminTestSeriesServiceImpl {
                         test.getStatus(),
                         test.getDurationMinutes(),
                         test.getTotalMarks(),
-                        test.isFree()
+                        test.isFree(),
+                        test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt()
                 )).toList();
 
         return new TestSeriesDetailDto(
@@ -128,6 +130,7 @@ public class AdminTestSeriesServiceImpl {
                 series.getCategory() != null ? series.getCategory().getName() : null,
                 series.getCreatedAt(),
                 series.getUpdatedAt(),
+                series.getDeletedAt(),
                 mockTests
         );
     }

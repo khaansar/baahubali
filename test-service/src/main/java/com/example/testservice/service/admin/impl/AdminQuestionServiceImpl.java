@@ -91,7 +91,7 @@ public class AdminQuestionServiceImpl {
 
             return new QuestionListDto(
                     q.getId(), q.getQuestionType(), shortText, q.getPositiveMarks(),
-                    q.getDifficulty(), q.isLocked(), q.getCreatedAt()
+                    q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getUpdatedAt(), q.getDeletedAt()
             );
         }).toList();
 
@@ -118,7 +118,8 @@ public class AdminQuestionServiceImpl {
         return new QuestionDetailDto(
                 q.getId(), q.getQuestionType(), translationDtos,
                 q.getCorrectAnswerJson(), q.getPositiveMarks(), q.getNegativeMarks(),
-                q.getExplanation(), q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getCreatedBy(), null
+                q.getExplanation(), q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getUpdatedAt(),
+                q.getDeletedAt(), q.getCreatedBy(), null
         );
     }
 
@@ -237,7 +238,8 @@ public class AdminQuestionServiceImpl {
         return new QuestionDetailDto(updatedQuestion.id(), updatedQuestion.questionType(), updatedQuestion.translations(),
                 updatedQuestion.correctAnswerJson(), updatedQuestion.positiveMarks(), updatedQuestion.negativeMarks(),
                 updatedQuestion.explanation(), updatedQuestion.difficulty(), updatedQuestion.isLocked(),
-                updatedQuestion.createdAt(), updatedQuestion.createdBy(), warning);
+                updatedQuestion.createdAt(), updatedQuestion.updatedAt(), updatedQuestion.deletedAt(),
+                updatedQuestion.createdBy(), warning);
     }
 
     @Transactional

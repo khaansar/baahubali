@@ -56,6 +56,9 @@ public class CategoryService {
                 .name(category.getName())
                 .description(category.getDescription())
                 .requiredLanguages(category.getRequiredLanguages())
+                .createdAt(category.getCreatedAt())
+                .updatedAt(category.getUpdatedAt())
+                .deletedAt(category.getDeletedAt())
                 .build();
     }
 }

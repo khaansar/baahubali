@@ -16,12 +16,16 @@ public record AdminSectionDetailDto(
         int questionCount,
         Instant createdAt,
         Instant updatedAt,
+        Instant deletedAt,
         List<QuestionMappingDto> questions
 ) {
     public record QuestionMappingDto(
             UUID questionId,
             Integer sequenceOrder,
             BigDecimal positiveMarksOverride,
-            BigDecimal negativeMarksOverride
+            BigDecimal negativeMarksOverride,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant deletedAt
     ) {}
 }

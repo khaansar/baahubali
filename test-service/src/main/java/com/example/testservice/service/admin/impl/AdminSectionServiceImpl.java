@@ -177,11 +177,13 @@ public class AdminSectionServiceImpl {
                 section.getSectionQuestions().size(),
                 section.getCreatedAt(),
                 section.getUpdatedAt(),
+                section.getDeletedAt(),
                 section.getSectionQuestions().stream()
                         .sorted(java.util.Comparator.comparingInt(SectionQuestion::getSequenceOrder))
                         .map(sq -> new AdminSectionDetailDto.QuestionMappingDto(
                                 sq.getQuestion().getId(), sq.getSequenceOrder(),
-                                sq.getPositiveMarksOverride(), sq.getNegativeMarksOverride()))
+                                sq.getPositiveMarksOverride(), sq.getNegativeMarksOverride(),
+                                sq.getCreatedAt(), sq.getUpdatedAt(), sq.getDeletedAt()))
                         .toList()
         );
     }

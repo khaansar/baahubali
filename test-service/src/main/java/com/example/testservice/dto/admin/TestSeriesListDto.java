@@ -12,5 +12,6 @@ public record TestSeriesListDto(
         Status status,
         String categoryName,
         Instant createdAt,
-        Instant updatedAt
+        Instant updatedAt,
+        Instant deletedAt
 ) {}
