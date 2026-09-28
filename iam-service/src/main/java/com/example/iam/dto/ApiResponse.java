@@ -18,7 +18,13 @@ public record ApiResponse<T>(
     private static final String API_VERSION = "1.2.0";
 
     public static <T> ApiResponse<T> success(int status, String message, T data) {
-        return new ApiResponse<>(true, status, message, data, null, defaultMeta());
+        T responseData = data == null ? emptyObject() : data;
+        return new ApiResponse<>(true, status, message, responseData, null, defaultMeta());
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T emptyObject() {
+        return (T) Map.of();
     }
 
     public static ApiResponse<Void> error(
