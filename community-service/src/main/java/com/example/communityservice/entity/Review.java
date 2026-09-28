@@ -6,7 +6,12 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.time.LocalDateTime;
 
 @Entity
-@Table(name = "reviews")
+@Table(name = "reviews", uniqueConstraints = {
+    @UniqueConstraint(
+        name = "uk_user_target_review", 
+        columnNames = {"user_id", "target_id", "target_type"}
+    )
+})
 @Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
 public class Review {
     

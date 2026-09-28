@@ -1,6 +1,5 @@
-package com.example.communityservice.event;
+package com.example.communityservice.kafka;
 
-import com.example.communityservice.repository.FaqRepository;
 import com.example.communityservice.repository.ReviewRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,24 +13,20 @@ import org.springframework.transaction.annotation.Transactional;
 public class TestEventConsumer {
 
     private final ReviewRepository reviewRepository;
-    private final FaqRepository faqRepository;
 
+    @KafkaListener(
+            topics = "test-events", 
+            groupId = "community-service-group",
+            containerFactory = "kafkaListenerContainerFactory"
+    )
     @Transactional
-    @KafkaListener(topics = "test-events", groupId = "community-group")
-    public void handleTestEvents(String message) {
-        // Assuming a simple comma-separated payload like "DELETED,test-123" 
-        // In a production environment, parse this from a JSON Event DTO
-        try {
-            String[] parts = message.split(",");
-            if (parts.length == 2 && "DELETED".equals(parts[0])) {
-                String targetId = parts[1];
-                log.info("Received DELETED event for targetId: {}. Cleaning up associated community data.", targetId);
-                
-                reviewRepository.softDeleteByTargetId(targetId);
-                faqRepository.deleteByTargetId(targetId);
-            }
-        } catch (Exception e) {
-            log.error("Failed to process test-event message: {}", message, e);
+    public void consumeTestEvent(DomainEvent event) {
+        log.info("Received {} event [{}] for {} ID: {}", 
+                event.eventType(), event.eventId(), event.aggregateType(), event.aggregateId());
+
+        if ("TEST_DELETED".equals(event.eventType()) && "TEST".equals(event.aggregateType())) {
+            reviewRepository.softDeleteByTargetId(event.aggregateId());
+            log.info("Successfully soft-deleted reviews for testId: {}", event.aggregateId());
         }
     }
 }

@@ -7,14 +7,17 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @RequiredArgsConstructor
-public class WebConfig implements WebMvcConfigurer {
+public class WebMvcConfig implements WebMvcConfigurer {
 
     private final InternalAuthInterceptor internalAuthInterceptor;
-    private final UserContextFilter userContextFilter;
+    private final AdminAuthorizationInterceptor adminAuthorizationInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
         registry.addInterceptor(internalAuthInterceptor)
                 .addPathPatterns("/internal/**");
+
+        registry.addInterceptor(adminAuthorizationInterceptor)
+                .addPathPatterns("/admins/**");
     }
 }

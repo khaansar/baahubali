@@ -18,5 +18,5 @@ public interface IamServiceClient {
     @PostMapping("/internal/users/batch")
     Map<String, UserProfileDto> getUsersBatch(@RequestBody List<String> userIds);
 
-    record UserProfileDto(String userId, String displayName, String avatarUrl) {}
+    record UserProfileDto(String userId, String name, String avatarUrl) {}
 }
