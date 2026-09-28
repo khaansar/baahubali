@@ -12,6 +12,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -28,7 +29,7 @@ public class FaqController {
         return ResponseEntity.ok(
                 ApiResponse.success(
                         HttpStatus.OK.value(),
-                        "FAQs fetched successfully",
+                        "FAQs retrieved successfully",
                         faqs
                 )
         );
@@ -68,7 +69,7 @@ public class FaqController {
     }
 
     @DeleteMapping("/admins/faq/{targetId}/{faqId}")
-    public ResponseEntity<ApiResponse<Void>> deleteFaq(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteFaq(
             @PathVariable String targetId,
             @PathVariable Long faqId) {
 
@@ -78,7 +79,7 @@ public class FaqController {
                 ApiResponse.success(
                         HttpStatus.OK.value(),
                         "FAQ deleted successfully",
-                        null
+                        Map.of()
                 )
         );
     }

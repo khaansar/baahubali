@@ -170,7 +170,10 @@ public class ReviewService {
                             review.getRating(),
                             review.getComment(),
                             authorName,
-                            authorAvatar
+                            authorAvatar,
+                            review.getCreatedAt(),
+                            review.getUpdatedAt(),
+                            review.getDeletedAt()
                     );
                 })
                 .toList();
