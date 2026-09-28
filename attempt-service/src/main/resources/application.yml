@@ -9,7 +9,7 @@ spring:
     name: attempt-service
 
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:attempt_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${ATTEMPT_SERVICE_DATABASE:attempt_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -36,5 +36,7 @@ spring:
 internal:
   auth:
     my-secret: ${ATTEMPT_SERVICE_SECRET:attempt-secret-key}
-  test-service:
-    base-url: ${TEST_SERVICE_URL:http://test-service:8080/tests-api}
+    allowed-clients:
+      community-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+  services:
+    test-url: ${TEST_SERVICE_URL:http://test-service:8080/tests-api}

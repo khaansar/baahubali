@@ -1,0 +1,47 @@
+server:
+  servlet:
+    context-path: /community-api
+
+spring:
+  application:
+    name: community-service
+
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:community_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: true
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.MySQLDialect
+        format_sql: true
+        default_batch_fetch_size: 100
+
+  flyway:
+    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    baseline-on-migrate: true
+
+  kafka:
+    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    producer:
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
+
+internal:
+  auth:
+    my-secret: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+    allowed-clients:
+      test-service: ${TEST_SERVICE_SECRET:test-secret-key}
+  services:
+    iam-url: ${IAM_SERVICE_URL:http://iam-service:8080/auth-api}
+    attempt-url: ${ATTEMPT_SERVICE_URL:http://attempt-service:8080/attempts-api}
+
+logging:
+  level:
+    com.example.testservice: INFO
+    org.springframework.web: INFO

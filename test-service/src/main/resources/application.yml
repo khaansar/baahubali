@@ -7,7 +7,7 @@ spring:
     name: test-service
 
   datasource:
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${MYSQL_DATABASE:test_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${TEST_SERVICE_DATABASE:test_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
@@ -34,8 +34,11 @@ spring:
 
 internal:
   auth:
+    my-secret: ${TEST_SERVICE_SECRET:test-secret-key}
     allowed-clients:
       attempt-service: ${ATTEMPT_SERVICE_SECRET:attempt-secret-key}
+  services:
+    community-url: ${COMMUNITY_SERVICE_URL:http://community-service:8080/community-api}
 
 logging:
   level:

@@ -394,4 +394,13 @@ public class AttemptService {
                 .finalScore(attempt.getFinalScore())
                 .build();
     }
+
+    @Transactional(readOnly = true)
+    public boolean hasUserAttemptedTest(String userId, String testId) {
+        return attemptRepository.existsByUserIdAndTestIdAndStatus(
+                userId, 
+                testId, 
+                AttemptStatus.SUBMITTED
+        );
+    }
 }
