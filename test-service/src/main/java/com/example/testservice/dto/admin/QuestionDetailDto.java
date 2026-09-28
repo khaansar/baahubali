@@ -23,6 +23,8 @@ public record QuestionDetailDto(
         Difficulty difficulty,
         boolean isLocked,
         Instant createdAt,
+        Instant updatedAt,
+        Instant deletedAt,
         String createdBy,
         String warning
 ) {}

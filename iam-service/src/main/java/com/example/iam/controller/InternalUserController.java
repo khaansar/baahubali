@@ -1,10 +1,12 @@
 package com.example.iam.controller.internal;
 
+import com.example.iam.dto.ApiResponse;
 import com.example.iam.dto.UserProfileDto;
 import com.example.iam.entity.User;
 import com.example.iam.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -20,7 +22,7 @@ public class InternalUserController {
     private final UserRepository userRepository;
 
     @PostMapping("/batch")
-    public ResponseEntity<Map<String, UserProfileDto>> getUsersBatch(@RequestBody List<String> userIds) {
+    public ResponseEntity<ApiResponse<Map<String, UserProfileDto>>> getUsersBatch(@RequestBody List<String> userIds) {
         
         List<UUID> uuids = userIds.stream()
                 .map(UUID::fromString)
@@ -51,6 +53,7 @@ public class InternalUserController {
                         }
                 ));
 
-        return ResponseEntity.ok(profiles);
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "User profiles retrieved successfully", profiles));
     }
 }

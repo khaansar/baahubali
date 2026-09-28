@@ -52,7 +52,8 @@ public class PublicSeriesServiceImpl {
                 s.getId(),
                 s.getTitle(),
                 s.getBasePrice(),
-                s.getCategory() != null ? s.getCategory().getName() : null
+                s.getCategory() != null ? s.getCategory().getName() : null,
+                s.getCreatedAt(), s.getUpdatedAt(), s.getDeletedAt()
         )).collect(Collectors.toList());
 
         return new PaginatedResponseDto<>(data, new PageMetaDto(
@@ -76,7 +77,8 @@ public class PublicSeriesServiceImpl {
                         test.getTitle(),
                         test.getDurationMinutes(),
                         test.getTotalMarks(),
-                        test.isFree()
+                        test.isFree(),
+                        test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt()
                 )).collect(Collectors.toList());
 
         return new PublicTestSeriesDetailDto(
@@ -85,6 +87,7 @@ public class PublicSeriesServiceImpl {
                 series.getBasePrice(),
                 series.getCategory() != null ? series.getCategory().getId() : null,
                 series.getCategory() != null ? series.getCategory().getName() : null,
+                series.getCreatedAt(), series.getUpdatedAt(), series.getDeletedAt(),
                 mockTests
         );
     }

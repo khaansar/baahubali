@@ -3,7 +3,8 @@ package com.example.communityservice.entity;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import java.time.LocalDateTime;
+import org.hibernate.annotations.UpdateTimestamp;
+import java.time.Instant;
 
 @Entity
 @Table(name = "reviews", uniqueConstraints = {
@@ -41,7 +42,15 @@ public class Review {
     private ReviewStatus status = ReviewStatus.APPROVED;
 
     @CreationTimestamp
-    private LocalDateTime createdAt;
+    @Column(name = "created_at", updatable = false)
+    private Instant createdAt;
+
+    @UpdateTimestamp
+    @Column(name = "updated_at")
+    private Instant updatedAt;
+
+    @Column(name = "deleted_at")
+    private Instant deletedAt;
 
     public enum TargetType { TEST, SERIES }
     public enum ReviewStatus { PENDING, APPROVED, REJECTED }

@@ -15,6 +15,7 @@ import org.springframework.web.bind.annotation.*;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequiredArgsConstructor
@@ -25,7 +26,7 @@ public class ReviewController {
 
     @Operation(summary = "Submit a new review (Requires previous attempt)")
     @PostMapping("/public/reviews")
-    public ResponseEntity<ApiResponse<Void>> submitReview(@Valid @RequestBody ReviewRequestDto request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> submitReview(@Valid @RequestBody ReviewRequestDto request) {
         String userId = UserContextHolder.getUserId();
         if (userId == null) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "User ID missing from Gateway.");
@@ -34,7 +35,7 @@ public class ReviewController {
         reviewService.createReview(request, userId);
         
         return ResponseEntity.status(HttpStatus.CREATED).body(
-                ApiResponse.success(HttpStatus.CREATED.value(), "Review submitted successfully", null)
+                ApiResponse.success(HttpStatus.CREATED.value(), "Review submitted successfully", Map.of())
         );
     }
 
@@ -44,17 +45,18 @@ public class ReviewController {
         List<ReviewResponseDto> reviews = reviewService.getHydratedReviews(targetId);
         
         return ResponseEntity.ok(
-                ApiResponse.success(HttpStatus.OK.value(), "Reviews fetched successfully", reviews)
+                ApiResponse.success(HttpStatus.OK.value(), "Reviews retrieved successfully", reviews)
         );
     }
 
     @Operation(summary = "Internal API: Get average rating for a target")
     @GetMapping("/internal/reviews/{targetId}/average")
-    public ResponseEntity<ApiResponse<Double>> getAverageRating(@PathVariable String targetId) {
+    public ResponseEntity<ApiResponse<Map<String, Double>>> getAverageRating(@PathVariable String targetId) {
         Double average = reviewService.getAverageRating(targetId);
         
         return ResponseEntity.ok(
-                ApiResponse.success(HttpStatus.OK.value(), "Average rating fetched successfully", average)
+                ApiResponse.success(HttpStatus.OK.value(), "Average rating retrieved successfully",
+                        Map.of("averageRating", average))
         );
     }
 }

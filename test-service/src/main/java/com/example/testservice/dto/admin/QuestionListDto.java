@@ -13,5 +13,7 @@ public record QuestionListDto(
         BigDecimal positiveMarks,
         Difficulty difficulty,
         boolean isLocked,
-        Instant createdAt
+        Instant createdAt,
+        Instant updatedAt,
+        Instant deletedAt
 ) {}

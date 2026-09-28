@@ -170,6 +170,7 @@ public class AdminMockTestServiceImpl {
                 test.getPublishedAt(),
                 test.getCreatedAt(),
                 test.getUpdatedAt(),
+                test.getDeletedAt(),
                 test.getSections().stream()
                         .map(section -> new AdminMockTestDetailDto.SectionSummaryDto(
                                 section.getId(),
@@ -177,7 +178,8 @@ public class AdminMockTestServiceImpl {
                                 section.getSequenceOrder(),
                                 section.getDurationMinutes(),
                                 section.isShuffleQuestions(),
-                                section.getSectionQuestions().size()
+                                section.getSectionQuestions().size(),
+                                section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt()
                         ))
                         .toList()
         );
@@ -303,9 +305,10 @@ public class AdminMockTestServiceImpl {
 
         return new PublicMockTestStructureDto(
                 test.getId(), test.getTitle(), test.getDurationMinutes(), test.getInstructions(),
-                test.getTotalMarks(), test.isFree(),
+                test.getTotalMarks(), test.isFree(), test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
                 test.getSections().stream().map(section -> new PublicSectionDto(
                         section.getId(), section.getTitle(), section.getSequenceOrder(),
+                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> {
                             
                             Map<String, Object> options = null;
@@ -320,7 +323,8 @@ public class AdminMockTestServiceImpl {
                                     sq.getQuestion().getTranslations().isEmpty() ? "" : sq.getQuestion().getTranslations().get(0).getQuestionText(),
                                     options,
                                     sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
-                                    sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks()
+                                    sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
+                                    sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
                             );
                         }).toList()
                 )).toList()
@@ -329,20 +333,25 @@ public class AdminMockTestServiceImpl {
 
     private TestBlueprintDto mapToBlueprintDto(MockTest test) {
         return new TestBlueprintDto(
-                test.getId(), test.getTitle(), test.getDurationMinutes(), test.isSectionOrderStrict(),
+                test.getId(), test.getTitle(), test.getDurationMinutes(), test.getInstructions(), test.isFree(),
+                test.isSectionOrderStrict(),
                 test.isShuffleSections(), test.isNegativeMarkingEnabled(), test.getTotalMarks(),
+                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
                 test.getSections().stream().map(section -> new SectionBlueprintDto(
                         section.getId(), section.getTitle(), section.getSequenceOrder(), section.getDurationMinutes(),
                         section.isShuffleQuestions(),
+                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> new QuestionBlueprintDto(
                                 sq.getQuestion().getId(), sq.getSequenceOrder(), sq.getQuestion().getQuestionType().name(),
                                 sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
-                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson()
+                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson(),
+                                        t.getCreatedAt(), t.getUpdatedAt(), t.getDeletedAt()
                                 )).toList(),
                                 sq.getQuestion().getCorrectAnswerJson(),
                                 sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
                                 sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                sq.getQuestion().getExplanation()
+                                sq.getQuestion().getExplanation(),
+                                sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
                         )).toList()
                 )).toList()
         );

@@ -15,6 +15,7 @@ public record TestSeriesDetailDto(
         String categoryName,
         Instant createdAt,
         Instant updatedAt,
+        Instant deletedAt,
         List<MockTestSummaryDto> mockTests
 ) {
     public record MockTestSummaryDto(
@@ -23,6 +24,9 @@ public record TestSeriesDetailDto(
             Status status,
             Integer durationMinutes,
             BigDecimal totalMarks,
-            boolean isFree
+            boolean isFree,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant deletedAt
     ) {}
 }

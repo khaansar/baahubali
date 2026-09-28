@@ -9,6 +9,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
+import lombok.extern.slf4j.Slf4j;
 
 import java.time.Instant;
 import java.util.List;
@@ -16,6 +17,7 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestControllerAdvice
+@Slf4j
 public class GlobalExceptionHandler {
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
@@ -28,16 +30,27 @@ public class GlobalExceptionHandler {
                         error.getDefaultMessage()))
                 .collect(Collectors.toList());
 
-        return buildErrorResponse(HttpStatus.BAD_REQUEST, "Validation Failed", "VALIDATION_ERROR", details);
+        return buildErrorResponse(HttpStatus.UNPROCESSABLE_ENTITY,
+                "Validation failed for the submitted input", "INVALID_INPUT", details);
     }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiErrorResponse> handleResponseStatusException(ResponseStatusException ex) {
-        return buildErrorResponse(HttpStatus.valueOf(ex.getStatusCode().value()), ex.getReason(), "HTTP_ERROR", List.of());
+        HttpStatus status = HttpStatus.valueOf(ex.getStatusCode().value());
+        String code = switch (status) {
+            case BAD_REQUEST -> "INVALID_INPUT";
+            case UNAUTHORIZED -> "UNAUTHORIZED";
+            case FORBIDDEN -> "FORBIDDEN";
+            case NOT_FOUND -> "NOT_FOUND";
+            case CONFLICT -> "CONFLICT";
+            default -> "HTTP_ERROR";
+        };
+        return buildErrorResponse(status, ex.getReason(), code, List.of());
     }
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiErrorResponse> handleGeneralExceptions(Exception ex) {
+        log.error("Unhandled exception while processing community API request", ex);
         return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", "INTERNAL_SERVER_ERROR", List.of());
     }
 
