@@ -15,13 +15,26 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import com.example.iam.security.AuthCookieFactory;
+import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 
 @RestControllerAdvice
+@RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
     private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private final AuthCookieFactory authCookieFactory;
+
+    @ExceptionHandler({InvalidRefreshTokenException.class, RefreshTokenReuseException.class})
+    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenFailure(RuntimeException ex) {
+        String code = ex instanceof RefreshTokenReuseException ? "REFRESH_TOKEN_REUSED" : "REFRESH_TOKEN_INVALID";
+        return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                .header("Set-Cookie", authCookieFactory.buildExpiredAuthCookie().toString(),
+                        authCookieFactory.buildExpiredRefreshCookie().toString())
+                .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(), code, List.of()));
+    }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {

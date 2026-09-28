@@ -34,12 +34,16 @@ public class JwtService {
         this.signingKey = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwtProperties.secret()));
     }
 
-    public String generateToken(User user) {
+    public String createSession(User user) {
+        String sessionId = UUID.randomUUID().toString();
+        redisTemplate.opsForValue().set(
+                "user:session:" + user.getId(), sessionId, Duration.ofMillis(jwtProperties.refreshExpirationMs()));
+        return sessionId;
+    }
+
+    public String generateToken(User user, String sessionId) {
         Date now = new Date();
         Date expiry = new Date(now.getTime() + jwtProperties.expirationMs());
-        
-        String sessionId = UUID.randomUUID().toString();
-        redisTemplate.opsForValue().set("user:session:" + user.getId(), sessionId, Duration.ofMillis(jwtProperties.expirationMs()));
 
         return Jwts.builder()
                 .subject(user.getId().toString())

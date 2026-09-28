@@ -16,6 +16,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
+import org.springframework.web.bind.annotation.CookieValue;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -32,9 +33,10 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
         AuthenticationResult result = authService.register(request);
         ResponseCookie cookie = authCookieFactory.buildAuthCookie(result.token());
+        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
         
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString(), refreshCookie.toString())
                 .body(ApiResponse.success(
                         HttpStatus.CREATED.value(),
                         "Account registered successfully",
@@ -46,9 +48,10 @@ public class AuthController {
     public ResponseEntity<ApiResponse<UserResponse>> login(@Valid @RequestBody LoginRequest request) {
         AuthenticationResult result = authService.authenticate(request);
         ResponseCookie cookie = authCookieFactory.buildAuthCookie(result.token());
+        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
         
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString())
+                .header(HttpHeaders.SET_COOKIE, cookie.toString(), refreshCookie.toString())
                 .body(ApiResponse.success(
                         HttpStatus.OK.value(),
                         "Login successful",
@@ -60,9 +63,22 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> logout(@RequestHeader("X-User-Id") String userId) {
         authService.logout(userId);
         ResponseCookie expiredCookie = authCookieFactory.buildExpiredAuthCookie();
+        ResponseCookie expiredRefreshCookie = authCookieFactory.buildExpiredRefreshCookie();
         
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString())
+                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString(), expiredRefreshCookie.toString())
                 .body(ApiResponse.success(HttpStatus.OK.value(), "Logout successful", Map.of()));
+    }
+
+    @PostMapping("/refresh")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> refresh(
+            @CookieValue(name = "${app.jwt.refresh-cookie-name}", required = false) String refreshToken) {
+        AuthenticationResult result = authService.refresh(refreshToken);
+        ResponseCookie authCookie = authCookieFactory.buildAuthCookie(result.token());
+        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
+
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, authCookie.toString(), refreshCookie.toString())
+                .body(ApiResponse.success(HttpStatus.OK.value(), "Token refreshed", Map.of()));
     }
 }
