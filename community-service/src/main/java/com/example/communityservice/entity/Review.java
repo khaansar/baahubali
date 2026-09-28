@@ -35,6 +35,7 @@ public class Review {
     @Column(columnDefinition = "TEXT")
     private String comment;
 
+    @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
     private ReviewStatus status = ReviewStatus.APPROVED;

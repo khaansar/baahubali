@@ -156,9 +156,9 @@ public class ReviewService {
                     String authorAvatar = null;
 
                     if (profile != null) {
-                        if (profile.name() != null
-                                && !profile.name().isBlank()) {
-                            authorName = profile.name();
+                        if (profile.displayName() != null
+                                && !profile.displayName().isBlank()) {
+                            authorName = profile.displayName();
                         }
 
                         authorAvatar = profile.avatarUrl();

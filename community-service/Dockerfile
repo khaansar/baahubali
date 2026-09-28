@@ -9,7 +9,7 @@ COPY . .
 RUN sed -i 's/\r$//' mvnw && chmod +x mvnw
 
 # Build only the community Service and its required internal dependencies (-am)
-RUN --mount=type=cache,target=/root/.m2 ./mvnw -pl community-service clean package -Dskipcommunitys -am -B -q
+RUN --mount=type=cache,target=/root/.m2 ./mvnw -pl community-service clean package -DskipTests -am -B -q
 
 # Extract layers using the Spring Boot 3.x layertools syntax
 RUN java -Djarmode=layertools -jar community-service/target/*.jar extract --destination /workspace/extracted
