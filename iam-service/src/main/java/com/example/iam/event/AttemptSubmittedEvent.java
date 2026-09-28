@@ -1,5 +1,13 @@
 package com.example.iam.event;
 
+import java.io.Serializable;
 import java.time.Instant;
 
-public record AttemptSubmittedEvent(String userId, String testId, Instant timestamp) { }
+public record AttemptSubmittedEvent(
+        String eventId,
+        String attemptId,
+        String userId,
+        String testId,
+        Instant timestamp
+) implements Serializable {
+}

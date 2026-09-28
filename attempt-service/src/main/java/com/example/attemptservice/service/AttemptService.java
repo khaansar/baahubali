@@ -27,7 +27,6 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -59,11 +58,11 @@ public class AttemptService {
     private static final int DEFAULT_DURATION_MINUTES = 180;
     private static final String REDIS_KEY_PREFIX = "attempt:";
 
+    private final OutboxEventRepository outboxEventRepository;
     private final AttemptRepository attemptRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptFlushWorker attemptFlushWorker;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -83,14 +82,13 @@ public class AttemptService {
                           AttemptAnswerRepository attemptAnswerRepository,
                           AttemptRedisRepository attemptRedisRepository,
                           @Lazy AttemptFlushWorker attemptFlushWorker,
-                          KafkaTemplate<String, Object> kafkaTemplate,
                           StringRedisTemplate redisTemplate,
                           TestServiceFeignClient testServiceFeignClient) {
         this.attemptRepository = attemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
         this.attemptRedisRepository = attemptRedisRepository;
         this.attemptFlushWorker = attemptFlushWorker;
-        this.kafkaTemplate = kafkaTemplate;
+        this.outboxEventRepository = outboxEventRepository;
         this.redisTemplate = redisTemplate;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceFeignClient = testServiceFeignClient;
@@ -188,15 +186,31 @@ public class AttemptService {
         });
 
         if (finalStatus == AttemptStatus.SUBMITTED) {
-            AttemptSubmittedEvent event = new AttemptSubmittedEvent(
-                    attempt.getUserId(), attempt.getTestId(), finalizedAt);
-            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
-                    new org.springframework.transaction.support.TransactionSynchronization() {
-                        @Override
-                        public void afterCommit() {
-                            kafkaTemplate.send("attempt-submitted-events", event.userId(), event);
-                        }
-                    });
+            try {
+                AttemptSubmittedEvent event = new AttemptSubmittedEvent(
+                        UUID.randomUUID().toString(),
+                        attempt.getId(),
+                        attempt.getUserId(),
+                        attempt.getTestId(),
+                        finalizedAt
+                );
+
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .id(event.eventId())
+                        .eventType("ATTEMPT_SUBMITTED")
+                        .aggregateId(attempt.getId())
+                        .payload(objectMapper.writeValueAsString(event))
+                        .createdAt(finalizedAt)
+                        .build();
+
+                outboxEventRepository.save(outboxEvent);
+
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        "Failed to create attempt submitted outbox event",
+                        e
+                );
+            }
         }
     }
 
