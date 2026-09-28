@@ -66,6 +66,7 @@ public class AdminSectionServiceImpl {
             sq.setUpdatedBy(adminId);
             
             sectionQuestionRepository.save(sq);
+            section.getSectionQuestions().add(sq);
         }
         
         // Touch the parent test's updated_at timestamp to invalidate caches and increment version

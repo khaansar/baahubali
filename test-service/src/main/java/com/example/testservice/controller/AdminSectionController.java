@@ -44,7 +44,8 @@ public class AdminSectionController {
     public ResponseEntity<ApiResponse<List<AdminSectionDetailDto>>> reorderSections(
             @PathVariable UUID testId,
             @RequestBody Map<String, List<UUID>> request) {
-        List<AdminSectionDetailDto> response = adminSectionService.reorderSections(testId, request.get("orderedSectionIds"));
+        List<UUID> orderedIds = request.containsKey("orderedSectionIds") ? request.get("orderedSectionIds") : request.get("order");
+        List<AdminSectionDetailDto> response = adminSectionService.reorderSections(testId, orderedIds);
         return ResponseEntity.ok(ApiResponse.success(200, "Sections reordered successfully", response));
     }
 
@@ -71,7 +72,8 @@ public class AdminSectionController {
     public ResponseEntity<ApiResponse<AdminSectionDetailDto>> reorderQuestionsInSection(
             @PathVariable UUID sectionId,
             @RequestBody Map<String, List<UUID>> request) {
-        AdminSectionDetailDto response = adminSectionService.reorderQuestions(sectionId, request.get("orderedQuestionIds"));
+        List<UUID> orderedIds = request.containsKey("orderedQuestionIds") ? request.get("orderedQuestionIds") : request.get("order");
+        AdminSectionDetailDto response = adminSectionService.reorderQuestions(sectionId, orderedIds);
         return ResponseEntity.ok(ApiResponse.success(200, "Questions reordered successfully", response));
     }
 
