@@ -46,8 +46,9 @@ app:
     cookie-same-site: ${COOKIE_SAME_SITE:Strict}
 
 internal:
-  allowed-clients:
-    attempt-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+  auth:
+    allowed-clients:
+      community-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
 
 springdoc:
   api-docs:
