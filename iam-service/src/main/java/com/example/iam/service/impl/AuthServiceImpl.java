@@ -9,6 +9,7 @@ import com.example.iam.exception.EmailAlreadyExistsException;
 import com.example.iam.exception.InvalidCredentialsException;
 import com.example.iam.repository.UserRepository;
 import com.example.iam.security.JwtService;
+import com.example.iam.security.RefreshTokenService;
 import com.example.iam.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -23,6 +24,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtService jwtService;
+    private final RefreshTokenService refreshTokenService;
     private final StringRedisTemplate redisTemplate;
 
     @Override
@@ -42,9 +44,11 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         user = userRepository.save(user);
-        String token = jwtService.generateToken(user);
+        String sessionId = jwtService.createSession(user);
+        String token = jwtService.generateToken(user, sessionId);
+        String refreshToken = refreshTokenService.issue(user, sessionId);
         
-        return new AuthenticationResult(user, token);
+        return new AuthenticationResult(user, token, refreshToken);
     }
 
     @Override
@@ -58,12 +62,25 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException();
         }
 
-        String token = jwtService.generateToken(user);
-        return new AuthenticationResult(user, token);
+        String sessionId = jwtService.createSession(user);
+        String token = jwtService.generateToken(user, sessionId);
+        String refreshToken = refreshTokenService.issue(user, sessionId);
+        return new AuthenticationResult(user, token, refreshToken);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AuthenticationResult refresh(String refreshToken) {
+        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken);
+        User user = userRepository.findById(rotation.userId())
+                .orElseThrow(() -> new com.example.iam.exception.InvalidRefreshTokenException());
+        String accessToken = jwtService.generateToken(user, rotation.sessionId());
+        return new AuthenticationResult(user, accessToken, rotation.refreshToken());
     }
 
     @Override
     public void logout(String userId) {
         redisTemplate.delete("user:session:" + userId);
+        refreshTokenService.revokeForUser(userId);
     }
 }

@@ -20,12 +20,30 @@ public class AuthCookieFactory {
         return builder.build();
     }
 
+    public ResponseCookie buildRefreshCookie(String token) {
+        return refreshBuilder(token)
+                .maxAge(jwtProperties.refreshExpirationMs() / 1000)
+                .build();
+    }
+
     public ResponseCookie buildExpiredAuthCookie() {
         return baseBuilder("").maxAge(0).build();
     }
 
+    public ResponseCookie buildExpiredRefreshCookie() {
+        return refreshBuilder("").maxAge(0).build();
+    }
+
     private ResponseCookie.ResponseCookieBuilder baseBuilder(String value) {
-        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(jwtProperties.cookieName(), value)
+        return cookieBuilder(jwtProperties.cookieName(), value);
+    }
+
+    private ResponseCookie.ResponseCookieBuilder refreshBuilder(String value) {
+        return cookieBuilder(jwtProperties.refreshCookieName(), value);
+    }
+
+    private ResponseCookie.ResponseCookieBuilder cookieBuilder(String name, String value) {
+        ResponseCookie.ResponseCookieBuilder builder = ResponseCookie.from(name, value)
                 .httpOnly(true)
                 .secure(jwtProperties.cookieSecure())
                 .path("/")

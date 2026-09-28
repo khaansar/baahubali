@@ -94,6 +94,7 @@ gateway:
     public-paths:
       - /auth-api/login
       - /auth-api/register
+      - /auth-api/refresh
       - /tests-api/public/**
       - /auth-api/swagger-ui.html
       - /auth-api/swagger-ui/**

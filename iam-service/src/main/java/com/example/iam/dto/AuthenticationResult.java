@@ -4,5 +4,6 @@ import com.example.iam.entity.User;
 
 public record AuthenticationResult(
         User user,
-        String token
+        String token,
+        String refreshToken
 ) {}
