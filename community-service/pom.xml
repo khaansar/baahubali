@@ -80,7 +80,7 @@
     </dependencies>
 
     <build>
-        <finalName>attempt-service</finalName>
+        <finalName>community-service</finalName>
         <plugins>
             <plugin>
                 <groupId>org.springframework.boot</groupId>
