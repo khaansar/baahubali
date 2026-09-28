@@ -10,7 +10,7 @@ Java 21 · Spring Boot 3.2.5 · MySQL · Spring Security · JJWT.
 2. Set environment variables for production (`application.yml` is the default profile
    and enforces TLS `VERIFY_IDENTITY` — it expects a real MySQL TLS certificate,
    e.g. a managed/cloud MySQL instance):
-   - `MYSQL_HOST`, `MYSQL_PORT`, `MYSQL_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`
+   - `MYSQL_HOST`, `MYSQL_PORT`, `IAM_SERVICE_DATABASE`, `MYSQL_USER`, `MYSQL_PASSWORD`
    - `JWT_SECRET` — a random Base64 secret, 256 bits or longer
    - `JWT_EXPIRATION_MS` (default 1 hour)
    - `COOKIE_DOMAIN`, `COOKIE_SECURE` (true in prod, requires HTTPS end-to-end), `COOKIE_SAME_SITE`

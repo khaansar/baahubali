@@ -16,18 +16,19 @@ import com.example.attemptservice.dto.internal.TestServiceResponse;
 import com.example.attemptservice.entity.Attempt;
 import com.example.attemptservice.entity.AttemptAnswer;
 import com.example.attemptservice.entity.AttemptStatus;
+import com.example.attemptservice.entity.OutboxEvent;
 import com.example.attemptservice.event.AttemptSubmittedEvent;
 import com.example.attemptservice.exception.AttemptNotFoundException;
 import com.example.attemptservice.redis.AttemptRedisHash;
 import com.example.attemptservice.redis.AttemptRedisRepository;
 import com.example.attemptservice.repository.AttemptAnswerRepository;
 import com.example.attemptservice.repository.AttemptRepository;
+import com.example.attemptservice.repository.OutboxEventRepository;
 import com.example.attemptservice.worker.AttemptFlushWorker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
-import org.springframework.kafka.core.KafkaTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -59,11 +60,11 @@ public class AttemptService {
     private static final int DEFAULT_DURATION_MINUTES = 180;
     private static final String REDIS_KEY_PREFIX = "attempt:";
 
+    private final OutboxEventRepository outboxEventRepository;
     private final AttemptRepository attemptRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptFlushWorker attemptFlushWorker;
-    private final KafkaTemplate<String, Object> kafkaTemplate;
     private final StringRedisTemplate redisTemplate;
     private final ObjectMapper objectMapper = new ObjectMapper();
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
@@ -82,15 +83,15 @@ public class AttemptService {
     public AttemptService(AttemptRepository attemptRepository,
                           AttemptAnswerRepository attemptAnswerRepository,
                           AttemptRedisRepository attemptRedisRepository,
+                          OutboxEventRepository outboxEventRepository,
                           @Lazy AttemptFlushWorker attemptFlushWorker,
-                          KafkaTemplate<String, Object> kafkaTemplate,
                           StringRedisTemplate redisTemplate,
                           TestServiceFeignClient testServiceFeignClient) {
         this.attemptRepository = attemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
         this.attemptRedisRepository = attemptRedisRepository;
         this.attemptFlushWorker = attemptFlushWorker;
-        this.kafkaTemplate = kafkaTemplate;
+        this.outboxEventRepository = outboxEventRepository;
         this.redisTemplate = redisTemplate;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceFeignClient = testServiceFeignClient;
@@ -173,8 +174,9 @@ public class AttemptService {
         }
 
         final String attemptId = attempt.getId();
+        Instant finalizedAt = Instant.now();
         attempt.setStatus(finalStatus);
-        attempt.setUpdatedAt(Instant.now());
+        attempt.setUpdatedAt(finalizedAt);
         attemptRepository.save(attempt);
 
         attemptRedisRepository.findById(attemptId).ifPresent(hash -> {
@@ -186,7 +188,33 @@ public class AttemptService {
             attemptRedisRepository.deleteById(attemptId);
         });
 
-        kafkaTemplate.send("attempt-submitted-events", attemptId, new AttemptSubmittedEvent(attemptId));
+        if (finalStatus == AttemptStatus.SUBMITTED) {
+            try {
+                AttemptSubmittedEvent event = new AttemptSubmittedEvent(
+                        UUID.randomUUID().toString(),
+                        attempt.getId(),
+                        attempt.getUserId(),
+                        attempt.getTestId(),
+                        finalizedAt
+                );
+
+                OutboxEvent outboxEvent = OutboxEvent.builder()
+                        .id(event.eventId())
+                        .eventType("ATTEMPT_SUBMITTED")
+                        .aggregateId(attempt.getId())
+                        .payload(objectMapper.writeValueAsString(event))
+                        .createdAt(finalizedAt)
+                        .build();
+
+                outboxEventRepository.save(outboxEvent);
+
+            } catch (Exception e) {
+                throw new IllegalStateException(
+                        "Failed to create attempt submitted outbox event",
+                        e
+                );
+            }
+        }
     }
 
     @Transactional(readOnly = true)

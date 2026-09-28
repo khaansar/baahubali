@@ -44,3 +44,7 @@ logging:
   level:
     com.example.testservice: INFO
     org.springframework.web: INFO
+
+app:
+  api:
+    version: ${API_VERSION:1.2.0}

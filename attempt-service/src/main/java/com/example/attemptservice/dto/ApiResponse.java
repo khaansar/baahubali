@@ -1,6 +1,7 @@
 package com.example.attemptservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.example.attemptservice.config.ApiVersion;
 
 import java.time.Instant;
 import java.util.LinkedHashMap;
@@ -17,8 +18,6 @@ public record ApiResponse<T>(
         ApiError error,
         Map<String, Object> meta) {
 
-    private static final String API_VERSION = "1.2.0";
-
     public static <T> ApiResponse<T> success(int status, String message, T data) {
         return success(status, message, data, Map.of());
     }
@@ -27,7 +26,7 @@ public record ApiResponse<T>(
         T responseData = data == null ? emptyObject() : data;
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("timestamp", Instant.now().toString());
-        meta.put("version", API_VERSION);
+        meta.put("version", ApiVersion.current());
         if (additionalMeta != null) {
             meta.putAll(additionalMeta);
         }

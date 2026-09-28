@@ -67,10 +67,13 @@ services:
     restart: unless-stopped
     env_file:
       - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
     networks:
       - backend-network
     depends_on:
       - baahubali-redis
+      - baahubali-kafka
     deploy:
       resources:
         limits:
