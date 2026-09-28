@@ -104,6 +104,8 @@ public class AttemptService {
                 .userId(request.getUserId())
                 .testId(request.getTestId())
                 .startedAt(startedAt)
+                .createdAt(startedAt)
+                .updatedAt(startedAt)
                 .durationMinutes(request.getDurationMinutes() != null
                         ? request.getDurationMinutes()
                         : DEFAULT_DURATION_MINUTES)
@@ -145,6 +147,9 @@ public class AttemptService {
                 .attemptId(saved.getId())
                 .deadline(deadline)
                 .testPayload(testBlueprint)
+                .createdAt(saved.getCreatedAt())
+                .updatedAt(saved.getUpdatedAt())
+                .deletedAt(saved.getDeletedAt())
                 .build();
     }
 
@@ -169,6 +174,7 @@ public class AttemptService {
 
         final String attemptId = attempt.getId();
         attempt.setStatus(finalStatus);
+        attempt.setUpdatedAt(Instant.now());
         attemptRepository.save(attempt);
 
         attemptRedisRepository.findById(attemptId).ifPresent(hash -> {
@@ -195,6 +201,9 @@ public class AttemptService {
                         .status(attempt.getStatus().name())
                         .finalScore(attempt.getFinalScore())
                         .startedAt(attempt.getStartedAt())
+                        .createdAt(attempt.getCreatedAt())
+                        .updatedAt(attempt.getUpdatedAt())
+                        .deletedAt(attempt.getDeletedAt())
                         .build())
                 .toList();
 
@@ -254,6 +263,9 @@ public class AttemptService {
                                 .selectedOption(selected)
                                 .correctOption(correctOpt)
                                 .explanation(q.getExplanation())
+                                .createdAt(q.getCreatedAt())
+                                .updatedAt(q.getUpdatedAt())
+                                .deletedAt(q.getDeletedAt())
                                 .build());
                     }
                 }
@@ -264,6 +276,9 @@ public class AttemptService {
                 .attemptId(attempt.getId())
                 .finalScore(attempt.getFinalScore())
                 .questions(reviewDtos)
+                .createdAt(attempt.getCreatedAt())
+                .updatedAt(attempt.getUpdatedAt())
+                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 
@@ -272,6 +287,7 @@ public class AttemptService {
         return new AttemptStateSnapshot(toStateResponse(hash), hash.getVersion());
     }
 
+    @Transactional
     public Long patchAttempt(String attemptId, PatchAttemptRequest request) {
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
@@ -310,6 +326,10 @@ public class AttemptService {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Attempt version conflict; reload the latest state and retry");
         }
+        attemptRepository.findById(attemptId).ifPresent(attempt -> {
+            attempt.setUpdatedAt(Instant.now());
+            attemptRepository.save(attempt);
+        });
         return nextVersion;
     }
 
@@ -346,9 +366,12 @@ public class AttemptService {
     }
 
     private AttemptStateResponse toStateResponse(AttemptRedisHash hash) {
+        Attempt attempt = attemptRepository.findById(hash.getAttemptId())
+                .orElseThrow(() -> new AttemptNotFoundException(hash.getAttemptId()));
         return AttemptStateResponse.builder().attemptId(hash.getAttemptId()).userId(hash.getUserId())
                 .testId(hash.getExamId()).status(hash.getStatus())
                 .currentQuestionIndex(hash.getCurrentQuestionIndex()).answers(readAnswers(hash.getAnswersJson()))
+                .createdAt(attempt.getCreatedAt()).updatedAt(attempt.getUpdatedAt()).deletedAt(attempt.getDeletedAt())
                 .build();
     }
 
@@ -392,6 +415,9 @@ public class AttemptService {
                 .attemptId(attempt.getId())
                 .status(attempt.getStatus().name())
                 .finalScore(attempt.getFinalScore())
+                .createdAt(attempt.getCreatedAt())
+                .updatedAt(attempt.getUpdatedAt())
+                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 

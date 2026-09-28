@@ -14,4 +14,7 @@ public class CategoryDto {
     private String name;
     private String description;
     private java.util.List<String> requiredLanguages;
+    private java.time.Instant createdAt;
+    private java.time.Instant updatedAt;
+    private java.time.Instant deletedAt;
 }

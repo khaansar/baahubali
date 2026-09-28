@@ -23,11 +23,12 @@ public class ApiResponse<T> {
     private Meta meta;
 
     public static <T> ApiResponse<T> success(int status, T data) {
+        T responseData = data == null ? emptyObject() : data;
         return ApiResponse.<T>builder()
                 .success(true)
                 .status(status)
                 .message(status == 201 ? "Resource created successfully" : "Resource retrieved successfully")
-                .data(data)
+                .data(responseData)
                 .meta(Meta.timestamp())
                 .build();
     }
@@ -37,13 +38,19 @@ public class ApiResponse<T> {
     }
 
     public static <T> ApiResponse<T> success(int status, String message, T data) {
+        T responseData = data == null ? emptyObject() : data;
         return ApiResponse.<T>builder()
                 .success(true)
                 .status(status)
                 .message(message)
-                .data(data)
+                .data(responseData)
                 .meta(Meta.timestamp())
                 .build();
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T emptyObject() {
+        return (T) java.util.Map.of();
     }
 
     public static <T> ApiResponse<List<T>> paginated(List<T> data, PageMetaDto pagination) {
@@ -51,7 +58,7 @@ public class ApiResponse<T> {
                 .success(true)
                 .status(200)
                 .message("Resources retrieved successfully")
-                .data(data)
+                .data(data == null ? java.util.List.of() : data)
                 .meta(Meta.pagination(pagination))
                 .build();
     }

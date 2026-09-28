@@ -6,6 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
+import java.time.Instant;
+
 import java.util.List;
 
 @Getter
@@ -17,4 +19,7 @@ public class AttemptReviewResponse {
     private String attemptId;
     private Double finalScore;
     private List<QuestionReviewDto> questions;
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant deletedAt;
 }

@@ -24,14 +24,20 @@ public record ApiResponse<T>(
     }
 
     public static <T> ApiResponse<T> success(int status, String message, T data, Map<String, ?> additionalMeta) {
+        T responseData = data == null ? emptyObject() : data;
         Map<String, Object> meta = new LinkedHashMap<>();
         meta.put("timestamp", Instant.now().toString());
         meta.put("version", API_VERSION);
         if (additionalMeta != null) {
             meta.putAll(additionalMeta);
         }
-        return new ApiResponse<>(true, status, message, data, null,
+        return new ApiResponse<>(true, status, message, responseData, null,
                 meta);
+    }
+
+    @SuppressWarnings("unchecked")
+    private static <T> T emptyObject() {
+        return (T) Map.of();
     }
 
     public static <T> ApiResponse<T> paginated(int status, String message, T data,

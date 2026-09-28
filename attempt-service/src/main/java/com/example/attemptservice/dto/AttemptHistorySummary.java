@@ -19,4 +19,7 @@ public class AttemptHistorySummary {
     private String status;
     private Double finalScore;
     private Instant startedAt;
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant deletedAt;
 }

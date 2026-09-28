@@ -22,6 +22,7 @@ public record AdminMockTestDetailDto(
         Instant publishedAt,
         Instant createdAt,
         Instant updatedAt,
+        Instant deletedAt,
         List<SectionSummaryDto> sections
 ) {
     public record SectionSummaryDto(
@@ -30,6 +31,9 @@ public record AdminMockTestDetailDto(
             Integer sequenceOrder,
             Integer durationMinutes,
             boolean shuffleQuestions,
-            int questionCount
+            int questionCount,
+            Instant createdAt,
+            Instant updatedAt,
+            Instant deletedAt
     ) {}
 }

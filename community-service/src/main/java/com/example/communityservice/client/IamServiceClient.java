@@ -1,6 +1,7 @@
 package com.example.communityservice.client;
 
 import com.example.communityservice.config.CommunityFeignConfig;
+import com.example.communityservice.dto.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -16,7 +17,7 @@ import java.util.Map;
 public interface IamServiceClient {
 
     @PostMapping("/internal/users/batch")
-    Map<String, UserProfileDto> getUsersBatch(@RequestBody List<String> userIds);
+    ApiResponse<Map<String, UserProfileDto>> getUsersBatch(@RequestBody List<String> userIds);
 
     record UserProfileDto(String id, String displayName, String avatarUrl) {}
 }
