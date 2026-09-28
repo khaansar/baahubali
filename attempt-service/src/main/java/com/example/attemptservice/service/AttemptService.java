@@ -22,6 +22,7 @@ import com.example.attemptservice.redis.AttemptRedisHash;
 import com.example.attemptservice.redis.AttemptRedisRepository;
 import com.example.attemptservice.repository.AttemptAnswerRepository;
 import com.example.attemptservice.repository.AttemptRepository;
+import com.example.attemptservice.repository.OutboxEventRepository;
 import com.example.attemptservice.worker.AttemptFlushWorker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
