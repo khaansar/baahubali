@@ -112,6 +112,9 @@ public class AdminQuestionServiceImpl {
             dto.setLanguage(t.getLanguage());
             dto.setQuestionText(t.getQuestionText());
             dto.setOptionsJson(t.getOptionsJson());
+            dto.setCreatedAt(t.getCreatedAt());
+            dto.setUpdatedAt(t.getUpdatedAt());
+            dto.setDeletedAt(t.getDeletedAt());
             return dto;
         }).collect(Collectors.toList());
 

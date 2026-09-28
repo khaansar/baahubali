@@ -4,6 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.List;
 import java.util.Map;
 
@@ -16,6 +17,9 @@ public class InternalTestBlueprintDto {
     private String instructions;
     private BigDecimal totalMarks;
     private Boolean free;
+    private Instant createdAt;
+    private Instant updatedAt;
+    private Instant deletedAt;
     private List<InternalSectionDto> sections;
 
     @Data
@@ -26,6 +30,9 @@ public class InternalTestBlueprintDto {
         private Integer sequenceOrder;
         private Integer durationMinutes;
         private Boolean shuffleQuestions;
+        private Instant createdAt;
+        private Instant updatedAt;
+        private Instant deletedAt;
         private List<InternalQuestionDto> questions;
     }
 
@@ -41,6 +48,9 @@ public class InternalTestBlueprintDto {
         private BigDecimal positiveMarks;
         private BigDecimal negativeMarks;
         private String explanation;
+        private Instant createdAt;
+        private Instant updatedAt;
+        private Instant deletedAt;
     }
 
     @Data
@@ -49,5 +59,8 @@ public class InternalTestBlueprintDto {
         private String language;
         private String questionText;
         private String optionsJson;
+        private Instant createdAt;
+        private Instant updatedAt;
+        private Instant deletedAt;
     }
 }

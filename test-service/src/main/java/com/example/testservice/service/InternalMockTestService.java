@@ -35,27 +35,33 @@ public class InternalMockTestService {
                 test.getId(),
                 test.getTitle(),
                 test.getDurationMinutes(),
+                test.getInstructions(),
+                test.isFree(),
                 test.isSectionOrderStrict(),
                 test.isShuffleSections(),
                 test.isNegativeMarkingEnabled(),
                 test.getTotalMarks(),
+                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
                 test.getSections().stream().map(section -> new SectionBlueprintDto(
                         section.getId(),
                         section.getTitle(),
                         section.getSequenceOrder(),
                         section.getDurationMinutes(),
                         section.isShuffleQuestions(),
+                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> new QuestionBlueprintDto(
                                 sq.getQuestion().getId(),
                                 sq.getSequenceOrder(),
                                 sq.getQuestion().getQuestionType().name(),
                                 sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
-                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson()
+                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson(),
+                                        t.getCreatedAt(), t.getUpdatedAt(), t.getDeletedAt()
                                 )).collect(Collectors.toList()),
                                 sq.getQuestion().getCorrectAnswerJson(),
                                 sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
                                 sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                sq.getQuestion().getExplanation()
+                                sq.getQuestion().getExplanation(),
+                                sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
                         )).collect(Collectors.toList())
                 )).collect(Collectors.toList())
         );
@@ -70,7 +76,8 @@ public class InternalMockTestService {
                 test.getId(),
                 test.getStatus(),
                 test.getTotalMarks(),
-                test.getDurationMinutes()
+                test.getDurationMinutes(),
+                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt()
         );
     }
 

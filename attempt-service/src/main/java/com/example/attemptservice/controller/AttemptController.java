@@ -65,8 +65,11 @@ public class AttemptController {
     public ResponseEntity<ApiResponse<PatchAttemptResponse>> patchAttempt(@PathVariable String id,
                                                                @Valid @RequestBody PatchAttemptRequest request) {
         Long attemptVersion = attemptService.patchAttempt(id, request);
+        AttemptStateResponse state = attemptService.getAttemptState(id).state();
         return ResponseEntity.ok(ApiResponse.success(200, "Attempt updated successfully",
-                PatchAttemptResponse.builder().success(true).build(), java.util.Map.of("attemptVersion", attemptVersion)));
+                PatchAttemptResponse.builder().success(true)
+                        .createdAt(state.getCreatedAt()).updatedAt(state.getUpdatedAt()).deletedAt(state.getDeletedAt())
+                        .build(), java.util.Map.of("attemptVersion", attemptVersion)));
     }
 
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)

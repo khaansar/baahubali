@@ -333,20 +333,25 @@ public class AdminMockTestServiceImpl {
 
     private TestBlueprintDto mapToBlueprintDto(MockTest test) {
         return new TestBlueprintDto(
-                test.getId(), test.getTitle(), test.getDurationMinutes(), test.isSectionOrderStrict(),
+                test.getId(), test.getTitle(), test.getDurationMinutes(), test.getInstructions(), test.isFree(),
+                test.isSectionOrderStrict(),
                 test.isShuffleSections(), test.isNegativeMarkingEnabled(), test.getTotalMarks(),
+                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
                 test.getSections().stream().map(section -> new SectionBlueprintDto(
                         section.getId(), section.getTitle(), section.getSequenceOrder(), section.getDurationMinutes(),
                         section.isShuffleQuestions(),
+                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> new QuestionBlueprintDto(
                                 sq.getQuestion().getId(), sq.getSequenceOrder(), sq.getQuestion().getQuestionType().name(),
                                 sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
-                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson()
+                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson(),
+                                        t.getCreatedAt(), t.getUpdatedAt(), t.getDeletedAt()
                                 )).toList(),
                                 sq.getQuestion().getCorrectAnswerJson(),
                                 sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
                                 sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                sq.getQuestion().getExplanation()
+                                sq.getQuestion().getExplanation(),
+                                sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
                         )).toList()
                 )).toList()
         );
