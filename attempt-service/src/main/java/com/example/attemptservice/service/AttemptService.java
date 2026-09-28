@@ -16,6 +16,7 @@ import com.example.attemptservice.dto.internal.TestServiceResponse;
 import com.example.attemptservice.entity.Attempt;
 import com.example.attemptservice.entity.AttemptAnswer;
 import com.example.attemptservice.entity.AttemptStatus;
+import com.example.attemptservice.entity.OutboxEvent;
 import com.example.attemptservice.event.AttemptSubmittedEvent;
 import com.example.attemptservice.exception.AttemptNotFoundException;
 import com.example.attemptservice.redis.AttemptRedisHash;
@@ -82,6 +83,7 @@ public class AttemptService {
     public AttemptService(AttemptRepository attemptRepository,
                           AttemptAnswerRepository attemptAnswerRepository,
                           AttemptRedisRepository attemptRedisRepository,
+                          OutboxEventRepository outboxEventRepository,
                           @Lazy AttemptFlushWorker attemptFlushWorker,
                           StringRedisTemplate redisTemplate,
                           TestServiceFeignClient testServiceFeignClient) {
