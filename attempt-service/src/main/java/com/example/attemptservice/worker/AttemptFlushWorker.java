@@ -31,16 +31,26 @@ public class AttemptFlushWorker {
     public void flushDirtyHashes() {
         log.debug("Starting flush of dirty Redis hashes...");
         Iterable<AttemptRedisHash> hashes = attemptRedisRepository.findAll();
-        
+
         for (AttemptRedisHash hash : hashes) {
+            if (hash == null) {
+                continue;
+            }
+
             if (Boolean.TRUE.equals(hash.getDirtyFlag())) {
                 try {
                     flushAnswers(hash);
+
                     // Mark as clean and update in Redis
                     hash.setDirtyFlag(false);
                     attemptRedisRepository.save(hash);
+
                 } catch (Exception e) {
-                    log.error("Failed to flush dirty hash for attemptId: {}", hash.getAttemptId(), e);
+                    log.error(
+                            "Failed to flush dirty hash for attemptId: {}",
+                            hash.getAttemptId(),
+                            e
+                    );
                 }
             }
         }
@@ -52,13 +62,19 @@ public class AttemptFlushWorker {
         }
 
         Map<String, String> answersMap = objectMapper.readValue(
-                hash.getAnswersJson(), 
+                hash.getAnswersJson(),
                 new TypeReference<Map<String, String>>() {}
         );
 
-        List<AttemptAnswer> existingAnswers = attemptAnswerRepository.findByAttemptId(hash.getAttemptId());
-        Map<String, AttemptAnswer> existingByQuestion = existingAnswers.stream()
-                .collect(Collectors.toMap(AttemptAnswer::getQuestionId, Function.identity()));
+        List<AttemptAnswer> existingAnswers =
+                attemptAnswerRepository.findByAttemptId(hash.getAttemptId());
+
+        Map<String, AttemptAnswer> existingByQuestion =
+                existingAnswers.stream()
+                        .collect(Collectors.toMap(
+                                AttemptAnswer::getQuestionId,
+                                Function.identity()
+                        ));
 
         List<AttemptAnswer> toSave = new ArrayList<>();
         Instant now = Instant.now();
@@ -68,12 +84,14 @@ public class AttemptFlushWorker {
             String opt = entry.getValue();
 
             AttemptAnswer ans = existingByQuestion.get(qId);
+
             if (ans == null) {
                 ans = AttemptAnswer.builder()
                         .attemptId(hash.getAttemptId())
                         .questionId(qId)
                         .build();
             }
+
             ans.setSelectedOption(opt);
             ans.setUpdatedAt(now);
             toSave.add(ans);
@@ -81,7 +99,12 @@ public class AttemptFlushWorker {
 
         if (!toSave.isEmpty()) {
             attemptAnswerRepository.saveAll(toSave);
-            log.debug("Flushed {} answers for attempt {}", toSave.size(), hash.getAttemptId());
+
+            log.debug(
+                    "Flushed {} answers for attempt {}",
+                    toSave.size(),
+                    hash.getAttemptId()
+            );
         }
     }
 }
