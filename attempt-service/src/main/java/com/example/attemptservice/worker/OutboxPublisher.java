@@ -22,7 +22,8 @@ public class OutboxPublisher {
 
     private final OutboxEventRepository outboxEventRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-    private final ObjectMapper objectMapper;
+
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     @Scheduled(fixedDelay = 1000)
     @Transactional
