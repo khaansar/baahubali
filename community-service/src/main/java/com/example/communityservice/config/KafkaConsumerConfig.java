@@ -2,6 +2,7 @@ package com.example.communityservice.config;
 
 import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.clients.producer.ProducerConfig;
+import org.apache.kafka.common.TopicPartition;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.apache.kafka.common.serialization.StringSerializer;
 import org.springframework.beans.factory.annotation.Value;
@@ -43,7 +44,9 @@ public class KafkaConsumerConfig {
 
     @Bean
     public DefaultErrorHandler errorHandler(KafkaTemplate<String, Object> kafkaTemplate) {
-        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(kafkaTemplate);
+        DeadLetterPublishingRecoverer recoverer = new DeadLetterPublishingRecoverer(
+                kafkaTemplate,
+                (record, exception) -> new TopicPartition(record.topic() + ".DLT", record.partition()));
         return new DefaultErrorHandler(recoverer, new FixedBackOff(1000L, 3));
     }
 

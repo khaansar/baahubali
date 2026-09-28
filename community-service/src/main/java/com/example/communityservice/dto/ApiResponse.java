@@ -2,6 +2,7 @@ package com.example.communityservice.dto;
 
 import com.fasterxml.jackson.annotation.JsonProperty;
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.example.communityservice.config.ApiVersion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -41,7 +42,7 @@ public class ApiResponse<T> {
                 .data(responseData)
                 .meta(MetaData.builder()
                         .timestamp(Instant.now().toString())
-                        .version("1.2.0")
+                        .version(ApiVersion.current())
                         .build())
                 .build();
     }
@@ -54,7 +55,7 @@ public class ApiResponse<T> {
     public static <T> ApiResponse<T> success(int status, String message, T data, Pagination pagination) {
         MetaData meta = MetaData.builder()
                 .timestamp(Instant.now().toString())
-                .version("1.2.0")
+                .version(ApiVersion.current())
                 .build();
         if (pagination != null) {
             meta.setPagination(pagination);

@@ -173,8 +173,9 @@ public class AttemptService {
         }
 
         final String attemptId = attempt.getId();
+        Instant finalizedAt = Instant.now();
         attempt.setStatus(finalStatus);
-        attempt.setUpdatedAt(Instant.now());
+        attempt.setUpdatedAt(finalizedAt);
         attemptRepository.save(attempt);
 
         attemptRedisRepository.findById(attemptId).ifPresent(hash -> {
@@ -186,7 +187,17 @@ public class AttemptService {
             attemptRedisRepository.deleteById(attemptId);
         });
 
-        kafkaTemplate.send("attempt-submitted-events", attemptId, new AttemptSubmittedEvent(attemptId));
+        if (finalStatus == AttemptStatus.SUBMITTED) {
+            AttemptSubmittedEvent event = new AttemptSubmittedEvent(
+                    attempt.getUserId(), attempt.getTestId(), finalizedAt);
+            org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            kafkaTemplate.send("attempt-submitted-events", event.userId(), event);
+                        }
+                    });
+        }
     }
 
     @Transactional(readOnly = true)

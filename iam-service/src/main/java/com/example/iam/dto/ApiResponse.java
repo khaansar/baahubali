@@ -1,6 +1,7 @@
 package com.example.iam.dto;
 
 import com.fasterxml.jackson.annotation.JsonInclude;
+import com.example.iam.config.ApiVersion;
 
 import java.time.Instant;
 import java.util.Map;
@@ -15,8 +16,6 @@ public record ApiResponse<T>(
         ApiErrorResponse error,
         Map<String, Object> meta
 ) {
-    private static final String API_VERSION = "1.2.0";
-
     public static <T> ApiResponse<T> success(int status, String message, T data) {
         T responseData = data == null ? emptyObject() : data;
         return new ApiResponse<>(true, status, message, responseData, null, defaultMeta());
@@ -40,7 +39,7 @@ public record ApiResponse<T>(
     private static Map<String, Object> defaultMeta() {
         return Map.of(
                 "timestamp", Instant.now().toString(),
-                "version", API_VERSION
+                "version", ApiVersion.current()
         );
     }
 }

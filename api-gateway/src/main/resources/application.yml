@@ -122,3 +122,7 @@ gateway:
       role-claim: role
       issuer: ${JWT_ISSUER:}
       clock-skew-seconds: 30
+
+app:
+  api:
+    version: ${API_VERSION:1.2.0}

@@ -1,16 +1,7 @@
 package com.example.attemptservice.event;
 
-import lombok.AllArgsConstructor;
-import lombok.Builder;
-import lombok.Data;
-import lombok.NoArgsConstructor;
-
 import java.io.Serializable;
+import java.time.Instant;
 
-@Data
-@Builder
-@NoArgsConstructor
-@AllArgsConstructor
-public class AttemptSubmittedEvent implements Serializable {
-    private String attemptId;
-}
+/** Event published exactly when an attempt reaches the SUBMITTED state. */
+public record AttemptSubmittedEvent(String userId, String testId, Instant timestamp) implements Serializable { }

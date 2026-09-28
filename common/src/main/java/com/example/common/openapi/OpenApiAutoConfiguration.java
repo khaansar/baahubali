@@ -17,12 +17,13 @@ public class OpenApiAutoConfiguration {
     @Bean
     @ConditionalOnMissingBean
     public OpenAPI platformOpenAPI(
-            @Value("${spring.application.name:service}") String serviceName) {
+            @Value("${spring.application.name:service}") String serviceName,
+            @Value("${app.api.version}") String apiVersion) {
 
         return new OpenAPI()
                 .info(new Info()
                         .title(serviceName)
-                        .version("v1")
+                        .version(apiVersion)
                         .description("Auto-generated API documentation for " + serviceName))
                 .components(new Components()
                         .addSecuritySchemes("gatewayUser", gatewayUserHeaderScheme())
