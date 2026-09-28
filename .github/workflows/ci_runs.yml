@@ -52,6 +52,9 @@ jobs:
           name: service-jars
           path: |
             api-gateway/target/*.jar
-            payment-service/target/*.jar
+            attempt-service/target/*.jar
+            test-service/target/*.jar
+            community-service/target/*.jar
+            iam-service/target/*.jar
           if-no-files-found: error
           retention-days: 7
