@@ -1,9 +1,12 @@
 package com.example.communityservice.client;
 
 import com.example.communityservice.config.CommunityFeignConfig;
+import com.example.communityservice.dto.ApiResponse;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
+
+import java.util.Map;
 
 @FeignClient(
     name = "attempt-service",
@@ -13,5 +16,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 public interface AttemptServiceClient {
 
     @GetMapping("/internal/attempts/verify")
-    boolean hasUserAttemptedTest(@RequestParam("userId") String userId, @RequestParam("testId") String testId);
+    ApiResponse<Map<String, Boolean>> hasUserAttemptedTest(
+            @RequestParam("userId") String userId,
+            @RequestParam("testId") String testId);
 }

@@ -51,11 +51,12 @@ public class ReviewController {
 
     @Operation(summary = "Internal API: Get average rating for a target")
     @GetMapping("/internal/reviews/{targetId}/average")
-    public ResponseEntity<ApiResponse<Double>> getAverageRating(@PathVariable String targetId) {
+    public ResponseEntity<ApiResponse<Map<String, Double>>> getAverageRating(@PathVariable String targetId) {
         Double average = reviewService.getAverageRating(targetId);
         
         return ResponseEntity.ok(
-                ApiResponse.success(HttpStatus.OK.value(), "Average rating retrieved successfully", average)
+                ApiResponse.success(HttpStatus.OK.value(), "Average rating retrieved successfully",
+                        Map.of("averageRating", average))
         );
     }
 }

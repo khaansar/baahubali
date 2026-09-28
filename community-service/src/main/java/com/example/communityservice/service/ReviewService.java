@@ -2,6 +2,7 @@ package com.example.communityservice.service;
 
 import com.example.communityservice.client.AttemptServiceClient;
 import com.example.communityservice.client.IamServiceClient;
+import com.example.communityservice.dto.ApiResponse;
 import com.example.communityservice.dto.request.ReviewRequestDto;
 import com.example.communityservice.dto.response.ReviewResponseDto;
 import com.example.communityservice.entity.Review;
@@ -60,13 +61,14 @@ public class ReviewService {
          */
         if (request.targetType() == Review.TargetType.TEST) {
 
-            boolean hasAttempted =
+            ApiResponse<Map<String, Boolean>> attemptCheck =
                     attemptServiceClient.hasUserAttemptedTest(
                             userId,
                             targetId
                     );
 
-            if (!hasAttempted) {
+            if (attemptCheck == null || attemptCheck.getData() == null
+                    || !Boolean.TRUE.equals(attemptCheck.getData().get("hasAttempted"))) {
                 throw new ResponseStatusException(
                         HttpStatus.FORBIDDEN,
                         "You must attempt this test before reviewing it."
@@ -141,10 +143,20 @@ public class ReviewService {
                 .distinct()
                 .toList();
 
-        Map<String, IamServiceClient.UserProfileDto> userProfiles =
-                userIds.isEmpty()
-                        ? Map.of()
-                        : iamServiceClient.getUsersBatch(userIds);
+        Map<String, IamServiceClient.UserProfileDto> userProfiles;
+        if (!userIds.isEmpty()) {
+            ApiResponse<Map<String, IamServiceClient.UserProfileDto>> response =
+                    iamServiceClient.getUsersBatch(userIds);
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "IAM service could not return user profiles."
+                );
+            }
+            userProfiles = response.getData();
+        } else {
+            userProfiles = Map.of();
+        }
 
         return reviews.stream()
                 .map(review -> {
