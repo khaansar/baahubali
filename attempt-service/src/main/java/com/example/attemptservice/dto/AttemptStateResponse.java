@@ -6,8 +6,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.util.Map;
 import java.time.Instant;
+import java.util.Map;
 
 @Getter
 @Setter
@@ -21,6 +21,7 @@ public class AttemptStateResponse {
     private String status;
     private Integer currentQuestionIndex;
     private Map<String, String> answers;
+    private Instant expiresAt;
     private Instant createdAt;
     private Instant updatedAt;
     private Instant deletedAt;

@@ -45,7 +45,7 @@ public class AttemptAnswer {
     @Column(name = "question_id", nullable = false, length = 64)
     private String questionId;
 
-    @Column(name = "selected_option", length = 16)
+    @Column(name = "selected_option", length = 64)
     private String selectedOption;
 
     @Column(name = "updated_at", nullable = false)

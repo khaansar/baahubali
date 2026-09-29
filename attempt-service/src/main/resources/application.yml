@@ -30,8 +30,11 @@ spring:
       password: ${REDIS_PASSWORD:}
   
   flyway:
-    enabled: ${SPRING_FLYWAY_ENABLED:true}
+    enabled: true
     baseline-on-migrate: true
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${ATTEMPT_SERVICE_DATABASE:attempt_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    user: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
 
 internal:
   auth:
