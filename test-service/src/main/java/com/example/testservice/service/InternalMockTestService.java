@@ -86,4 +86,16 @@ public class InternalMockTestService {
                 .map(test -> test.getUpdatedAt().toString())
                 .orElse("unknown");
     }
+
+    @Transactional(readOnly = true)
+    public java.util.List<TestBulkInfoDto> getBulkTestInfo(java.util.List<UUID> testIds) {
+        return mockTestRepository.findAllById(testIds).stream()
+                .map(test -> TestBulkInfoDto.builder()
+                        .testId(test.getId())
+                        .testName(test.getTitle())
+                        .categoryName(test.getSeries() != null && test.getSeries().getCategory() != null 
+                                ? test.getSeries().getCategory().getName() : "Unknown")
+                        .build())
+                .collect(Collectors.toList());
+    }
 }

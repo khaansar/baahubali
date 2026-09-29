@@ -28,4 +28,10 @@ public class InternalMockTestController {
         TestStatusDto status = internalService.getLightweightStatus(id);
         return ResponseEntity.ok(ApiResponse.success(status));
     }
+
+    @PostMapping("/bulk-info")
+    public ResponseEntity<ApiResponse<java.util.List<com.example.testservice.dto.internal.TestBulkInfoDto>>> getBulkTestInfo(@RequestBody java.util.List<UUID> testIds) {
+        java.util.List<com.example.testservice.dto.internal.TestBulkInfoDto> info = internalService.getBulkTestInfo(testIds);
+        return ResponseEntity.ok(ApiResponse.success(info));
+    }
 }
