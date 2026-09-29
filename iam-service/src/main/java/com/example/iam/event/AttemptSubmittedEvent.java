@@ -1,4 +1,4 @@
-package com.example.attemptservice.event;
+package com.example.iam.event;
 
 import java.io.Serializable;
 import java.time.Instant;

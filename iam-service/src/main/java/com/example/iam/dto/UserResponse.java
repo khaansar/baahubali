@@ -14,6 +14,7 @@ public record UserResponse(
         Role role,
         String avatarUrl,
         Boolean isActive,
+        Integer testsAttemptedCount,
         Instant createdAt,
         Instant updatedAt,
         Instant deletedAt
@@ -27,6 +28,7 @@ public record UserResponse(
                 user.getRole(),
                 user.getAvatarUrl(),
                 user.getIsActive(),
+                user.getTestsAttemptedCount(),
                 user.getCreatedAt(),
                 user.getUpdatedAt(),
                 user.getDeletedAt()

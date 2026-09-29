@@ -40,3 +40,7 @@ internal:
       community-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
   services:
     test-url: ${TEST_SERVICE_URL:http://test-service:8080/tests-api}
+
+app:
+  api:
+    version: ${API_VERSION:1.2.0}

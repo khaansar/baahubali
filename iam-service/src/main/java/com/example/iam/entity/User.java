@@ -63,6 +63,10 @@ public class User {
     @Builder.Default
     private Boolean isActive = true;
 
+    @Column(name = "tests_attempted_count", nullable = false)
+    @Builder.Default
+    private Integer testsAttemptedCount = 0;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

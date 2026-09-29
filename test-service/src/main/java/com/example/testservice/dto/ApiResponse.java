@@ -1,6 +1,7 @@
 package com.example.testservice.dto;
 
 import com.example.testservice.dto.common.PageMetaDto;
+import com.example.testservice.config.ApiVersion;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Data;
@@ -74,7 +75,7 @@ public class ApiResponse<T> {
         private String version;
 
         public static Meta timestamp() {
-            return Meta.builder().timestamp(Instant.now().toString()).version("1.2.0").build();
+            return Meta.builder().timestamp(Instant.now().toString()).version(ApiVersion.current()).build();
         }
 
         public static Meta pagination(PageMetaDto page) {
@@ -82,7 +83,7 @@ public class ApiResponse<T> {
                     .pagination(new Pagination(page.total(), page.page(), page.totalPages(), page.limit(),
                             page.page() < page.totalPages(), page.page() > 1))
                     .timestamp(Instant.now().toString())
-                    .version("1.2.0")
+                    .version(ApiVersion.current())
                     .build();
         }
     }
