@@ -24,7 +24,7 @@ public class CatalogServiceImpl {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "public_test_structures", key = "#testId")
+    @Cacheable(value = "baahubali:test:test", key = "#testId + ':structure'")
     public PublicMockTestStructureDto getTestStructure(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));

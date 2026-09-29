@@ -29,6 +29,7 @@ public class PublicSeriesServiceImpl {
 
     private final TestSeriesRepository testSeriesRepository;
 
+    @Cacheable(value = "baahubali:test:series:list", key = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':page=' + #page + ':limit=' + #limit")
     @Transactional(readOnly = true)
     public PaginatedResponseDto<PublicTestSeriesListDto> getPublishedSeries(UUID categoryId, int page, int limit) {
         
@@ -61,7 +62,7 @@ public class PublicSeriesServiceImpl {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "public_test_series", key = "#id")
+    @Cacheable(value = "baahubali:test:series", key = "#id")
     public PublicTestSeriesDetailDto getSeriesById(UUID id) {
         TestSeries series = testSeriesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
