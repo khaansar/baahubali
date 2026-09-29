@@ -290,17 +290,44 @@ public class AttemptService {
         Page<Attempt> rawAttempts = attemptRepository.findByUserId(userId,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "startedAt")));
 
+        // Collect unique test IDs
+        List<String> testIds = rawAttempts.stream()
+                .map(Attempt::getTestId)
+                .distinct()
+                .toList();
+                
+        // Fetch bulk info if not empty
+        java.util.Map<String, com.example.attemptservice.dto.internal.InternalTestBulkInfoDto> testInfoMap = new java.util.HashMap<>();
+        if (!testIds.isEmpty()) {
+            try {
+                com.example.attemptservice.dto.internal.TestServiceResponse<java.util.List<com.example.attemptservice.dto.internal.InternalTestBulkInfoDto>> response = 
+                        testServiceFeignClient.getBulkTestInfo(testIds);
+                if (response != null && response.data() != null) {
+                    for (com.example.attemptservice.dto.internal.InternalTestBulkInfoDto info : response.data()) {
+                        testInfoMap.put(info.getTestId(), info);
+                    }
+                }
+            } catch (Exception e) {
+                // Log and continue, degrade gracefully
+            }
+        }
+
         List<AttemptHistorySummary> historySummaries = rawAttempts.stream()
-                .map(attempt -> AttemptHistorySummary.builder()
+                .map(attempt -> {
+                    com.example.attemptservice.dto.internal.InternalTestBulkInfoDto info = testInfoMap.get(attempt.getTestId());
+                    return AttemptHistorySummary.builder()
                         .attemptId(attempt.getId())
                         .testId(attempt.getTestId())
+                        .testName(info != null ? info.getTestName() : "Unknown Test")
+                        .categoryName(info != null ? info.getCategoryName() : "Unknown Category")
                         .status(attempt.getStatus().name())
                         .finalScore(attempt.getFinalScore())
                         .startedAt(attempt.getStartedAt())
                         .createdAt(attempt.getCreatedAt())
                         .updatedAt(attempt.getUpdatedAt())
                         .deletedAt(attempt.getDeletedAt())
-                        .build())
+                        .build();
+                })
                 .toList();
 
         return new org.springframework.data.domain.PageImpl<>(historySummaries, rawAttempts.getPageable(),

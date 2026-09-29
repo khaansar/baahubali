@@ -16,4 +16,9 @@ public interface TestServiceFeignClient {
 
     @GetMapping("/internal/mock-tests/{id}/blueprint")
     TestServiceResponse<InternalTestBlueprintDto> getTestBlueprint(@PathVariable("id") String testId);
+
+    @org.springframework.web.bind.annotation.PostMapping("/internal/mock-tests/bulk-info")
+    TestServiceResponse<java.util.List<com.example.attemptservice.dto.internal.InternalTestBulkInfoDto>> getBulkTestInfo(
+            @org.springframework.web.bind.annotation.RequestBody java.util.List<String> testIds
+    );
 }

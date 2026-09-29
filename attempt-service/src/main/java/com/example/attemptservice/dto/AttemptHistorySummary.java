@@ -16,6 +16,8 @@ import java.time.Instant;
 public class AttemptHistorySummary {
     private String attemptId;
     private String testId;
+    private String testName;
+    private String categoryName;
     private String status;
     private Double finalScore;
     private Instant startedAt;
