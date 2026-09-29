@@ -59,3 +59,22 @@ logging:
 app:
   api:
     version: ${API_VERSION:1.2.0}
+
+spring:
+  cache:
+    redis:
+      enable-statistics: true
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    cache:
+      instrument: true
