@@ -12,6 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import com.example.testservice.dto.admin.TestSeriesListDto;
 import com.example.testservice.dto.admin.TestSeriesDetailDto;
 import com.example.testservice.dto.admin.TestSeriesUpdateDto;
@@ -27,6 +29,7 @@ public class AdminTestSeriesServiceImpl {
     private final CategoryRepository categoryRepository;
 
     @Transactional
+    @CacheEvict(value = {"baahubali:test:series:list", "baahubali:test:homepage:series:popular"}, allEntries = true)
     public UUID createSeries(TestSeriesCreateDto dto, String adminId) {
         Category category = null;
         if (dto.categoryId() != null) {
@@ -46,6 +49,11 @@ public class AdminTestSeriesServiceImpl {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:series", key = "#seriesId"),
+        @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
+        @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
+    })
     public TestSeriesDetailDto deleteSeries(UUID seriesId) {
         TestSeries series = testSeriesRepository.findById(seriesId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
@@ -136,6 +144,11 @@ public class AdminTestSeriesServiceImpl {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:series", key = "#id"),
+        @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
+        @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
+    })
     public TestSeriesDetailDto updateSeries(UUID id, TestSeriesUpdateDto dto, String adminId) {
         TestSeries series = testSeriesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
@@ -155,3 +168,4 @@ public class AdminTestSeriesServiceImpl {
         return getSeriesById(id);
     }
 }
+

@@ -10,6 +10,7 @@ import com.example.testservice.repository.QuestionRepository;
 import com.example.testservice.repository.SectionQuestionRepository;
 import com.example.testservice.repository.SectionRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.testservice.repository.MockTestRepository;
@@ -28,6 +29,7 @@ public class AdminSectionServiceImpl {
     private final MockTestRepository mockTestRepository;
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#result.testId + ':structure'")
     public AdminSectionDetailDto attachQuestions(UUID sectionId, BulkAttachQuestionsDto request, String adminId) {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
@@ -75,6 +77,7 @@ public class AdminSectionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'")
     public UUID createSection(UUID testId, SectionCreateDto dto, String adminId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mock Test not found"));
@@ -118,6 +121,7 @@ public class AdminSectionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#result.testId + ':structure'")
     public AdminSectionDetailDto updateSection(UUID sectionId, SectionCreateDto dto, String adminId) {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
@@ -189,6 +193,7 @@ public class AdminSectionServiceImpl {
     }
     
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'")
     public List<AdminSectionDetailDto> reorderSections(UUID testId, java.util.List<UUID> orderedSectionIds) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Mock Test not found"));
@@ -221,6 +226,7 @@ public class AdminSectionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#result.testId + ':structure'")
     public AdminSectionDetailDto removeQuestionFromSection(UUID sectionId, UUID questionId) {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
@@ -248,6 +254,7 @@ public class AdminSectionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#result.testId + ':structure'")
     public AdminSectionDetailDto reorderQuestions(UUID sectionId, java.util.List<UUID> orderedQuestionIds) {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
@@ -275,6 +282,7 @@ public class AdminSectionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", key = "#result.testId + ':structure'")
     public AdminSectionDetailDto updateMarksOverride(UUID sectionId, UUID questionId, java.math.BigDecimal positive, java.math.BigDecimal negative) {
         Section section = sectionRepository.findById(sectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Section not found"));
@@ -293,3 +301,4 @@ public class AdminSectionServiceImpl {
         return getSectionDetail(sectionId);
     }
 }
+

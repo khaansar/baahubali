@@ -5,6 +5,7 @@ import com.example.testservice.entity.Category;
 import com.example.testservice.exception.ResourceNotFoundException;
 import com.example.testservice.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -19,6 +20,7 @@ public class CategoryService {
     private final CategoryRepository categoryRepository;
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     public CategoryDto createCategory(CategoryDto request, String adminId) {
         Category category = new Category();
         category.setName(request.getName());
@@ -31,6 +33,7 @@ public class CategoryService {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     public CategoryDto updateCategory(UUID id, CategoryDto request, String adminId) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
