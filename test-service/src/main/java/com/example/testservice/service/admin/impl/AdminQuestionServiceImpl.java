@@ -15,6 +15,7 @@ import com.example.testservice.validation.QuestionValidationUtil;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -187,6 +188,7 @@ public class AdminQuestionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", allEntries = true)
     public QuestionDetailDto updateQuestion(UUID id, QuestionUpdateDto dto, String adminId) {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
@@ -246,6 +248,7 @@ public class AdminQuestionServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:test", allEntries = true)
     public QuestionDetailDto deleteQuestion(UUID id) {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Question not found"));
@@ -272,3 +275,4 @@ public class AdminQuestionServiceImpl {
         return null;
     }
 }
+

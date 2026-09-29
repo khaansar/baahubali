@@ -5,6 +5,7 @@ import com.example.testservice.dto.publiccatalog.PopularSeriesDto;
 import com.example.testservice.dto.publiccatalog.PublicCategoryDto;
 import jakarta.persistence.EntityManager;
 import lombok.RequiredArgsConstructor;
+import org.springframework.cache.annotation.Cacheable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -17,6 +18,7 @@ public class PublicHomepageService {
 
     private final EntityManager entityManager;
 
+    @Cacheable(value = "baahubali:test:categories")
     @Transactional(readOnly = true)
     public List<PublicCategoryDto> getCategories() {
         String jpql = "SELECT c.id, c.name, " +
@@ -34,6 +36,7 @@ public class PublicHomepageService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "baahubali:test:homepage:series:popular")
     @Transactional(readOnly = true)
     public List<PopularSeriesDto> getPopularSeries() {
         // Fetch top 4 series by number of published mock tests
@@ -59,6 +62,7 @@ public class PublicHomepageService {
         }).collect(Collectors.toList());
     }
 
+    @Cacheable(value = "baahubali:test:homepage:mock-tests:featured")
     @Transactional(readOnly = true)
     public List<FeaturedMockTestDto> getFeaturedMockTests() {
         String jpql = "SELECT m.id, m.title, c.name, m.durationMinutes, m.totalMarks " +

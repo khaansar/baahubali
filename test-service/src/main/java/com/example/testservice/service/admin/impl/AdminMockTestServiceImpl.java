@@ -24,6 +24,8 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -51,6 +53,11 @@ public class AdminMockTestServiceImpl {
     private String internalSecret;
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+    })
     public AdminMockTestDetailDto publishTest(UUID testId, Instant expectedUpdatedAt) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ValidationException("Test not found"));
@@ -124,6 +131,7 @@ public class AdminMockTestServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:series", key = "#seriesId")
     public UUID createMockTest(UUID seriesId, MockTestCreateDto dto, String adminId) {
         TestSeries series = testSeriesRepository.findById(seriesId)
                 .orElseThrow(() -> new ResourceNotFoundException("Series not found"));
@@ -186,6 +194,11 @@ public class AdminMockTestServiceImpl {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+    })
     public AdminMockTestDetailDto updateMockTest(UUID testId, MockTestCreateDto dto) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
@@ -219,6 +232,11 @@ public class AdminMockTestServiceImpl {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+    })
     public AdminMockTestDetailDto archiveTest(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
@@ -228,6 +246,7 @@ public class AdminMockTestServiceImpl {
     }
 
     @Transactional
+    @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
     public AdminMockTestDetailDto cloneTest(UUID sourceTestId, String newTitle, String adminId) {
         MockTest source = mockTestRepository.findById(sourceTestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source test not found"));
@@ -276,6 +295,11 @@ public class AdminMockTestServiceImpl {
     }
 
     @Transactional
+    @Caching(evict = {
+        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+    })
     public AdminMockTestDetailDto revertToDraft(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ValidationException("Test not found"));

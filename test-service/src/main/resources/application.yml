@@ -32,6 +32,21 @@ spring:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: 2000
+      lettuce:
+        pool:
+          max-active: 8
+          max-idle: 8
+          min-idle: 2
+
+  cache:
+    redis:
+      enable-statistics: true
+
 internal:
   auth:
     my-secret: ${TEST_SERVICE_SECRET:test-secret-key}
@@ -48,3 +63,18 @@ logging:
 app:
   api:
     version: ${API_VERSION:1.2.0}
+
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info,metrics,prometheus
+  endpoint:
+    metrics:
+      enabled: true
+    prometheus:
+      enabled: true
+  metrics:
+    cache:
+      instrument: true
