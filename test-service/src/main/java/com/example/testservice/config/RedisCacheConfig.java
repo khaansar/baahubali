@@ -29,7 +29,7 @@ public class RedisCacheConfig {
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.activateDefaultTyping(
                 LaissezFaireSubTypeValidator.instance,
-                ObjectMapper.DefaultTyping.NON_FINAL,
+                ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
         );
         GenericJackson2JsonRedisSerializer serializer = new GenericJackson2JsonRedisSerializer(objectMapper);
