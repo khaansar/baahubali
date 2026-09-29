@@ -16,7 +16,6 @@ import java.time.Instant;
 public class StartAttemptResponse {
     private String attemptId;
     private Instant deadline;
-    private Object testPayload;
     private Instant createdAt;
     private Instant updatedAt;
     private Instant deletedAt;

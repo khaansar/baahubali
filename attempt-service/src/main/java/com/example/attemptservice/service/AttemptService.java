@@ -66,7 +66,7 @@ public class AttemptService {
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptFlushWorker attemptFlushWorker;
     private final StringRedisTemplate redisTemplate;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters = new ConcurrentHashMap<>();
     private final ScheduledExecutorService heartbeatExecutor = Executors.newSingleThreadScheduledExecutor(r -> {
         Thread thread = new Thread(r, "attempt-sse-heartbeat");
@@ -81,18 +81,20 @@ public class AttemptService {
     private final TestServiceFeignClient testServiceFeignClient;
 
     public AttemptService(AttemptRepository attemptRepository,
-                          AttemptAnswerRepository attemptAnswerRepository,
-                          AttemptRedisRepository attemptRedisRepository,
-                          OutboxEventRepository outboxEventRepository,
-                          @Lazy AttemptFlushWorker attemptFlushWorker,
-                          StringRedisTemplate redisTemplate,
-                          TestServiceFeignClient testServiceFeignClient) {
+                           AttemptAnswerRepository attemptAnswerRepository,
+                           AttemptRedisRepository attemptRedisRepository,
+                           OutboxEventRepository outboxEventRepository,
+                           @Lazy AttemptFlushWorker attemptFlushWorker,
+                           StringRedisTemplate redisTemplate,
+                           ObjectMapper objectMapper,
+                           TestServiceFeignClient testServiceFeignClient) {
         this.attemptRepository = attemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
         this.attemptRedisRepository = attemptRedisRepository;
         this.attemptFlushWorker = attemptFlushWorker;
         this.outboxEventRepository = outboxEventRepository;
         this.redisTemplate = redisTemplate;
+        this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceFeignClient = testServiceFeignClient;
     }
@@ -115,6 +117,7 @@ public class AttemptService {
 
         Attempt saved = attemptRepository.save(attempt);
         Instant deadline = saved.getStartedAt().plusSeconds(saved.getDurationMinutes() * 60L);
+
         org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
                 new org.springframework.transaction.support.TransactionSynchronization() {
                     @Override
@@ -135,19 +138,9 @@ public class AttemptService {
                     }
                 });
 
-        // Hydrate live test data securely from test-service
-        TestServiceResponse<InternalTestBlueprintDto> response =
-                testServiceFeignClient.getTestBlueprint(saved.getTestId());
-        if (response == null || !response.success() || response.data() == null) {
-            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
-                    "Test service did not return a test blueprint");
-        }
-        InternalTestBlueprintDto testBlueprint = response.data();
-
         return StartAttemptResponse.builder()
                 .attemptId(saved.getId())
                 .deadline(deadline)
-                .testPayload(testBlueprint)
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
                 .deletedAt(saved.getDeletedAt())
@@ -221,7 +214,7 @@ public class AttemptService {
     public Page<AttemptHistorySummary> getHistory(String userId, int page, int size) {
         Page<Attempt> rawAttempts = attemptRepository.findByUserId(userId,
                 PageRequest.of(page, size, Sort.by(Sort.Direction.DESC, "startedAt")));
-        
+
         List<AttemptHistorySummary> historySummaries = rawAttempts.stream()
                 .map(attempt -> AttemptHistorySummary.builder()
                         .attemptId(attempt.getId())
@@ -258,12 +251,12 @@ public class AttemptService {
         InternalTestBlueprintDto blueprint = response.data();
 
         List<QuestionReviewDto> reviewDtos = new ArrayList<>();
-        
+
         if (blueprint.getSections() != null) {
             for (InternalTestBlueprintDto.InternalSectionDto section : blueprint.getSections()) {
                 if (section.getQuestions() != null) {
                     for (InternalTestBlueprintDto.InternalQuestionDto q : section.getQuestions()) {
-                        
+
                         // Handle case where student left it completely blank
                         String selected = answerMap.get(q.getQuestionId());
 
@@ -281,8 +274,8 @@ public class AttemptService {
                             }
                         }
 
-                        String qText = (q.getTranslations() != null && !q.getTranslations().isEmpty()) 
-                                ? q.getTranslations().get(0).getQuestionText() 
+                        String qText = (q.getTranslations() != null && !q.getTranslations().isEmpty())
+                                ? q.getTranslations().get(0).getQuestionText()
                                 : "Question text unavailable";
 
                         reviewDtos.add(QuestionReviewDto.builder()
@@ -407,13 +400,19 @@ public class AttemptService {
 
     private Map<String, String> readAnswers(String json) {
         if (json == null || json.isBlank()) return new java.util.LinkedHashMap<>();
-        try { return new java.util.LinkedHashMap<>(objectMapper.readValue(json, new TypeReference<Map<String, String>>() {})); }
-        catch (Exception e) { throw new IllegalStateException("Stored attempt answers are invalid", e); }
+        try {
+            return new java.util.LinkedHashMap<>(objectMapper.readValue(json, new TypeReference<Map<String, String>>() {}));
+        } catch (Exception e) {
+            throw new IllegalStateException("Stored attempt answers are invalid", e);
+        }
     }
 
     private String writeAnswers(Map<String, String> answers) {
-        try { return objectMapper.writeValueAsString(answers); }
-        catch (Exception e) { throw new IllegalStateException("Could not serialize answers", e); }
+        try {
+            return objectMapper.writeValueAsString(answers);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not serialize answers", e);
+        }
     }
 
     private void sendHeartbeats() {
@@ -452,8 +451,8 @@ public class AttemptService {
     @Transactional(readOnly = true)
     public boolean hasUserAttemptedTest(String userId, String testId) {
         return attemptRepository.existsByUserIdAndTestIdAndStatus(
-                userId, 
-                testId, 
+                userId,
+                testId,
                 AttemptStatus.SUBMITTED
         );
     }
