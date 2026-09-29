@@ -25,7 +25,7 @@ public class AttemptFlushWorker {
 
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelayString = "15000")
     public void flushDirtyHashes() {
@@ -41,10 +41,8 @@ public class AttemptFlushWorker {
                 try {
                     flushAnswers(hash);
 
-                    // Mark as clean and update in Redis
                     hash.setDirtyFlag(false);
                     attemptRedisRepository.save(hash);
-
                 } catch (Exception e) {
                     log.error(
                             "Failed to flush dirty hash for attemptId: {}",
@@ -98,13 +96,23 @@ public class AttemptFlushWorker {
         }
 
         if (!toSave.isEmpty()) {
-            attemptAnswerRepository.saveAll(toSave);
+    for (AttemptAnswer answer : toSave) {
+        log.warn(
+                "AttemptAnswer DB insert: attemptId={}, questionId={}, selectedOption='{}', selectedOptionLength={}",
+                answer.getAttemptId(),
+                answer.getQuestionId(),
+                answer.getSelectedOption(),
+                answer.getSelectedOption() != null ? answer.getSelectedOption().length() : 0
+        );
+    }
 
-            log.debug(
-                    "Flushed {} answers for attempt {}",
-                    toSave.size(),
-                    hash.getAttemptId()
-            );
-        }
+    attemptAnswerRepository.saveAll(toSave);
+
+    log.debug(
+            "Flushed {} answers for attempt {}",
+            toSave.size(),
+            hash.getAttemptId()
+    );
+}
     }
 }

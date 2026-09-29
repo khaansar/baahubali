@@ -38,6 +38,7 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Instant;
@@ -49,6 +50,7 @@ import java.util.concurrent.ScheduledExecutorService;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.TimeUnit;
 import java.util.Map;
+import java.util.Optional;
 import java.util.UUID;
 import java.util.concurrent.CopyOnWriteArrayList;
 import java.util.stream.Collectors;
@@ -101,14 +103,52 @@ public class AttemptService {
 
     @Transactional
     public StartAttemptResponse startAttempt(StartAttemptRequest request) {
-        Instant startedAt = Instant.now();
+        Instant now = Instant.now();
+
+        Optional<Attempt> existingAttempt = attemptRepository
+                .findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(
+                        request.getUserId(),
+                        request.getTestId(),
+                        AttemptStatus.IN_PROGRESS
+                );
+
+        if (existingAttempt.isPresent()) {
+            Attempt attempt = existingAttempt.get();
+            Instant deadline = attempt.getStartedAt()
+                    .plusSeconds(attempt.getDurationMinutes() * 60L);
+
+            if (now.isBefore(deadline)) {
+                TestServiceResponse<InternalTestBlueprintDto> response =
+                        testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+
+                if (response == null || !response.success() || response.data() == null) {
+                    throw new ResponseStatusException(
+                            HttpStatus.BAD_GATEWAY,
+                            "Test service did not return a test blueprint"
+                    );
+                }
+
+                return StartAttemptResponse.builder()
+                        .attemptId(attempt.getId())
+                        .deadline(deadline)
+                        .createdAt(attempt.getCreatedAt())
+                        .updatedAt(attempt.getUpdatedAt())
+                        .deletedAt(attempt.getDeletedAt())
+                        .build();
+            }
+
+            attempt.setStatus(AttemptStatus.EXPIRED);
+            attempt.setUpdatedAt(now);
+            attemptRepository.save(attempt);
+        }
+
         Attempt attempt = Attempt.builder()
                 .id(UUID.randomUUID().toString())
                 .userId(request.getUserId())
                 .testId(request.getTestId())
-                .startedAt(startedAt)
-                .createdAt(startedAt)
-                .updatedAt(startedAt)
+                .startedAt(now)
+                .createdAt(now)
+                .updatedAt(now)
                 .durationMinutes(request.getDurationMinutes() != null
                         ? request.getDurationMinutes()
                         : DEFAULT_DURATION_MINUTES)
@@ -116,7 +156,9 @@ public class AttemptService {
                 .build();
 
         Attempt saved = attemptRepository.save(attempt);
-        Instant deadline = saved.getStartedAt().plusSeconds(saved.getDurationMinutes() * 60L);
+
+        Instant deadline = saved.getStartedAt()
+                .plusSeconds(saved.getDurationMinutes() * 60L);
 
         org.springframework.transaction.support.TransactionSynchronizationManager.registerSynchronization(
                 new org.springframework.transaction.support.TransactionSynchronization() {
@@ -137,6 +179,16 @@ public class AttemptService {
                                 .build());
                     }
                 });
+
+        TestServiceResponse<InternalTestBlueprintDto> response =
+                testServiceFeignClient.getTestBlueprint(saved.getTestId());
+
+        if (response == null || !response.success() || response.data() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Test service did not return a test blueprint"
+            );
+        }
 
         return StartAttemptResponse.builder()
                 .attemptId(saved.getId())
@@ -168,18 +220,23 @@ public class AttemptService {
 
         final String attemptId = attempt.getId();
         Instant finalizedAt = Instant.now();
-        attempt.setStatus(finalStatus);
-        attempt.setUpdatedAt(finalizedAt);
-        attemptRepository.save(attempt);
 
-        attemptRedisRepository.findById(attemptId).ifPresent(hash -> {
+        AttemptRedisHash hash = attemptRedisRepository.findById(attemptId).orElse(null);
+
+        if (hash != null) {
             try {
                 attemptFlushWorker.flushAnswers(hash);
             } catch (Exception e) {
-                log.error("Failed to flush final answers for attemptId: {}", attemptId, e);
+                throw new IllegalStateException(
+                        "Failed to flush final answers for attemptId: " + attemptId,
+                        e
+                );
             }
-            attemptRedisRepository.deleteById(attemptId);
-        });
+        }
+
+        attempt.setStatus(finalStatus);
+        attempt.setUpdatedAt(finalizedAt);
+        attemptRepository.save(attempt);
 
         if (finalStatus == AttemptStatus.SUBMITTED) {
             try {
@@ -200,13 +257,31 @@ public class AttemptService {
                         .build();
 
                 outboxEventRepository.save(outboxEvent);
-
             } catch (Exception e) {
                 throw new IllegalStateException(
                         "Failed to create attempt submitted outbox event",
                         e
                 );
             }
+        }
+
+        if (hash != null) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new org.springframework.transaction.support.TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            try {
+                                attemptRedisRepository.deleteById(attemptId);
+                            } catch (Exception e) {
+                                log.error(
+                                        "Failed to delete Redis state after commit for attemptId: {}",
+                                        attemptId,
+                                        e
+                                );
+                            }
+                        }
+                    }
+            );
         }
     }
 
@@ -241,23 +316,21 @@ public class AttemptService {
         Map<String, String> answerMap = studentAnswers.stream()
                 .collect(Collectors.toMap(AttemptAnswer::getQuestionId, AttemptAnswer::getSelectedOption));
 
-        // Fetch securely from test service
         TestServiceResponse<InternalTestBlueprintDto> response =
                 testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+
         if (response == null || !response.success() || response.data() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Test service did not return a test blueprint");
         }
-        InternalTestBlueprintDto blueprint = response.data();
 
+        InternalTestBlueprintDto blueprint = response.data();
         List<QuestionReviewDto> reviewDtos = new ArrayList<>();
 
         if (blueprint.getSections() != null) {
             for (InternalTestBlueprintDto.InternalSectionDto section : blueprint.getSections()) {
                 if (section.getQuestions() != null) {
                     for (InternalTestBlueprintDto.InternalQuestionDto q : section.getQuestions()) {
-
-                        // Handle case where student left it completely blank
                         String selected = answerMap.get(q.getQuestionId());
 
                         String correctOpt = null;
@@ -312,23 +385,27 @@ public class AttemptService {
     public Long patchAttempt(String attemptId, PatchAttemptRequest request) {
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
         if (existing.getStartedAt() == null || existing.getDurationSec() == null
                 || Instant.now().getEpochSecond() >= existing.getStartedAt() + existing.getDurationSec()) {
             throw new ResponseStatusException(HttpStatus.GONE, "Attempt deadline has expired");
         }
 
-        // Lua performs version comparison and the complete hash update atomically.
         AttemptRedisHash current = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
         if (!request.getVersion().equals(current.getVersion())) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Attempt version conflict; reload the latest state and retry");
         }
+
         Map<String, String> answers = readAnswers(current.getAnswersJson());
         answers.put(request.getQuestionId(), request.getSelectedOption());
+
         String updatedAnswers = writeAnswers(answers);
         long expectedVersion = current.getVersion();
         long nextVersion = expectedVersion + 1;
+
         DefaultRedisScript<Long> script = new DefaultRedisScript<>(
                 "local version = redis.call('HGET', KEYS[1], 'version') " +
                 "if not version or tonumber(version) ~= tonumber(ARGV[1]) then return 0 end " +
@@ -336,76 +413,127 @@ public class AttemptService {
                 "local durationSec = tonumber(redis.call('HGET', KEYS[1], 'durationSec')) " +
                 "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec then return -1 end " +
                 "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4]) " +
-                "return 1", Long.class);
-        Long result = redisTemplate.execute(script, List.of(REDIS_KEY_PREFIX + attemptId),
-                Long.toString(expectedVersion), updatedAnswers, request.getCurrentQuestionIndex().toString(),
-                Long.toString(nextVersion), Long.toString(Instant.now().getEpochSecond()));
+                "return 1",
+                Long.class
+        );
+
+        Long result = redisTemplate.execute(
+                script,
+                List.of(REDIS_KEY_PREFIX + attemptId),
+                Long.toString(expectedVersion),
+                updatedAnswers,
+                request.getCurrentQuestionIndex().toString(),
+                Long.toString(nextVersion),
+                Long.toString(Instant.now().getEpochSecond())
+        );
+
         if (result == -1L) {
             throw new ResponseStatusException(HttpStatus.GONE, "Attempt deadline has expired");
         }
+
         if (result == null || result == 0L) {
             throw new ResponseStatusException(HttpStatus.CONFLICT,
                     "Attempt version conflict; reload the latest state and retry");
         }
+
         attemptRepository.findById(attemptId).ifPresent(attempt -> {
             attempt.setUpdatedAt(Instant.now());
             attemptRepository.save(attempt);
         });
+
         return nextVersion;
     }
 
     public SseEmitter getSseEmitter(String attemptId) {
-        SseEmitter emitter = new SseEmitter(0L); // no timeout for now
-        CopyOnWriteArrayList<SseEmitter> group = emitters.computeIfAbsent(attemptId, ignored -> new CopyOnWriteArrayList<>());
+        SseEmitter emitter = new SseEmitter(0L);
+        CopyOnWriteArrayList<SseEmitter> group = emitters.computeIfAbsent(
+                attemptId,
+                ignored -> new CopyOnWriteArrayList<>()
+        );
+
         group.add(emitter);
+
         Runnable remove = () -> {
             group.remove(emitter);
-            if (group.isEmpty()) emitters.remove(attemptId, group);
+            if (group.isEmpty()) {
+                emitters.remove(attemptId, group);
+            }
         };
+
         emitter.onCompletion(remove);
         emitter.onTimeout(remove);
         emitter.onError(error -> remove.run());
+
         return emitter;
     }
 
     private AttemptRedisHash rehydrate(String attemptId) {
         Attempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
         List<AttemptAnswer> savedAnswers = attemptAnswerRepository.findByAttemptId(attemptId);
         Map<String, String> answers = new java.util.LinkedHashMap<>();
-        for (AttemptAnswer answer : savedAnswers) answers.put(answer.getQuestionId(), answer.getSelectedOption());
+
+        for (AttemptAnswer answer : savedAnswers) {
+            answers.put(answer.getQuestionId(), answer.getSelectedOption());
+        }
+
         AttemptRedisHash rebuilt = AttemptRedisHash.builder()
-                .attemptId(attempt.getId()).userId(attempt.getUserId()).examId(attempt.getTestId())
+                .attemptId(attempt.getId())
+                .userId(attempt.getUserId())
+                .examId(attempt.getTestId())
                 .startedAt(attempt.getStartedAt().getEpochSecond())
                 .durationSec(attempt.getDurationMinutes() * 60)
-                .status(attempt.getStatus().name()).dirtyFlag(false).currentQuestionIndex(0)
-                .answersJson(writeAnswers(answers)).version(0L)
-                .ttlSeconds(Math.max(60L, attempt.getStartedAt().plusSeconds(attempt.getDurationMinutes() * 60L)
-                        .plusSeconds(3600).getEpochSecond() - Instant.now().getEpochSecond()))
+                .status(attempt.getStatus().name())
+                .dirtyFlag(false)
+                .currentQuestionIndex(0)
+                .answersJson(writeAnswers(answers))
+                .version(0L)
+                .ttlSeconds(Math.max(
+                        60L,
+                        attempt.getStartedAt()
+                                .plusSeconds(attempt.getDurationMinutes() * 60L)
+                                .plusSeconds(3600)
+                                .getEpochSecond() - Instant.now().getEpochSecond()
+                ))
                 .build();
+
         return attemptRedisRepository.save(rebuilt);
     }
 
     private AttemptStateResponse toStateResponse(AttemptRedisHash hash) {
         Attempt attempt = attemptRepository.findById(hash.getAttemptId())
                 .orElseThrow(() -> new AttemptNotFoundException(hash.getAttemptId()));
-        Instant expiresAt = hash.getStartedAt() != null && hash.getDurationSec() != null 
-                ? Instant.ofEpochSecond(hash.getStartedAt() + hash.getDurationSec()) 
+
+        Instant expiresAt = hash.getStartedAt() != null && hash.getDurationSec() != null
+                ? Instant.ofEpochSecond(hash.getStartedAt() + hash.getDurationSec())
                 : null;
-        return AttemptStateResponse.builder().attemptId(hash.getAttemptId()).userId(hash.getUserId())
-                .testId(hash.getExamId()).status(hash.getStatus())
-                .currentQuestionIndex(hash.getCurrentQuestionIndex()).answers(readAnswers(hash.getAnswersJson()))
+
+        return AttemptStateResponse.builder()
+                .attemptId(hash.getAttemptId())
+                .userId(hash.getUserId())
+                .testId(hash.getExamId())
+                .status(hash.getStatus())
+                .currentQuestionIndex(hash.getCurrentQuestionIndex())
+                .answers(readAnswers(hash.getAnswersJson()))
                 .expiresAt(expiresAt)
-                .createdAt(attempt.getCreatedAt()).updatedAt(attempt.getUpdatedAt()).deletedAt(attempt.getDeletedAt())
+                .createdAt(attempt.getCreatedAt())
+                .updatedAt(attempt.getUpdatedAt())
+                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 
-    public record AttemptStateSnapshot(AttemptStateResponse state, Long attemptVersion) { }
+    public record AttemptStateSnapshot(AttemptStateResponse state, Long attemptVersion) {}
 
     private Map<String, String> readAnswers(String json) {
-        if (json == null || json.isBlank()) return new java.util.LinkedHashMap<>();
+        if (json == null || json.isBlank()) {
+            return new java.util.LinkedHashMap<>();
+        }
+
         try {
-            return new java.util.LinkedHashMap<>(objectMapper.readValue(json, new TypeReference<Map<String, String>>() {}));
+            return new java.util.LinkedHashMap<>(
+                    objectMapper.readValue(json, new TypeReference<Map<String, String>>() {})
+            );
         } catch (Exception e) {
             throw new IllegalStateException("Stored attempt answers are invalid", e);
         }
@@ -425,16 +553,24 @@ public class AttemptService {
                     .filter(hash -> hash.getStartedAt() != null && hash.getDurationSec() != null)
                     .map(hash -> hash.getStartedAt() + hash.getDurationSec() - Instant.now().getEpochSecond())
                     .orElse(Long.MIN_VALUE);
+
             for (SseEmitter emitter : entry.getValue()) {
                 emitterPushExecutor.submit(() -> {
                     try {
                         if (remaining >= 0 && remaining <= 300 && remaining != Long.MIN_VALUE) {
-                            emitter.send(SseEmitter.event().name("time_warning").data(Map.of("remainingSeconds", remaining)));
+                            emitter.send(SseEmitter.event()
+                                    .name("time_warning")
+                                    .data(Map.of("remainingSeconds", remaining)));
                         } else {
                             emitter.send(SseEmitter.event().comment("ping"));
                         }
                     } catch (Exception e) {
-                        emitter.completeWithError(e);
+                        log.debug("SSE client disconnected for attemptId: {}", entry.getKey());
+                        entry.getValue().remove(emitter);
+                        emitter.complete();
+                        if (entry.getValue().isEmpty()) {
+                            emitters.remove(entry.getKey(), entry.getValue());
+                        }
                     }
                 });
             }

@@ -8,6 +8,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface AttemptRepository extends JpaRepository<Attempt, String> {
@@ -18,5 +19,15 @@ public interface AttemptRepository extends JpaRepository<Attempt, String> {
     
     List<Attempt> findByStatus(AttemptStatus status);
 
-    boolean existsByUserIdAndTestIdAndStatus(String userId, String testId, com.example.attemptservice.entity.AttemptStatus status);
+    Optional<Attempt> findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(
+            String userId,
+            String testId,
+            AttemptStatus status
+    );
+
+    boolean existsByUserIdAndTestIdAndStatus(
+            String userId,
+            String testId,
+            AttemptStatus status
+    );
 }

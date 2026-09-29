@@ -22,22 +22,19 @@ public class OutboxPublisher {
 
     private final OutboxEventRepository outboxEventRepository;
     private final KafkaTemplate<String, Object> kafkaTemplate;
-
-    private final ObjectMapper objectMapper = new ObjectMapper();
+    private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelay = 1000)
     @Transactional
     public void publishEvents() {
-
         for (OutboxEvent outboxEvent :
                 outboxEventRepository.findTop100ByPublishedAtIsNullOrderByCreatedAtAsc()) {
 
             try {
-                AttemptSubmittedEvent event =
-                        objectMapper.readValue(
-                                outboxEvent.getPayload(),
-                                AttemptSubmittedEvent.class
-                        );
+                AttemptSubmittedEvent event = objectMapper.readValue(
+                        outboxEvent.getPayload(),
+                        AttemptSubmittedEvent.class
+                );
 
                 kafkaTemplate.send(
                         ATTEMPT_SUBMITTED_TOPIC,
@@ -47,7 +44,6 @@ public class OutboxPublisher {
 
                 outboxEvent.setPublishedAt(Instant.now());
                 outboxEventRepository.save(outboxEvent);
-
             } catch (Exception e) {
                 log.error(
                         "Failed to publish outbox event id={}",
