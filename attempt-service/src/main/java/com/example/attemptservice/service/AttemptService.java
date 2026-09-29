@@ -389,9 +389,13 @@ public class AttemptService {
     private AttemptStateResponse toStateResponse(AttemptRedisHash hash) {
         Attempt attempt = attemptRepository.findById(hash.getAttemptId())
                 .orElseThrow(() -> new AttemptNotFoundException(hash.getAttemptId()));
+        Instant expiresAt = hash.getStartedAt() != null && hash.getDurationSec() != null 
+                ? Instant.ofEpochSecond(hash.getStartedAt() + hash.getDurationSec()) 
+                : null;
         return AttemptStateResponse.builder().attemptId(hash.getAttemptId()).userId(hash.getUserId())
                 .testId(hash.getExamId()).status(hash.getStatus())
                 .currentQuestionIndex(hash.getCurrentQuestionIndex()).answers(readAnswers(hash.getAnswersJson()))
+                .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt()).updatedAt(attempt.getUpdatedAt()).deletedAt(attempt.getDeletedAt())
                 .build();
     }
