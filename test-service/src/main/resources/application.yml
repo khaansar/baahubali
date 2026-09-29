@@ -34,14 +34,18 @@ spring:
 
   data:
     redis:
-      host: ${SPRING_REDIS_HOST:localhost}
-      port: ${SPRING_REDIS_PORT:6379}
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
       timeout: 2000
       lettuce:
         pool:
           max-active: 8
           max-idle: 8
           min-idle: 2
+
+  cache:
+    redis:
+      enable-statistics: true
 
 internal:
   auth:
@@ -60,10 +64,6 @@ app:
   api:
     version: ${API_VERSION:1.2.0}
 
-spring:
-  cache:
-    redis:
-      enable-statistics: true
 
 management:
   endpoints:
