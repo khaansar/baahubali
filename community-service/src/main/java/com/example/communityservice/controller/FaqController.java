@@ -20,6 +20,15 @@ public class FaqController {
 
     private final FaqService faqService;
 
+    @GetMapping("/public/faq")
+    public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getGlobalFaqs() {
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(),
+                "FAQs retrieved successfully",
+                faqService.getFaqsByTarget(null)
+        ));
+    }
+
     @GetMapping("/public/faq/{targetId}")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getFaqs(
             @PathVariable String targetId) {
@@ -68,6 +77,16 @@ public class FaqController {
         );
     }
 
+    @PutMapping("/admins/faq/{faqId}")
+    public ResponseEntity<ApiResponse<FaqResponseDto>> updateGlobalFaq(
+            @PathVariable Long faqId,
+            @Valid @RequestBody FaqUpdateRequestDto request) {
+        FaqResponseDto faq = faqService.updateFaq(null, faqId, request);
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "FAQ updated successfully", faq
+        ));
+    }
+
     @DeleteMapping("/admins/faq/{targetId}/{faqId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deleteFaq(
             @PathVariable String targetId,
@@ -82,5 +101,14 @@ public class FaqController {
                         Map.of()
                 )
         );
+    }
+
+    @DeleteMapping("/admins/faq/{faqId}")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteGlobalFaq(
+            @PathVariable Long faqId) {
+        faqService.deleteFaq(null, faqId);
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "FAQ deleted successfully", Map.of()
+        ));
     }
 }

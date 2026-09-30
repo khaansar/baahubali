@@ -14,6 +14,7 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
@@ -67,7 +68,7 @@ public class FaqService {
                         "FAQ not found."
                 ));
 
-        if (!targetId.equals(faq.getTargetId())) {
+        if (!Objects.equals(targetId, faq.getTargetId())) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "FAQ not found for the specified target."
@@ -96,7 +97,7 @@ public class FaqService {
                         "FAQ not found."
                 ));
 
-        if (!targetId.equals(faq.getTargetId())) {
+        if (!Objects.equals(targetId, faq.getTargetId())) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "FAQ not found for the specified target."
