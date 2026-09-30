@@ -1,6 +1,15 @@
 package com.example.testservice.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
@@ -14,11 +23,14 @@ import java.util.List;
 @Table(name = "mock_tests")
 @Getter
 @Setter
-@SQLRestriction("deleted_at IS NULL") // Auto-filters soft-deleted tests
+@SQLRestriction("deleted_at IS NULL")
 public class MockTest extends BaseEntity {
 
     @Column(nullable = false)
     private String title;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String slug;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "series_id", nullable = false)
@@ -53,7 +65,7 @@ public class MockTest extends BaseEntity {
     private Instant publishedAt;
 
     @OneToMany(mappedBy = "mockTest", cascade = CascadeType.ALL, orphanRemoval = true)
-    @OrderBy("sequenceOrder ASC")
+    @jakarta.persistence.OrderBy("sequenceOrder ASC")
     @SQLRestriction("deleted_at IS NULL")
     private List<Section> sections = new ArrayList<>();
 }

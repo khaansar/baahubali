@@ -18,8 +18,14 @@ public class CatalogController {
 
     @GetMapping("/{id}/structure")
     public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructure(@PathVariable UUID id) {
-        // Gateway will enforce entitlement headers if this is a paid test.
         PublicMockTestStructureDto structure = catalogService.getTestStructure(id);
+        return ResponseEntity.ok(ApiResponse.success(structure));
+    }
+
+    @GetMapping("/slug/{slug}/structure")
+    public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructureBySlug(
+            @PathVariable String slug) {
+        PublicMockTestStructureDto structure = catalogService.getTestStructureBySlug(slug);
         return ResponseEntity.ok(ApiResponse.success(structure));
     }
 }
