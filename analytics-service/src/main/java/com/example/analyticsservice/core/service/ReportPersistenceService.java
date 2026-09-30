@@ -149,7 +149,7 @@ public class ReportPersistenceService {
     /** Marks a non-completed report FAILED. Never downgrades a COMPLETED report. */
     @Transactional
     public void markFailed(String attemptId) {
-        reports.findByAttemptId(attemptId).ifPresent(report -> {
+        reports.findByAttemptIdForUpdate(attemptId).ifPresent(report -> {
             if (!ReportStatus.COMPLETED.name().equals(report.getStatus())) {
                 report.setStatus(ReportStatus.FAILED.name());
                 reports.save(report);
