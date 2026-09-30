@@ -15,6 +15,7 @@ import static org.mockito.Mockito.verify;
 
 import com.example.analyticsservice.contract.AttemptSubmittedEvent;
 import com.example.analyticsservice.contract.SectionAnswerPayload;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -40,8 +41,9 @@ class AttemptSubmittedEventListenerTest {
     @Test
     void eventReachesOrchestrator() {
         AttemptSubmittedEvent event = new AttemptSubmittedEvent(
-                "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L,
-                List.of(new SectionAnswerPayload("s1", "Physics", 65.0, 100.0, 30, 20, 5, 5, 80.0, 1800L)));
+                "event-1", "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L,
+                List.of(new SectionAnswerPayload("s1", "Physics", 65.0, 100.0, 30, 20, 5, 5, 80.0, 1800L)),
+                Instant.parse("2026-01-01T00:00:00Z"));
 
         listener.onMessage(mapper.writeValueAsString(event));
 

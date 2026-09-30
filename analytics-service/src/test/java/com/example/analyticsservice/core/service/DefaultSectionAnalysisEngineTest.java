@@ -7,6 +7,7 @@ import com.example.analyticsservice.contract.AttemptSubmittedEvent;
 import com.example.analyticsservice.contract.SectionAnalysisResult;
 import com.example.analyticsservice.contract.SectionAnswerPayload;
 import com.example.analyticsservice.core.exception.InvalidAttemptEventException;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -78,8 +79,8 @@ class DefaultSectionAnalysisEngineTest {
     }
 
     private static AttemptSubmittedEvent event(SectionAnswerPayload... sections) {
-        return new AttemptSubmittedEvent("attempt", "user", "category", "series", "test", 10L,
-                List.of(sections));
+        return new AttemptSubmittedEvent("event-attempt", "attempt", "user", "category", "series", "test", 10L,
+                List.of(sections), Instant.parse("2026-01-01T00:00:00Z"));
     }
 
     private static SectionAnswerPayload section(String id, double score, double maxScore,

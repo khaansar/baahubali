@@ -6,6 +6,7 @@ import com.example.analyticsservice.contract.AttemptSubmittedEvent;
 import com.example.analyticsservice.contract.PeerComparisonResult;
 import com.example.analyticsservice.contract.SectionAnswerPayload;
 import java.util.ArrayList;
+import java.time.Instant;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CompletableFuture;
@@ -131,8 +132,8 @@ class RedisRankingEngineRedisTest {
     }
 
     private static AttemptSubmittedEvent attempt(String attemptId, String testId, double score, long time) {
-        return new AttemptSubmittedEvent(attemptId, "same-user", "category", "series", testId, time,
+        return new AttemptSubmittedEvent("event-" + attemptId, attemptId, "same-user", "category", "series", testId, time,
                 List.of(new SectionAnswerPayload("section", "Section", score, 100.0,
-                        1, 1, 0, 0, 100.0, time)));
+                        1, 1, 0, 0, 100.0, time)), Instant.parse("2026-01-01T00:00:00Z"));
     }
 }

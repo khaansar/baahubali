@@ -12,6 +12,7 @@ import com.example.analyticsservice.contract.PeerComparisonResult;
 import com.example.analyticsservice.contract.ReportData;
 import com.example.analyticsservice.contract.SectionAnalysisResult;
 import com.example.analyticsservice.contract.SectionPerformanceResult;
+import java.time.Instant;
 import java.util.List;
 import org.junit.jupiter.api.Test;
 
@@ -20,7 +21,8 @@ class ReportAssemblerTest {
     @Test
     void combinesEventAndEngineResultsWithoutRecalculating() {
         AttemptSubmittedEvent event = new AttemptSubmittedEvent(
-                "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L, List.of());
+                "event-1", "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L, List.of(),
+                Instant.parse("2026-01-01T00:00:00Z"));
         SectionAnalysisResult sectionResult = new SectionAnalysisResult(
                 List.of(new SectionPerformanceResult("s1", "Physics", 65.0, 100.0, 30, 20, 5, 5, 80.0, 1800L)),
                 185.5, 300.0, 82.5);

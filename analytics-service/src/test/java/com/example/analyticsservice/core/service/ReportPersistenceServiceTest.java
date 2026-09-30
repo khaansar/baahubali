@@ -23,6 +23,7 @@ import com.example.analyticsservice.core.entity.TestLeaderboardSnapshotEntity;
 import com.example.analyticsservice.core.repository.TestLeaderboardSnapshotRepository;
 import com.example.analyticsservice.core.entity.TestReportEntity;
 import com.example.analyticsservice.core.repository.TestReportRepository;
+import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -38,7 +39,8 @@ class ReportPersistenceServiceTest {
     private ReportPersistenceService service;
 
     private final AttemptSubmittedEvent event = new AttemptSubmittedEvent(
-            "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L, List.of());
+            "event-1", "att-1", "user-1", "cat-1", "series-1", "test-1", 5420L, List.of(),
+                Instant.parse("2026-01-01T00:00:00Z"));
 
     private final SectionAnalysisResult sectionResult = new SectionAnalysisResult(
             List.of(
