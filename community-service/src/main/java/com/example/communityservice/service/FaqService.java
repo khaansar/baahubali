@@ -15,12 +15,21 @@ import org.springframework.web.server.ResponseStatusException;
 
 import java.util.List;
 import java.util.Objects;
+import java.util.Comparator;
 
 @Service
 @RequiredArgsConstructor
 public class FaqService {
 
     private final FaqRepository faqRepository;
+
+    @Transactional(readOnly = true)
+    public List<FaqResponseDto> getAllFaqs() {
+        return faqRepository.findAllByOrderByDisplayOrderAsc()
+                .stream()
+                .map(FaqResponseDto::from)
+                .toList();
+    }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "faqs", key = "#targetId ?: 'GLOBAL'")
@@ -44,12 +53,12 @@ public class FaqService {
                 .targetId(request.targetId())
                 .question(request.question().trim())
                 .answer(request.answer().trim())
-                .displayOrder(request.displayOrder())
+                .displayOrder(nextDisplayOrder(request.targetId()))
                 .build();
 
-        return FaqResponseDto.from(
-                faqRepository.save(faq)
-        );
+        Faq saved = faqRepository.save(faq);
+        normalizeDisplayOrder(request.targetId());
+        return FaqResponseDto.from(saved);
     }
 
     @Transactional
@@ -79,9 +88,9 @@ public class FaqService {
         faq.setAnswer(request.answer().trim());
         faq.setDisplayOrder(request.displayOrder());
 
-        return FaqResponseDto.from(
-                faqRepository.save(faq)
-        );
+        Faq saved = faqRepository.save(faq);
+        normalizeDisplayOrder(targetId);
+        return FaqResponseDto.from(saved);
     }
 
     @Transactional
@@ -105,5 +114,25 @@ public class FaqService {
         }
 
         faqRepository.delete(faq);
+        normalizeDisplayOrder(targetId);
+    }
+
+    private int nextDisplayOrder(String targetId) {
+        return faqRepository.findByTargetIdOrderByDisplayOrderAsc(targetId).stream()
+                .map(Faq::getDisplayOrder)
+                .filter(Objects::nonNull)
+                .max(Integer::compareTo)
+                .orElse(0) + 1;
+    }
+
+    private void normalizeDisplayOrder(String targetId) {
+        List<Faq> targetFaqs = faqRepository.findByTargetIdOrderByDisplayOrderAsc(targetId);
+        targetFaqs.sort(Comparator
+                .comparing(Faq::getDisplayOrder, Comparator.nullsLast(Integer::compareTo))
+                .thenComparing(Faq::getId));
+        for (int index = 0; index < targetFaqs.size(); index++) {
+            targetFaqs.get(index).setDisplayOrder(index + 1);
+        }
+        faqRepository.saveAll(targetFaqs);
     }
 }

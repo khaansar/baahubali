@@ -20,6 +20,15 @@ public class FaqController {
 
     private final FaqService faqService;
 
+    @GetMapping("/admins/faq")
+    public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getAllFaqs() {
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(),
+                "FAQs retrieved successfully",
+                faqService.getAllFaqs()
+        ));
+    }
+
     @GetMapping("/public/faq")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getGlobalFaqs() {
         return ResponseEntity.ok(ApiResponse.success(
