@@ -1,13 +1,13 @@
 package com.example.testservice.dto.publiccatalog;
 
 import java.math.BigDecimal;
-import java.util.List;
-import java.util.Map;
-import java.util.UUID;
 import java.time.Instant;
+import java.util.List;
+import java.util.UUID;
 
 public record PublicMockTestStructureDto(
         UUID testId,
+        String slug,
         String title,
         Integer durationMinutes,
         String instructions,

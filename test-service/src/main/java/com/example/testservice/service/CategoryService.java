@@ -18,12 +18,14 @@ import java.util.stream.Collectors;
 public class CategoryService {
 
     private final CategoryRepository categoryRepository;
+    private final SlugService slugService;
 
     @Transactional
     @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     public CategoryDto createCategory(CategoryDto request, String adminId) {
         Category category = new Category();
         category.setName(request.getName());
+        category.setSlug(slugService.generateUniqueSlug(request.getName(), categoryRepository::existsBySlug));
         category.setDescription(request.getDescription());
         category.setRequiredLanguages(request.getRequiredLanguages());
         category.setCreatedBy(adminId);
@@ -53,10 +55,18 @@ public class CategoryService {
                 .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
+    public CategoryDto getCategoryBySlug(String slug) {
+        return categoryRepository.findBySlug(slug)
+                .map(this::mapToDto)
+                .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
+    }
+
     private CategoryDto mapToDto(Category category) {
         return CategoryDto.builder()
                 .id(category.getId() != null ? category.getId().toString() : null)
                 .name(category.getName())
+                .slug(category.getSlug())
                 .description(category.getDescription())
                 .requiredLanguages(category.getRequiredLanguages())
                 .createdAt(category.getCreatedAt())

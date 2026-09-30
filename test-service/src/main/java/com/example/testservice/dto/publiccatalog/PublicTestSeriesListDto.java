@@ -1,11 +1,12 @@
 package com.example.testservice.dto.publiccatalog;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 import java.time.Instant;
+import java.util.UUID;
 
 public record PublicTestSeriesListDto(
         UUID id,
+        String slug,
         String title,
         BigDecimal basePrice,
         String categoryName,
