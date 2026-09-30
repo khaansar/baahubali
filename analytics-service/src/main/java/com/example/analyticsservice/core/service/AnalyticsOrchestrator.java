@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
+import org.springframework.context.ApplicationEventPublisher;
+import com.example.analyticsservice.web.event.ReportReadyEvent;
 import tools.jackson.databind.json.JsonMapper;
 
 /**
@@ -33,6 +35,7 @@ public class AnalyticsOrchestrator {
     private final ReportAssembler reportAssembler;
     private final ReportPersistenceService persistence;
     private final JsonMapper jsonMapper;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     public void process(AttemptSubmittedEvent event) {
         validate(event);
@@ -52,6 +55,7 @@ public class AnalyticsOrchestrator {
 
             persistence.complete(event, sectionResult, peer, reportJson);
             log.info("Analytics report completed, attemptId={}, testId={}", attemptId, event.testId());
+            applicationEventPublisher.publishEvent(new ReportReadyEvent(attemptId));
         } catch (RuntimeException ex) {
             log.error("Analytics processing failed, attemptId={}, testId={}", attemptId, event.testId(), ex);
             try {
