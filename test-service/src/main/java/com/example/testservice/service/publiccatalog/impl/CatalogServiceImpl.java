@@ -26,44 +26,75 @@ public class CatalogServiceImpl {
     @Transactional(readOnly = true)
     @Cacheable(value = "baahubali:test:test", key = "#testId + ':structure'")
     public PublicMockTestStructureDto getTestStructure(UUID testId) {
-        MockTest test = mockTestRepository.findById(testId)
-                .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
+        return mapPublishedTest(
+                mockTestRepository.findById(testId)
+                        .orElseThrow(() -> new ResourceNotFoundException("Test not found"))
+        );
+    }
 
+    @Transactional(readOnly = true)
+    @Cacheable(value = "baahubali:test:test", key = "'slug:' + #slug + ':structure'")
+    public PublicMockTestStructureDto getTestStructureBySlug(String slug) {
+        return mapPublishedTest(
+                mockTestRepository.findBySlug(slug)
+                        .orElseThrow(() -> new ResourceNotFoundException("Test not found"))
+        );
+    }
+
+    private PublicMockTestStructureDto mapPublishedTest(MockTest test) {
         if (test.getStatus() != Status.PUBLISHED) {
             throw new ResourceNotFoundException("Test is not available in the public catalog.");
         }
 
         return new PublicMockTestStructureDto(
                 test.getId(),
+                test.getSlug(),
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),
                 test.getTotalMarks(),
                 test.isFree(),
-                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
+                test.getCreatedAt(),
+                test.getUpdatedAt(),
+                test.getDeletedAt(),
                 test.getSections().stream().map(section -> new PublicSectionDto(
                         section.getId(),
                         section.getTitle(),
                         section.getSequenceOrder(),
-                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
+                        section.getCreatedAt(),
+                        section.getUpdatedAt(),
+                        section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> {
-
                             Map<String, Object> options = null;
-                            if (!sq.getQuestion().getTranslations().isEmpty() && sq.getQuestion().getTranslations().get(0).getOptionsJson() != null) {
+
+                            if (!sq.getQuestion().getTranslations().isEmpty()
+                                    && sq.getQuestion().getTranslations().get(0).getOptionsJson() != null) {
                                 try {
-                                    options = objectMapper.readValue(sq.getQuestion().getTranslations().get(0).getOptionsJson(), new TypeReference<>() {});
-                                } catch (Exception ignored) {}
+                                    options = objectMapper.readValue(
+                                            sq.getQuestion().getTranslations().get(0).getOptionsJson(),
+                                            new TypeReference<>() {}
+                                    );
+                                } catch (Exception ignored) {
+                                }
                             }
 
                             return new PublicQuestionDto(
                                     sq.getQuestion().getId(),
                                     sq.getSequenceOrder(),
                                     sq.getQuestion().getQuestionType().name(),
-                                    sq.getQuestion().getTranslations().isEmpty() ? "" : sq.getQuestion().getTranslations().get(0).getQuestionText(),
+                                    sq.getQuestion().getTranslations().isEmpty()
+                                            ? ""
+                                            : sq.getQuestion().getTranslations().get(0).getQuestionText(),
                                     options,
-                                    sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
-                                    sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                    sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
+                                    sq.getPositiveMarksOverride() != null
+                                            ? sq.getPositiveMarksOverride()
+                                            : sq.getQuestion().getPositiveMarks(),
+                                    sq.getNegativeMarksOverride() != null
+                                            ? sq.getNegativeMarksOverride()
+                                            : sq.getQuestion().getNegativeMarks(),
+                                    sq.getQuestion().getCreatedAt(),
+                                    sq.getQuestion().getUpdatedAt(),
+                                    sq.getQuestion().getDeletedAt()
                             );
                         }).collect(Collectors.toList())
                 )).collect(Collectors.toList())

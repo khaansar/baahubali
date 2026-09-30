@@ -29,41 +29,82 @@ public class PublicSeriesServiceImpl {
 
     private final TestSeriesRepository testSeriesRepository;
 
-    @Cacheable(value = "baahubali:test:series:list", key = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':page=' + #page + ':limit=' + #limit")
+    @Cacheable(
+            value = "baahubali:test:series:list",
+            key = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':page=' + #page + ':limit=' + #limit"
+    )
     @Transactional(readOnly = true)
-    public PaginatedResponseDto<PublicTestSeriesListDto> getPublishedSeries(UUID categoryId, int page, int limit) {
-        
+    public PaginatedResponseDto<PublicTestSeriesListDto> getPublishedSeries(
+            UUID categoryId,
+            int page,
+            int limit) {
+
         Specification<TestSeries> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
-            
-            // Only published series
+
             predicates.add(cb.equal(root.get("status"), Status.PUBLISHED));
-            
+
             if (categoryId != null) {
                 predicates.add(cb.equal(root.get("category").get("id"), categoryId));
             }
-            
+
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
-        PageRequest pageable = PageRequest.of(page - 1, limit, Sort.by("createdAt").descending());
+        PageRequest pageable = PageRequest.of(
+                page - 1,
+                limit,
+                Sort.by("createdAt").descending()
+        );
+
         Page<TestSeries> seriesPage = testSeriesRepository.findAll(spec, pageable);
 
-        List<PublicTestSeriesListDto> data = seriesPage.getContent().stream().map(s -> new PublicTestSeriesListDto(
-                s.getId(),
-                s.getTitle(),
-                s.getBasePrice(),
-                s.getCategory() != null ? s.getCategory().getName() : null,
-                s.getCreatedAt(), s.getUpdatedAt(), s.getDeletedAt()
-        )).collect(Collectors.toList());
+        List<PublicTestSeriesListDto> data = seriesPage.getContent()
+                .stream()
+                .map(s -> new PublicTestSeriesListDto(
+                        s.getId(),
+                        s.getSlug(),
+                        s.getTitle(),
+                        s.getBasePrice(),
+                        s.getCategory() != null ? s.getCategory().getName() : null,
+                        s.getCreatedAt(),
+                        s.getUpdatedAt(),
+                        s.getDeletedAt()
+                ))
+                .collect(Collectors.toList());
 
-        return new PaginatedResponseDto<>(data, new PageMetaDto(
-                page, limit, seriesPage.getTotalElements(), seriesPage.getTotalPages()));
+        return new PaginatedResponseDto<>(
+                data,
+                new PageMetaDto(
+                        page,
+                        limit,
+                        seriesPage.getTotalElements(),
+                        seriesPage.getTotalPages()
+                )
+        );
     }
 
     @Transactional(readOnly = true)
     @Cacheable(value = "baahubali:test:series", key = "#id")
     public PublicTestSeriesDetailDto getSeriesById(UUID id) {
+        TestSeries series = getPublishedSeriesEntityById(id);
+        return mapSeries(series);
+    }
+
+    @Transactional(readOnly = true)
+    @Cacheable(value = "baahubali:test:series", key = "'slug:' + #slug")
+    public PublicTestSeriesDetailDto getSeriesBySlug(String slug) {
+        TestSeries series = testSeriesRepository.findBySlug(slug)
+                .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
+
+        if (series.getStatus() != Status.PUBLISHED) {
+            throw new ResourceNotFoundException("Test Series is not available in the public catalog.");
+        }
+
+        return mapSeries(series);
+    }
+
+    private TestSeries getPublishedSeriesEntityById(UUID id) {
         TestSeries series = testSeriesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
 
@@ -71,24 +112,38 @@ public class PublicSeriesServiceImpl {
             throw new ResourceNotFoundException("Test Series is not available in the public catalog.");
         }
 
-        List<PublicTestSeriesDetailDto.PublicMockTestSummaryDto> mockTests = series.getMockTests().stream()
-                .filter(test -> test.getStatus() == Status.PUBLISHED)
-                .map(test -> new PublicTestSeriesDetailDto.PublicMockTestSummaryDto(
-                        test.getId(),
-                        test.getTitle(),
-                        test.getDurationMinutes(),
-                        test.getTotalMarks(),
-                        test.isFree(),
-                        test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt()
-                )).collect(Collectors.toList());
+        return series;
+    }
+
+    private PublicTestSeriesDetailDto mapSeries(TestSeries series) {
+        List<PublicTestSeriesDetailDto.PublicMockTestSummaryDto> mockTests =
+                series.getMockTests()
+                        .stream()
+                        .filter(test -> test.getStatus() == Status.PUBLISHED)
+                        .map(test -> new PublicTestSeriesDetailDto.PublicMockTestSummaryDto(
+                                test.getId(),
+                                test.getSlug(),
+                                test.getTitle(),
+                                test.getDurationMinutes(),
+                                test.getTotalMarks(),
+                                test.isFree(),
+                                test.getCreatedAt(),
+                                test.getUpdatedAt(),
+                                test.getDeletedAt()
+                        ))
+                        .collect(Collectors.toList());
 
         return new PublicTestSeriesDetailDto(
                 series.getId(),
+                series.getSlug(),
                 series.getTitle(),
                 series.getBasePrice(),
                 series.getCategory() != null ? series.getCategory().getId() : null,
+                series.getCategory() != null ? series.getCategory().getSlug() : null,
                 series.getCategory() != null ? series.getCategory().getName() : null,
-                series.getCreatedAt(), series.getUpdatedAt(), series.getDeletedAt(),
+                series.getCreatedAt(),
+                series.getUpdatedAt(),
+                series.getDeletedAt(),
                 mockTests
         );
     }

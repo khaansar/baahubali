@@ -11,6 +11,7 @@ import java.math.BigDecimal;
 @AllArgsConstructor
 public class FeaturedMockTestDto {
     private String id;
+    private String slug;
     private String title;
     private String categoryName;
     private Integer durationMinutes;

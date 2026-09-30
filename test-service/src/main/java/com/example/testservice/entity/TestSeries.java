@@ -1,6 +1,15 @@
 package com.example.testservice.entity;
 
-import jakarta.persistence.*;
+import jakarta.persistence.CascadeType;
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
+import jakarta.persistence.JoinColumn;
+import jakarta.persistence.ManyToOne;
+import jakarta.persistence.OneToMany;
+import jakarta.persistence.Table;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
@@ -13,11 +22,14 @@ import java.util.List;
 @Table(name = "test_series")
 @Getter
 @Setter
-@SQLRestriction("deleted_at IS NULL") // Auto-filters soft-deleted series
+@SQLRestriction("deleted_at IS NULL")
 public class TestSeries extends BaseEntity {
 
     @Column(nullable = false)
     private String title;
+
+    @Column(nullable = false, unique = true, length = 255)
+    private String slug;
 
     @Column(name = "base_price", precision = 10, scale = 2)
     private BigDecimal basePrice = BigDecimal.ZERO;

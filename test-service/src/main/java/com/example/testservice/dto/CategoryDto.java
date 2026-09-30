@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 public class CategoryDto {
     private String id;
     private String name;
+    private String slug;
     private String description;
     private java.util.List<String> requiredLanguages;
     private java.time.Instant createdAt;
