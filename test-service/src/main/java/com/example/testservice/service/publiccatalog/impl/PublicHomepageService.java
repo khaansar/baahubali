@@ -21,17 +21,33 @@ public class PublicHomepageService {
     @Cacheable(value = "baahubali:test:categories")
     @Transactional(readOnly = true)
     public List<PublicCategoryDto> getCategories() {
-        String jpql = "SELECT c.id, c.name, c.slug, " +
-                "(SELECT COUNT(m.id) FROM MockTest m JOIN m.series s WHERE s.category.id = c.id) " +
-                "FROM Category c";
+        String jpql =
+            "SELECT c.id, c.name, " +
+            "(SELECT COUNT(m.id) " +
+            " FROM MockTest m JOIN m.series s " +
+            " WHERE s.category.id = c.id " +
+            " AND s.status = 'PUBLISHED' " +
+            " AND m.status = 'PUBLISHED') " +
+            "FROM Category c " +
+            "WHERE EXISTS (" +
+            " SELECT m2.id " +
+            " FROM MockTest m2 JOIN m2.series s2 " +
+            " WHERE s2.category.id = c.id " +
+            " AND s2.status = 'PUBLISHED' " +
+            " AND m2.status = 'PUBLISHED'" +
+            ")";
 
         List<Object[]> results = entityManager.createQuery(jpql, Object[].class).getResultList();
 
         return results.stream().map(row -> {
             String id = row[0] != null ? row[0].toString() : null;
             String name = (String) row[1];
-            String slug = (String) row[2];
-            Long testCount = ((Number) row[3]).longValue();
+            Long testCount = ((Number) row[2]).longValue();
+
+            String slug = name != null
+                    ? name.toLowerCase().replace(" ", "-")
+                    : null;
+
             return new PublicCategoryDto(id, name, slug, testCount);
         }).collect(Collectors.toList());
     }

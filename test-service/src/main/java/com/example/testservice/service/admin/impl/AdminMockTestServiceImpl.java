@@ -58,7 +58,8 @@ public class AdminMockTestServiceImpl {
     @Caching(evict = {
         @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
         @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto publishTest(UUID testId, Instant expectedUpdatedAt) {
         MockTest test = mockTestRepository.findById(testId)
@@ -113,9 +114,17 @@ public class AdminMockTestServiceImpl {
             throw new ValidationException("Publish validation failed", validationErrors);
         }
 
+        TestSeries series = test.getSeries();
+
         test.setTotalMarks(totalMarks);
         test.setStatus(Status.PUBLISHED);
         test.setPublishedAt(Instant.now());
+
+        if (series.getStatus() != Status.PUBLISHED) {
+            series.setStatus(Status.PUBLISHED);
+            testSeriesRepository.save(series);
+        }
+
         mockTestRepository.save(test);
 
         if (!questionIdsToLock.isEmpty()) {
@@ -240,13 +249,26 @@ public class AdminMockTestServiceImpl {
     @Caching(evict = {
         @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
         @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto archiveTest(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
+        TestSeries series = test.getSeries();
+
         test.setStatus(Status.ARCHIVED);
         mockTestRepository.save(test);
+
+        boolean hasPublishedTests = series.getMockTests().stream()
+                .anyMatch(mockTest ->
+                        !mockTest.getId().equals(testId)
+                                && mockTest.getStatus() == Status.PUBLISHED);
+
+        if (!hasPublishedTests) {
+            series.setStatus(Status.DRAFT);
+            testSeriesRepository.save(series);
+        }
         return getAdminMockTestDetail(testId);
     }
 
@@ -308,7 +330,8 @@ public class AdminMockTestServiceImpl {
     @Caching(evict = {
         @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
         @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto revertToDraft(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
@@ -319,8 +342,17 @@ public class AdminMockTestServiceImpl {
             throw new ResourceConflictException("Cannot revert: active attempts in progress. Wait for completion or force-submit attempts.");
         }
 
-        test.setStatus(Status.DRAFT);
-        mockTestRepository.save(test);
+        TestSeries series = test.getSeries();
+
+        boolean hasPublishedTests = series.getMockTests().stream()
+                .anyMatch(mockTest ->
+                        !mockTest.getId().equals(testId)
+                                && mockTest.getStatus() == Status.PUBLISHED);
+
+        if (!hasPublishedTests) {
+            series.setStatus(Status.DRAFT);
+            testSeriesRepository.save(series);
+        }
         return getAdminMockTestDetail(testId);
     }
 
