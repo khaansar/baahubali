@@ -19,12 +19,15 @@ import org.springframework.web.bind.annotation.RestController;
 import java.time.Instant;
 import java.util.UUID;
 
+import com.example.iam.service.CalendarAnalyticsService;
+
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
 public class UserController {
 
     private final UserRepository userRepository;
+    private final CalendarAnalyticsService calendarAnalyticsService;
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getCurrentUser(Authentication authentication) {
@@ -61,5 +64,15 @@ public class UserController {
         org.springframework.data.domain.Page<UserResponse> users = userRepository.findAll(filters, pageable)
                 .map(UserResponse::from);
         return ApiResponse.success(HttpStatus.OK.value(), "Users retrieved successfully", users);
+    }
+
+    @GetMapping("/calendar")
+    public ApiResponse<com.example.iam.dto.CalendarAnalyticsResponse> getCalendarAnalytics(
+            @RequestParam int year,
+            @RequestParam int month,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        com.example.iam.dto.CalendarAnalyticsResponse data = calendarAnalyticsService.getCalendarAnalytics(userId.toString(), year, month);
+        return ApiResponse.success(HttpStatus.OK.value(), "Calendar analytics retrieved successfully", data);
     }
 }

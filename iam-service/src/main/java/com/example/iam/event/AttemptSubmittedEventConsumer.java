@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
+import java.time.LocalDate;
+import java.time.ZoneOffset;
+
+import com.example.iam.service.CalendarAnalyticsService;
 
 @Component
 @RequiredArgsConstructor
@@ -19,6 +23,7 @@ public class AttemptSubmittedEventConsumer {
 
     private final UserRepository userRepository;
     private final ProcessedAttemptEventRepository processedAttemptEventRepository;
+    private final CalendarAnalyticsService calendarAnalyticsService;
 
     @KafkaListener(
             topics = "attempt-submitted-events",
@@ -55,6 +60,8 @@ public class AttemptSubmittedEventConsumer {
                             + event.attemptId()
             );
         }
+        
+        calendarAnalyticsService.recordActivity(event.userId(), LocalDate.now(ZoneOffset.UTC));
 
         log.debug(
                 "Incremented tests_attempted_count for userId={}, attemptId={}",
