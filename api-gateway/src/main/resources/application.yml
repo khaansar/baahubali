@@ -73,6 +73,17 @@ spring:
                     redis-rate-limiter.replenishRate: 20
                     redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
+            - id: analytics-service
+              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8080}
+              predicates:
+                - Path=/analytics-api/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 5
+                    redis-rate-limiter.burstCapacity: 10
+                    redis-rate-limiter.requestedTokens: 1
 
 logging:
   level:
@@ -88,6 +99,7 @@ springdoc:
         url: /tests-api/v3/api-docs
       - name: Attempts Service
         url: /attempts-api/v3/api-docs
+      
 
 gateway:
   security:
@@ -95,22 +107,39 @@ gateway:
       - /auth-api/login
       - /auth-api/register
       - /auth-api/refresh
+
       - /tests-api/public/**
+      - /community-api/public/**
+
       - /auth-api/swagger-ui.html
       - /auth-api/swagger-ui/**
       - /auth-api/v3/api-docs
       - /auth-api/v3/api-docs/**
       - /auth-api/webjars/**
+
       - /tests-api/swagger-ui.html
       - /tests-api/swagger-ui/**
       - /tests-api/v3/api-docs
       - /tests-api/v3/api-docs/**
       - /tests-api/webjars/**
+
       - /attempts-api/swagger-ui.html
       - /attempts-api/swagger-ui/**
       - /attempts-api/v3/api-docs
       - /attempts-api/v3/api-docs/**
       - /attempts-api/webjars/**
+      
+      - /community-api/swagger-ui.html
+      - /community-api/swagger-ui/**
+      - /community-api/v3/api-docs
+      - /community-api/v3/api-docs/**
+      - /community-api/webjars/**
+
+      - /analytics-api/swagger-ui.html
+      - /analytics-api/swagger-ui/**
+      - /analytics-api/v3/api-docs
+      - /analytics-api/v3/api-docs/**
+      - /analytics-api/webjars/**
       - /swagger-ui.html
       - /swagger-ui/**
       - /v3/api-docs/**

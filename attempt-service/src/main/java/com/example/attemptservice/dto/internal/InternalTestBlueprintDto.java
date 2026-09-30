@@ -3,6 +3,7 @@ package com.example.attemptservice.dto.internal;
 import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+
 import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.List;
@@ -12,11 +13,14 @@ import java.util.Map;
 @JsonIgnoreProperties(ignoreUnknown = true)
 public class InternalTestBlueprintDto {
     private String testId;
+    private String categoryId;
+    private String testSeriesId;
     private String title;
     private Integer durationMinutes;
     private String instructions;
     private BigDecimal totalMarks;
     private Boolean free;
+    private Boolean negativeMarkingEnabled;
     private Instant createdAt;
     private Instant updatedAt;
     private Instant deletedAt;
@@ -43,8 +47,10 @@ public class InternalTestBlueprintDto {
         private Integer sequenceOrder;
         private String questionType;
         private List<InternalTranslationDto> translations;
+
         @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)
         private Map<String, Object> correctAnswer;
+
         private BigDecimal positiveMarks;
         private BigDecimal negativeMarks;
         private String explanation;

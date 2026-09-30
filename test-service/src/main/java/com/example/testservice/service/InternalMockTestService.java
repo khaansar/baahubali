@@ -33,6 +33,8 @@ public class InternalMockTestService {
 
         return new TestBlueprintDto(
                 test.getId(),
+                test.getSeries().getCategory().getId(),
+                test.getSeries().getId(),
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),
@@ -41,27 +43,41 @@ public class InternalMockTestService {
                 test.isShuffleSections(),
                 test.isNegativeMarkingEnabled(),
                 test.getTotalMarks(),
-                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt(),
+                test.getCreatedAt(),
+                test.getUpdatedAt(),
+                test.getDeletedAt(),
                 test.getSections().stream().map(section -> new SectionBlueprintDto(
                         section.getId(),
                         section.getTitle(),
                         section.getSequenceOrder(),
                         section.getDurationMinutes(),
                         section.isShuffleQuestions(),
-                        section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt(),
+                        section.getCreatedAt(),
+                        section.getUpdatedAt(),
+                        section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> new QuestionBlueprintDto(
                                 sq.getQuestion().getId(),
                                 sq.getSequenceOrder(),
                                 sq.getQuestion().getQuestionType().name(),
                                 sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
-                                        t.getLanguage(), t.getQuestionText(), t.getOptionsJson(),
-                                        t.getCreatedAt(), t.getUpdatedAt(), t.getDeletedAt()
+                                        t.getLanguage(),
+                                        t.getQuestionText(),
+                                        t.getOptionsJson(),
+                                        t.getCreatedAt(),
+                                        t.getUpdatedAt(),
+                                        t.getDeletedAt()
                                 )).collect(Collectors.toList()),
                                 sq.getQuestion().getCorrectAnswerJson(),
-                                sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
-                                sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
+                                sq.getPositiveMarksOverride() != null
+                                        ? sq.getPositiveMarksOverride()
+                                        : sq.getQuestion().getPositiveMarks(),
+                                sq.getNegativeMarksOverride() != null
+                                        ? sq.getNegativeMarksOverride()
+                                        : sq.getQuestion().getNegativeMarks(),
                                 sq.getQuestion().getExplanation(),
-                                sq.getQuestion().getCreatedAt(), sq.getQuestion().getUpdatedAt(), sq.getQuestion().getDeletedAt()
+                                sq.getQuestion().getCreatedAt(),
+                                sq.getQuestion().getUpdatedAt(),
+                                sq.getQuestion().getDeletedAt()
                         )).collect(Collectors.toList())
                 )).collect(Collectors.toList())
         );
@@ -71,13 +87,15 @@ public class InternalMockTestService {
     public TestStatusDto getLightweightStatus(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
-                
+
         return new TestStatusDto(
                 test.getId(),
                 test.getStatus(),
                 test.getTotalMarks(),
                 test.getDurationMinutes(),
-                test.getCreatedAt(), test.getUpdatedAt(), test.getDeletedAt()
+                test.getCreatedAt(),
+                test.getUpdatedAt(),
+                test.getDeletedAt()
         );
     }
 
@@ -93,8 +111,9 @@ public class InternalMockTestService {
                 .map(test -> TestBulkInfoDto.builder()
                         .testId(test.getId())
                         .testName(test.getTitle())
-                        .categoryName(test.getSeries() != null && test.getSeries().getCategory() != null 
-                                ? test.getSeries().getCategory().getName() : "Unknown")
+                        .categoryName(test.getSeries() != null && test.getSeries().getCategory() != null
+                                ? test.getSeries().getCategory().getName()
+                                : "Unknown")
                         .build())
                 .collect(Collectors.toList());
     }

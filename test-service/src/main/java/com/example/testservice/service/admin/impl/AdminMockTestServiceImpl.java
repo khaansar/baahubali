@@ -415,6 +415,8 @@ public class AdminMockTestServiceImpl {
     private TestBlueprintDto mapToBlueprintDto(MockTest test) {
         return new TestBlueprintDto(
                 test.getId(),
+                test.getSeries().getCategory() != null ? test.getSeries().getCategory().getId() : null,
+                test.getSeries().getId(),
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),
