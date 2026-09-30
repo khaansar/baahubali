@@ -67,11 +67,12 @@ class DefaultSectionAnalysisEngineTest {
     }
 
     @Test
-    void rejectsNegativeScoresAndInconsistentAccuracy() {
-        assertThatThrownBy(() -> engine.analyze(event(
-                section("negative", -1.0, 2.0, 1, 1, 0, 0, 100.0, 1L))))
-                .isInstanceOf(InvalidAttemptEventException.class)
-                .hasMessageContaining("score");
+    void handlesNegativeScoresAndRejectsInconsistentAccuracy() {
+        SectionAnalysisResult negative = engine.analyze(event(
+                section("negative", -1.0, 2.0, 1, 1, 0, 0, 100.0, 1L)));
+
+        assertThat(negative.sections().get(0).score()).isEqualTo(-1.0);
+
         assertThatThrownBy(() -> engine.analyze(event(
                 section("bad-accuracy", 1.0, 2.0, 2, 1, 1, 0, 100.0, 1L))))
                 .isInstanceOf(InvalidAttemptEventException.class)

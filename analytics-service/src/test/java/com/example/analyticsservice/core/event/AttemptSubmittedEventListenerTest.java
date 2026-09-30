@@ -51,8 +51,10 @@ class AttemptSubmittedEventListenerTest {
     }
 
     @Test
-    void unreadableMessageIsSkipped() {
-        listener.onMessage("not json");
+    void unreadableMessageIsRejected() {
+        assertThatThrownBy(() -> listener.onMessage("not json"))
+                .isInstanceOf(InvalidAttemptEventException.class);
+
         verify(orchestrator, never()).process(any());
     }
 
@@ -72,9 +74,14 @@ class AttemptSubmittedEventListenerTest {
     }
 
     @Test
-    void invalidEventIsSwallowed() {
-        doThrow(new InvalidAttemptEventException("missing")).when(orchestrator).process(any());
-        listener.onMessage("{\"attemptId\":\"att-1\"}"); // must not throw
+    void invalidEventPropagatesToKafkaErrorHandler() {
+        doThrow(new InvalidAttemptEventException("missing"))
+                .when(orchestrator)
+                .process(any());
+
+        assertThatThrownBy(() ->
+                listener.onMessage("{\"attemptId\":\"att-1\"}")
+        ).isInstanceOf(InvalidAttemptEventException.class);
     }
 
     @Test

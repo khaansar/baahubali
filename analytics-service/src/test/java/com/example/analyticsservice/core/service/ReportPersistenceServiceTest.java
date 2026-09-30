@@ -69,7 +69,7 @@ class ReportPersistenceServiceTest {
 
     @Test
     void claimCreatesProcessingReport() {
-        when(reports.findByAttemptId("att-1")).thenReturn(Optional.empty());
+        when(reports.findByAttemptIdForUpdate("att-1")).thenReturn(Optional.empty());
 
         assertThat(service.claim(event)).isTrue();
 
@@ -86,7 +86,7 @@ class ReportPersistenceServiceTest {
 
     @Test
     void claimOfCompletedReportIsDuplicate() {
-        when(reports.findByAttemptId("att-1")).thenReturn(Optional.of(report("COMPLETED")));
+        when(reports.findByAttemptIdForUpdate("att-1")).thenReturn(Optional.of(report("COMPLETED")));
 
         assertThat(service.claim(event)).isFalse();
 
@@ -97,7 +97,7 @@ class ReportPersistenceServiceTest {
     @Test
     void claimOfFailedReportRetriesAsProcessing() {
         TestReportEntity failed = report("FAILED");
-        when(reports.findByAttemptId("att-1")).thenReturn(Optional.of(failed));
+        when(reports.findByAttemptIdForUpdate("att-1")).thenReturn(Optional.of(failed));
 
         assertThat(service.claim(event)).isTrue();
 
@@ -177,12 +177,12 @@ class ReportPersistenceServiceTest {
     @Test
     void markFailedSetsFailedButNeverDowngradesCompleted() {
         TestReportEntity processing = report("PROCESSING");
-        when(reports.findByAttemptId("att-1")).thenReturn(Optional.of(processing));
+        when(reports.findByAttemptIdForUpdate("att-1")).thenReturn(Optional.of(processing));
         service.markFailed("att-1");
         assertThat(processing.getStatus()).isEqualTo("FAILED");
 
         TestReportEntity completed = report("COMPLETED");
-        when(reports.findByAttemptId("att-1")).thenReturn(Optional.of(completed));
+        when(reports.findByAttemptIdForUpdate("att-1")).thenReturn(Optional.of(completed));
         service.markFailed("att-1");
         assertThat(completed.getStatus()).isEqualTo("COMPLETED");
     }

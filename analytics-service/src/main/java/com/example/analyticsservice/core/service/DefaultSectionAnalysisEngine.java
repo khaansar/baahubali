@@ -114,8 +114,8 @@ public class DefaultSectionAnalysisEngine implements SectionAnalysisEngine {
             );
         }
 
-        if (answer.timeSpentSeconds() == null
-                || answer.timeSpentSeconds() < 0) {
+        if (answer.timeSpentSeconds() != null
+                && answer.timeSpentSeconds() < 0) {
             throw new InvalidAttemptEventException(
                     prefix + ".timeSpentSeconds must be non-negative"
             );
