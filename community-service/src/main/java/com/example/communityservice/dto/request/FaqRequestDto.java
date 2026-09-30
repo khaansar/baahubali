@@ -6,7 +6,6 @@ import jakarta.validation.constraints.Size;
 
 public record FaqRequestDto(
 
-        @NotBlank(message = "Target ID cannot be blank")
         String targetId,
 
         @NotBlank(message = "Question cannot be blank")
