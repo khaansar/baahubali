@@ -48,19 +48,29 @@ public class ReportPersistenceService {
      */
     @Transactional
     public boolean claim(AttemptSubmittedEvent event) {
-        Optional<TestReportEntity> existing = reports.findByAttemptId(event.attemptId());
+        Optional<TestReportEntity> existing = reports.findByAttemptIdForUpdate(event.attemptId());
+
         if (existing.isPresent()) {
             TestReportEntity report = existing.get();
+
             if (ReportStatus.COMPLETED.name().equals(report.getStatus())) {
                 log.info("Duplicate event for completed report, attemptId={}", event.attemptId());
                 return false;
             }
+
+            if (ReportStatus.PROCESSING.name().equals(report.getStatus())) {
+                log.info("Duplicate event already being processed, attemptId={}", event.attemptId());
+                return false;
+            }
+
             if (ReportStatus.FAILED.name().equals(report.getStatus())) {
                 report.setStatus(ReportStatus.PROCESSING.name());
                 reports.save(report);
+                log.info("Retrying failed report, attemptId={}", event.attemptId());
+                return true;
             }
-            log.info("Reprocessing existing {} report, attemptId={}", report.getStatus(), event.attemptId());
-            return true;
+
+            return false;
         }
 
         TestReportEntity report = new TestReportEntity();
@@ -75,6 +85,7 @@ public class ReportPersistenceService {
         report.setAccuracyPercentage(scale2(0.0));
         report.setTimeTakenSeconds(toInt(event.timeTakenSeconds()));
         report.setStatus(ReportStatus.PROCESSING.name());
+
         reports.saveAndFlush(report);
         return true;
     }

@@ -59,7 +59,7 @@ public class SectionPerformanceEntity {
     @Column(name = "accuracy_percentage", nullable = false, precision = 5, scale = 2)
     private BigDecimal accuracyPercentage;
 
-    @Column(name = "time_spent_seconds", nullable = false)
+    @Column(name = "time_spent_seconds")
     private Integer timeSpentSeconds;
 
     /** Reserved for future topic-level analytics; intentionally unused now. */

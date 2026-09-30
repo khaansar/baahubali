@@ -11,11 +11,13 @@ import org.springframework.data.redis.listener.RedisMessageListenerContainer;
 public class RedisConfig {
 
     @Bean
-    RedisMessageListenerContainer container(RedisConnectionFactory connectionFactory,
-                                            ReportNotificationService reportNotificationService) {
+    RedisMessageListenerContainer container(
+            RedisConnectionFactory connectionFactory,
+            ReportNotificationService reportNotificationService) {
+
         RedisMessageListenerContainer container = new RedisMessageListenerContainer();
         container.setConnectionFactory(connectionFactory);
-        container.addMessageListener(reportNotificationService, new ChannelTopic(ReportNotificationService.TOPIC));
+        container.addMessageListener(reportNotificationService,new ChannelTopic(ReportNotificationService.TOPIC));
         return container;
     }
 }

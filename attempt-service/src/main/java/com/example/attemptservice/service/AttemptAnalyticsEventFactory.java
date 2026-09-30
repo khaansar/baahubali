@@ -101,7 +101,7 @@ public final class AttemptAnalyticsEventFactory {
                             incorrect,
                             unattempted,
                             accuracy,
-                            0L
+                            null
                     );
                 })
                 .toList();
