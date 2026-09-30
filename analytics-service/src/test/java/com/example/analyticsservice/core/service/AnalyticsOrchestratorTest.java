@@ -54,8 +54,9 @@ class AnalyticsOrchestratorTest {
         sectionEngine = mock(SectionAnalysisEngine.class);
         rankingEngine = mock(RankingEngine.class);
         persistence = mock(ReportPersistenceService.class);
+        org.springframework.context.ApplicationEventPublisher publisher = mock(org.springframework.context.ApplicationEventPublisher.class);
         orchestrator = new AnalyticsOrchestrator(
-                sectionEngine, rankingEngine, new ReportAssembler(), persistence, mapper);
+                sectionEngine, rankingEngine, new ReportAssembler(), persistence, mapper, publisher);
         when(persistence.claim(event)).thenReturn(true);
         when(sectionEngine.analyze(event)).thenReturn(sectionResult);
         when(rankingEngine.processRankAndStats(event)).thenReturn(peer);
