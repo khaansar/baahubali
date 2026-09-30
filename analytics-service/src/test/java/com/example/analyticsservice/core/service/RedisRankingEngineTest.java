@@ -137,6 +137,40 @@ class RedisRankingEngineTest {
         assertThat(result.topperScore()).isEqualTo((double) submissions - 1);
     }
 
+    @Test
+    void negativeScoreFromNegativeMarkingIsAccepted() {
+        AttemptSubmittedEvent event = new AttemptSubmittedEvent(
+                "event-negative",
+                "attempt-negative",
+                "same-user",
+                "category",
+                "series",
+                "test",
+                300L,
+                List.of(new SectionAnswerPayload(
+                        "section",
+                        "Section",
+                        -2.0,
+                        10.0,
+                        1,
+                        0,
+                        1,
+                        0,
+                        0.0,
+                        300L
+                )),
+                Instant.parse("2026-01-01T00:00:00Z")
+        );
+
+        PeerComparisonResult result = engine.processRankAndStats(event);
+
+        assertThat(result.rank()).isEqualTo(1);
+        assertThat(result.totalParticipants()).isEqualTo(1);
+        assertThat(result.topperScore()).isEqualTo(-2.0);
+        assertThat(result.averageScore()).isEqualTo(-2.0);
+        assertThat(result.percentile()).isEqualTo(100.0);
+    }
+
     private static AttemptSubmittedEvent attempt(String attemptId, String testId, double score, long time) {
         return new AttemptSubmittedEvent("event-" + attemptId, attemptId, "same-user", "category", "series", testId, time,
                 List.of(new SectionAnswerPayload("section", "Section", score, 100.0,

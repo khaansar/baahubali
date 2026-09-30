@@ -19,11 +19,6 @@ public class RedisRankingEngine implements RankingEngine {
     private static final String TIME_HASH_SUFFIX = ":times";
     private static final String STATS_HASH_SUFFIX = ":stats";
 
-    /**
-     * One Redis script performs the idempotent write and calculates the result
-     * atomically. Attempt IDs are sorted-set members; user IDs are deliberately not
-     * used because a user may submit the same test more than once.
-     */
     private static final RedisScript<List> UPSERT_AND_READ = new DefaultRedisScript<>("""
             local leaderboard = KEYS[1]
             local times = KEYS[2]
@@ -45,6 +40,7 @@ public class RedisRankingEngine implements RankingEngine {
             local currentScoreNumber = tonumber(storedScore)
             local rank = redis.call('ZCOUNT', leaderboard, '(' .. storedScore, '+inf') + 1
             local equalScoreAttempts = redis.call('ZRANGEBYSCORE', leaderboard, storedScore, storedScore)
+
             for _, member in ipairs(equalScoreAttempts) do
               if member ~= attemptId then
                 local otherTime = tonumber(redis.call('HGET', times, member))
@@ -61,6 +57,7 @@ public class RedisRankingEngine implements RankingEngine {
             local topperAttempts = redis.call('ZRANGEBYSCORE', leaderboard, topperScore, topperScore)
             local topperId = topperAttempts[1]
             local topperTime = tonumber(redis.call('HGET', times, topperId))
+
             for index = 2, #topperAttempts do
               local candidateId = topperAttempts[index]
               local candidateTime = tonumber(redis.call('HGET', times, candidateId))
@@ -71,9 +68,14 @@ public class RedisRankingEngine implements RankingEngine {
             end
 
             local percentile = participants == 1 and 100 or ((participants - rank) * 100 / (participants - 1))
+
             return {
-              tostring(rank), tostring(participants), string.format('%.17g', scoreTotal / participants),
-              topperScore, tostring(topperTime), string.format('%.10f', percentile)
+              tostring(rank),
+              tostring(participants),
+              string.format('%.17g', scoreTotal / participants),
+              topperScore,
+              tostring(topperTime),
+              string.format('%.10f', percentile)
             }
             """, List.class);
 
@@ -86,39 +88,69 @@ public class RedisRankingEngine implements RankingEngine {
     @Override
     public PeerComparisonResult processRankAndStats(AttemptSubmittedEvent event) {
         validate(event);
-        double score = event.sectionAnswers().stream().mapToDouble(SectionAnswerPayload::score).sum();
+
+        double score = event.sectionAnswers()
+                .stream()
+                .mapToDouble(SectionAnswerPayload::score)
+                .sum();
+
         long timeTaken = event.timeTakenSeconds();
         String leaderboardKey = LEADERBOARD_KEY_PREFIX + event.testId();
 
         List<?> result = redis.execute(
                 UPSERT_AND_READ,
-                List.of(leaderboardKey, leaderboardKey + TIME_HASH_SUFFIX, leaderboardKey + STATS_HASH_SUFFIX),
-                event.attemptId(), Double.toString(score), Long.toString(timeTaken));
+                List.of(
+                        leaderboardKey,
+                        leaderboardKey + TIME_HASH_SUFFIX,
+                        leaderboardKey + STATS_HASH_SUFFIX
+                ),
+                event.attemptId(),
+                Double.toString(score),
+                Long.toString(timeTaken)
+        );
+
         if (result == null || result.size() != 6) {
             throw new IllegalStateException("Redis returned an invalid leaderboard result");
         }
+
         return new PeerComparisonResult(
                 Double.parseDouble(result.get(3).toString()),
                 Double.parseDouble(result.get(2).toString()),
                 Long.parseLong(result.get(4).toString()),
                 Integer.parseInt(result.get(0).toString()),
                 Integer.parseInt(result.get(1).toString()),
-                Double.parseDouble(result.get(5).toString()));
+                Double.parseDouble(result.get(5).toString())
+        );
     }
 
     private static void validate(AttemptSubmittedEvent event) {
-        if (event == null) throw new InvalidAttemptEventException("AttemptSubmittedEvent is required");
-        if (isBlank(event.attemptId())) throw new InvalidAttemptEventException("attemptId is required");
-        if (isBlank(event.testId())) throw new InvalidAttemptEventException("testId is required");
+        if (event == null) {
+            throw new InvalidAttemptEventException("AttemptSubmittedEvent is required");
+        }
+
+        if (isBlank(event.attemptId())) {
+            throw new InvalidAttemptEventException("attemptId is required");
+        }
+
+        if (isBlank(event.testId())) {
+            throw new InvalidAttemptEventException("testId is required");
+        }
+
         if (event.timeTakenSeconds() == null || event.timeTakenSeconds() < 0) {
             throw new InvalidAttemptEventException("timeTakenSeconds must be non-negative");
         }
+
         if (event.sectionAnswers() == null) {
             throw new InvalidAttemptEventException("sectionAnswers are required to calculate score");
         }
+
         for (SectionAnswerPayload answer : event.sectionAnswers()) {
-            if (answer == null || answer.score() == null || !Double.isFinite(answer.score()) || answer.score() < 0) {
-                throw new InvalidAttemptEventException("section answer scores must be finite and non-negative");
+            if (answer == null
+                    || answer.score() == null
+                    || !Double.isFinite(answer.score())) {
+                throw new InvalidAttemptEventException(
+                        "section answer score must be finite"
+                );
             }
         }
     }

@@ -137,9 +137,8 @@ public class AttemptService {
                         .build();
             }
 
-            attempt.setStatus(AttemptStatus.EXPIRED);
-            attempt.setUpdatedAt(now);
-            attemptRepository.save(attempt);
+            finalizeAttempt(attempt, AttemptStatus.EXPIRED);
+            now = Instant.now();
         }
 
         Attempt attempt = Attempt.builder()
@@ -201,7 +200,7 @@ public class AttemptService {
 
     @Transactional
     public SubmitAttemptResponse submitAttempt(String attemptId) {
-        Attempt attempt = attemptRepository.findById(attemptId)
+        Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.EXPIRED) {
@@ -214,12 +213,29 @@ public class AttemptService {
 
     @Transactional
     public void finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
-        if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.EXPIRED) {
+        if (finalStatus != AttemptStatus.SUBMITTED && finalStatus != AttemptStatus.EXPIRED) {
+            throw new IllegalArgumentException("Invalid final attempt status: " + finalStatus);
+        }
+
+        Attempt lockedAttempt = attemptRepository.findByIdForUpdate(attempt.getId())
+                .orElseThrow(() -> new AttemptNotFoundException(attempt.getId()));
+
+        if (lockedAttempt.getStatus() == AttemptStatus.SUBMITTED
+                || lockedAttempt.getStatus() == AttemptStatus.EXPIRED) {
             return;
         }
 
-        final String attemptId = attempt.getId();
+        final String attemptId = lockedAttempt.getId();
         Instant finalizedAt = Instant.now();
+
+        Instant deadline = lockedAttempt.getStartedAt()
+                .plusSeconds(lockedAttempt.getDurationMinutes() * 60L);
+
+        AttemptStatus effectiveStatus = finalStatus;
+
+        if (finalStatus == AttemptStatus.SUBMITTED && !finalizedAt.isBefore(deadline)) {
+            effectiveStatus = AttemptStatus.EXPIRED;
+        }
 
         AttemptRedisHash hash = attemptRedisRepository.findById(attemptId).orElse(null);
 
@@ -234,57 +250,55 @@ public class AttemptService {
             }
         }
 
-        attempt.setStatus(finalStatus);
-        attempt.setUpdatedAt(finalizedAt);
-        attemptRepository.save(attempt);
+        lockedAttempt.setStatus(effectiveStatus);
+        lockedAttempt.setUpdatedAt(finalizedAt);
+        attemptRepository.save(lockedAttempt);
 
-        if (finalStatus == AttemptStatus.SUBMITTED) {
-            try {
-                TestServiceResponse<InternalTestBlueprintDto> response =
-                        testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+        try {
+            TestServiceResponse<InternalTestBlueprintDto> response =
+                    testServiceFeignClient.getTestBlueprint(lockedAttempt.getTestId());
 
-                if (response == null || !response.success() || response.data() == null) {
-                    throw new IllegalStateException(
-                            "Test service did not return a test blueprint for submitted attempt"
-                    );
-                }
-
-                List<AttemptAnswer> answers =
-                        attemptAnswerRepository.findByAttemptId(attemptId);
-
-                long elapsedSeconds = Math.max(
-                        0L,
-                        Duration.between(attempt.getStartedAt(), finalizedAt).getSeconds()
-                );
-
-                long maxDurationSeconds = attempt.getDurationMinutes() * 60L;
-                long timeTakenSeconds = Math.min(elapsedSeconds, maxDurationSeconds);
-
-                AttemptSubmittedEvent event = AttemptAnalyticsEventFactory.create(
-                        UUID.randomUUID().toString(),
-                        attempt.getId(),
-                        attempt.getUserId(),
-                        response.data(),
-                        answers,
-                        timeTakenSeconds,
-                        finalizedAt
-                );
-
-                OutboxEvent outboxEvent = OutboxEvent.builder()
-                        .id(event.eventId())
-                        .eventType("ATTEMPT_SUBMITTED")
-                        .aggregateId(attempt.getId())
-                        .payload(objectMapper.writeValueAsString(event))
-                        .createdAt(finalizedAt)
-                        .build();
-
-                outboxEventRepository.save(outboxEvent);
-            } catch (Exception e) {
+            if (response == null || !response.success() || response.data() == null) {
                 throw new IllegalStateException(
-                        "Failed to create attempt submitted outbox event",
-                        e
+                        "Test service did not return a test blueprint for finalized attempt"
                 );
             }
+
+            List<AttemptAnswer> answers =
+                    attemptAnswerRepository.findByAttemptId(attemptId);
+
+            long elapsedSeconds = Math.max(
+                    0L,
+                    Duration.between(lockedAttempt.getStartedAt(), finalizedAt).getSeconds()
+            );
+
+            long maxDurationSeconds = lockedAttempt.getDurationMinutes() * 60L;
+            long timeTakenSeconds = Math.min(elapsedSeconds, maxDurationSeconds);
+
+            AttemptSubmittedEvent event = AttemptAnalyticsEventFactory.create(
+                    UUID.randomUUID().toString(),
+                    lockedAttempt.getId(),
+                    lockedAttempt.getUserId(),
+                    response.data(),
+                    answers,
+                    timeTakenSeconds,
+                    finalizedAt
+            );
+
+            OutboxEvent outboxEvent = OutboxEvent.builder()
+                    .id(event.eventId())
+                    .eventType("ATTEMPT_FINALIZED")
+                    .aggregateId(lockedAttempt.getId())
+                    .payload(objectMapper.writeValueAsString(event))
+                    .createdAt(finalizedAt)
+                    .build();
+
+            outboxEventRepository.save(outboxEvent);
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Failed to create attempt finalized outbox event",
+                    e
+            );
         }
 
         if (hash != null) {
