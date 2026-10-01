@@ -15,7 +15,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.example.testservice.repository.MockTestRepository;
 import com.example.testservice.exception.ValidationException;
+import com.example.common.audit.AuditEvent;
+import com.example.testservice.service.KafkaPublisherService;
 
+import java.time.Instant;
+import java.util.Map;
 import java.util.List;
 import java.util.UUID;
 
@@ -26,6 +30,7 @@ public class AdminSectionServiceImpl {
     private final SectionRepository sectionRepository;
     private final QuestionRepository questionRepository;
     private final SectionQuestionRepository sectionQuestionRepository; 
+    private final KafkaPublisherService kafkaPublisherService;
     private final MockTestRepository mockTestRepository;
 
     @Transactional
@@ -117,7 +122,25 @@ public class AdminSectionServiceImpl {
         section.setCreatedBy(adminId);
         section.setUpdatedBy(adminId);
 
-        return sectionRepository.save(section).getId();
+        Section saved = sectionRepository.save(section);
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "SECTION_CREATED",
+                "SECTION",
+                saved.getId().toString(),
+                "test-service",
+                "/admin/mock-tests/" + testId + "/sections",
+                "POST",
+                201,
+                null,
+                Map.of("testId", testId.toString()),
+                Instant.now()
+        ));
+
+        return saved.getId();
     }
 
     @Transactional

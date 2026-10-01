@@ -28,16 +28,23 @@ public class SecurityConfig {
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
-    public SecurityConfig(GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter) {
+    public SecurityConfig(
+            GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter) {
         this.gatewayHeaderAuthenticationFilter = gatewayHeaderAuthenticationFilter;
     }
 
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(
+            HttpSecurity http) throws Exception {
+
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
-                .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
+                .sessionManagement(session ->
+                        session.sessionCreationPolicy(
+                                SessionCreationPolicy.STATELESS
+                        )
+                )
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
                         .requestMatchers(
@@ -47,35 +54,62 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/webjars/**"
                         ).permitAll()
-                        .requestMatchers("/register", "/login", "/internal/**", "/refresh").permitAll()
+                        .requestMatchers(
+                                "/register",
+                                "/login",
+                                "/internal/**",
+                                "/refresh"
+                        ).permitAll()
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
-                        .authenticationEntryPoint((request, response, authException) -> writeSecurityError(
-                                response,
-                                HttpStatus.UNAUTHORIZED,
-                                "AUTHENTICATION_REQUIRED",
-                                "Authentication is required to access this resource"
-                        ))
-                        .accessDeniedHandler((request, response, accessDeniedException) -> writeSecurityError(
-                                response,
-                                HttpStatus.FORBIDDEN,
-                                "ACCESS_DENIED",
-                                "You do not have permission to access this resource"
-                        ))
+                        .authenticationEntryPoint(
+                                (request, response, authException) ->
+                                        writeSecurityError(
+                                                response,
+                                                HttpStatus.UNAUTHORIZED,
+                                                "AUTHENTICATION_REQUIRED",
+                                                "Authentication is required to access this resource"
+                                        )
+                        )
+                        .accessDeniedHandler(
+                                (request, response, accessDeniedException) ->
+                                        writeSecurityError(
+                                                response,
+                                                HttpStatus.FORBIDDEN,
+                                                "ACCESS_DENIED",
+                                                "You do not have permission to access this resource"
+                                        )
+                        )
                 )
-                .addFilterBefore(gatewayHeaderAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                .addFilterBefore(
+                        gatewayHeaderAuthenticationFilter,
+                        UsernamePasswordAuthenticationFilter.class
+                )
                 .build();
     }
 
     private void writeSecurityError(
-            HttpServletResponse response, HttpStatus status, String code, String message) throws IOException {
+            HttpServletResponse response,
+            HttpStatus status,
+            String code,
+            String message) throws IOException {
+
         response.setStatus(status.value());
         response.setContentType("application/json");
-        OBJECT_MAPPER.writeValue(response.getOutputStream(),
-                ApiResponse.error(status.value(), message, code, List.of()));
+
+        OBJECT_MAPPER.writeValue(
+                response.getOutputStream(),
+                ApiResponse.error(
+                        status.value(),
+                        message,
+                        code,
+                        List.of()
+                )
+        );
     }
 
     @Bean

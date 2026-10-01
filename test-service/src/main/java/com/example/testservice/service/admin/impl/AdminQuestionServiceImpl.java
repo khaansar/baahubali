@@ -18,7 +18,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.common.audit.AuditEvent;
+import com.example.testservice.service.KafkaPublisherService;
 
+import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
@@ -30,6 +33,7 @@ import java.util.stream.Collectors;
 public class AdminQuestionServiceImpl {
 
     private final QuestionRepository questionRepository;
+    private final KafkaPublisherService kafkaPublisherService;
     private final ObjectMapper objectMapper;
 
     @Transactional
@@ -72,8 +76,27 @@ public class AdminQuestionServiceImpl {
         }).collect(Collectors.toList());
 
         question.setTranslations(translations);
-        questionRepository.save(question);
-        return question.getId();
+        question.setTranslations(translations);
+
+        Question saved = questionRepository.save(question);
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "QUESTION_CREATED",
+                "QUESTION",
+                saved.getId().toString(),
+                "test-service",
+                "/admin/questions",
+                "POST",
+                201,
+                null,
+                Map.of(),
+                Instant.now()
+        ));
+
+        return saved.getId();
     }
 
     @Transactional(readOnly = true)
@@ -184,6 +207,30 @@ public class AdminQuestionServiceImpl {
                 errors.add(new BulkImportResultDto.ImportError(i + 1, e.getMessage()));
             }
         }
+
+        if (!createdIds.isEmpty()) {
+            kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                    UUID.randomUUID(),
+                    adminId,
+                    "ADMIN",
+                    "QUESTIONS_BULK_IMPORTED",
+                    "QUESTION",
+                    null,
+                    "test-service",
+                    "/admin/questions/bulk",
+                    "POST",
+                    201,
+                    null,
+                    Map.of(
+                            "createdCount", String.valueOf(createdIds.size()),
+                            "createdIds", String.join(",", createdIds.stream()
+                                    .map(UUID::toString)
+                                    .toList())
+                    ),
+                    Instant.now()
+            ));
+        }
+
         return new BulkImportResultDto(imported, failed, errors, createdIds);
     }
 
