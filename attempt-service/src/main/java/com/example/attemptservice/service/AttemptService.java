@@ -217,8 +217,7 @@ public class AttemptService {
             throw new IllegalArgumentException("Invalid final attempt status: " + finalStatus);
         }
 
-        Attempt lockedAttempt = attemptRepository.findByIdForUpdate(attempt.getId())
-                .orElseThrow(() -> new AttemptNotFoundException(attempt.getId()));
+        Attempt lockedAttempt = attempt;
 
         if (lockedAttempt.getStatus() == AttemptStatus.SUBMITTED
                 || lockedAttempt.getStatus() == AttemptStatus.EXPIRED) {
