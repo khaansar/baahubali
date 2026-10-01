@@ -29,6 +29,7 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.common.audit.AuditEvent;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -167,7 +168,25 @@ public class AdminMockTestServiceImpl {
         test.setCreatedBy(adminId);
         test.setUpdatedBy(adminId);
 
-        return mockTestRepository.save(test).getId();
+        MockTest saved = mockTestRepository.save(test);
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "TEST_CREATED",
+                "TEST",
+                saved.getId().toString(),
+                "test-service",
+                "/admin/mock-tests/series/" + seriesId + "/mock-tests",
+                "POST",
+                201,
+                null,
+                Map.of("seriesId", seriesId.toString()),
+                Instant.now()
+        ));
+
+        return saved.getId();
     }
 
     @Transactional(readOnly = true)
@@ -323,6 +342,23 @@ public class AdminMockTestServiceImpl {
         }
 
         UUID cloneId = mockTestRepository.save(clone).getId();
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "TEST_CLONED",
+                "TEST",
+                cloneId.toString(),
+                "test-service",
+                "/admin/mock-tests/" + sourceTestId + "/clone",
+                "POST",
+                201,
+                null,
+                Map.of("sourceTestId", sourceTestId.toString()),
+                Instant.now()
+        ));
+
         return getAdminMockTestDetail(cloneId);
     }
 

@@ -11,6 +11,7 @@ public class WebConfig implements WebMvcConfigurer {
 
     private final AdminRoleInterceptor adminRoleInterceptor;
     private final InternalAuthInterceptor internalAuthInterceptor;
+    private final AuditLoggingInterceptor auditLoggingInterceptor;
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
@@ -18,6 +19,9 @@ public class WebConfig implements WebMvcConfigurer {
                 .addPathPatterns("/internal/**");
 
         registry.addInterceptor(adminRoleInterceptor)
-                .addPathPatterns("/admin/**"); 
+                .addPathPatterns("/admin/**");
+
+        registry.addInterceptor(auditLoggingInterceptor)
+                .addPathPatterns("/admin/**");
     }
 }
