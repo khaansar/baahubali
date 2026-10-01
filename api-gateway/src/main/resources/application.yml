@@ -109,6 +109,8 @@ gateway:
       - /auth-api/refresh
 
       - /tests-api/public/**
+      - /tests-api/catalog/mock-tests/*/structure
+      - /tests-api/catalog/mock-tests/slug/*/structure
       - /community-api/public/**
 
       - /auth-api/swagger-ui.html
