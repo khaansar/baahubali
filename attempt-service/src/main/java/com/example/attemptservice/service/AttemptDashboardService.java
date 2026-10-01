@@ -115,12 +115,16 @@ public class AttemptDashboardService {
         LocalDate lastActiveDate = null;
         
         for (Object[] row : results) {
-            java.sql.Date sqlDate = (java.sql.Date) row[0];
-            LocalDate date = sqlDate.toLocalDate();
-            Integer count = ((Number) row[1]).intValue();
-            
-            activityList.add(new StreakResponseDto.StreakActivity(date.format(DateTimeFormatter.ISO_LOCAL_DATE), count));
-            
+            LocalDate date = (LocalDate) row[0];
+            int count = ((Number) row[1]).intValue();
+
+            activityList.add(
+                    new StreakResponseDto.StreakActivity(
+                            date.format(DateTimeFormatter.ISO_LOCAL_DATE),
+                            count
+                    )
+            );
+
             if (lastActiveDate == null) {
                 currentStreak = 1;
             } else if (lastActiveDate.plusDays(1).equals(date)) {
@@ -128,11 +132,11 @@ public class AttemptDashboardService {
             } else {
                 currentStreak = 1;
             }
-            
+
             if (currentStreak > maxStreak) {
                 maxStreak = currentStreak;
             }
-            
+
             lastActiveDate = date;
         }
         
