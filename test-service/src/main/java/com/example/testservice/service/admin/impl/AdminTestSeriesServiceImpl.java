@@ -19,7 +19,10 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.example.common.audit.AuditEvent;
+import com.example.testservice.service.KafkaPublisherService;
 
+import java.util.Map;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.UUID;
@@ -30,6 +33,7 @@ public class AdminTestSeriesServiceImpl {
 
     private final TestSeriesRepository testSeriesRepository;
     private final CategoryRepository categoryRepository;
+    private final KafkaPublisherService kafkaPublisherService;
     private final SlugService slugService;
 
     @Transactional
@@ -51,7 +55,25 @@ public class AdminTestSeriesServiceImpl {
         series.setCreatedBy(adminId);
         series.setUpdatedBy(adminId);
 
-        return testSeriesRepository.save(series).getId();
+        TestSeries saved = testSeriesRepository.save(series);
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "TEST_SERIES_CREATED",
+                "TEST_SERIES",
+                saved.getId().toString(),
+                "test-service",
+                "/admin/series",
+                "POST",
+                201,
+                null,
+                Map.of(),
+                Instant.now()
+        ));
+
+        return saved.getId();
     }
 
     @Transactional

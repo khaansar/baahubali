@@ -1,5 +1,6 @@
 package com.example.testservice.service;
 
+import com.example.common.audit.AuditEvent;
 import com.example.testservice.dto.CategoryDto;
 import com.example.testservice.entity.Category;
 import com.example.testservice.exception.ResourceNotFoundException;
@@ -9,7 +10,9 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.Instant;
 import java.util.List;
+import java.util.Map;
 import java.util.UUID;
 import java.util.stream.Collectors;
 
@@ -19,6 +22,7 @@ public class CategoryService {
 
     private final CategoryRepository categoryRepository;
     private final SlugService slugService;
+    private final KafkaPublisherService kafkaPublisherService;
 
     @Transactional
     @CacheEvict(value = "baahubali:test:categories", allEntries = true)
@@ -31,7 +35,25 @@ public class CategoryService {
         category.setCreatedBy(adminId);
         category.setUpdatedBy(adminId);
 
-        return mapToDto(categoryRepository.save(category));
+        Category saved = categoryRepository.save(category);
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "CATEGORY_CREATED",
+                "CATEGORY",
+                saved.getId().toString(),
+                "test-service",
+                "/admin/categories",
+                "POST",
+                201,
+                null,
+                Map.of(),
+                Instant.now()
+        ));
+
+        return mapToDto(saved);
     }
 
     @Transactional
