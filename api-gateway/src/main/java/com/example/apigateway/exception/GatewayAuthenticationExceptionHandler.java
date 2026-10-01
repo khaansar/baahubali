@@ -10,6 +10,7 @@ import org.springframework.http.server.reactive.ServerHttpResponse;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
 import org.springframework.web.server.WebExceptionHandler;
+import java.util.UUID;
 import reactor.core.publisher.Mono;
 import tools.jackson.databind.ObjectMapper;
 
@@ -38,15 +39,16 @@ public class GatewayAuthenticationExceptionHandler implements WebExceptionHandle
 
         AuthErrorCode errorCode = exception.getErrorCode();
         String path = exchange.getRequest().getPath().value();
+        String traceId = "err-" + UUID.randomUUID();
 
-        log.warn("Authentication rejected [{} {}] code={} reason={}",
-                exchange.getRequest().getMethod(), path, errorCode, rejectionReason(exception));
+        log.warn("Authentication rejected trace_id={} [{} {}] code={} reason={}",
+                traceId, exchange.getRequest().getMethod(), path, errorCode, rejectionReason(exception));
 
         response.setStatusCode(errorCode.getStatus());
         response.getHeaders().setContentType(MediaType.APPLICATION_JSON);
 
         return response.writeWith(
-                Mono.fromCallable(() -> serialize(ErrorResponse.of(errorCode), response.bufferFactory())));
+                Mono.fromCallable(() -> serialize(ErrorResponse.of(errorCode, traceId), response.bufferFactory())));
     }
 
     private DataBuffer serialize(ErrorResponse body, DataBufferFactory bufferFactory) {

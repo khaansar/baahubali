@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.server.ResponseStatusException;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.time.Instant;
 import java.util.List;
@@ -49,12 +50,22 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGeneralExceptions(Exception ex) {
-        log.error("Unhandled exception while processing community API request", ex);
-        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR, "An unexpected error occurred", "INTERNAL_SERVER_ERROR", List.of());
+    public ResponseEntity<ApiErrorResponse> handleGeneralExceptions(Exception ex, HttpServletRequest request) {
+        String traceId = "err-" + UUID.randomUUID();
+        log.error("Unhandled request failure service=community-service trace_id={} method={} path={}",
+                traceId, request.getMethod(), request.getRequestURI(), ex);
+        return buildErrorResponse(HttpStatus.INTERNAL_SERVER_ERROR,
+                "The server could not complete the request. Contact support with the trace ID.",
+                "INTERNAL_SERVER_ERROR", List.of(), traceId);
     }
 
     private ResponseEntity<ApiErrorResponse> buildErrorResponse(HttpStatus status, String message, String errorCode, List<ApiErrorDetail> details) {
+        return buildErrorResponse(status, message, errorCode, details, "err-" + UUID.randomUUID());
+    }
+
+    private ResponseEntity<ApiErrorResponse> buildErrorResponse(HttpStatus status, String message,
+                                                                 String errorCode, List<ApiErrorDetail> details,
+                                                                 String traceId) {
         ApiErrorResponse response = ApiErrorResponse.builder()
                 .success(false)
                 .status(status.value())
@@ -65,7 +76,7 @@ public class GlobalExceptionHandler {
                         .build())
                 .meta(ApiErrorResponse.MetaData.builder()
                         .timestamp(Instant.now().toString())
-                        .traceId(UUID.randomUUID().toString())
+                        .traceId(traceId)
                         .build())
                 .build();
 
