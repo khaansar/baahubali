@@ -23,12 +23,11 @@ public final class AttemptAnalyticsEventFactory {
             Long timeTakenSeconds,
             Instant timestamp
     ) {
-        Map<String, String> answerMap = answers.stream()
-                .collect(Collectors.toMap(
-                        AttemptAnswer::getQuestionId,
-                        AttemptAnswer::getSelectedOption,
-                        (first, second) -> second
-                ));
+        Map<String, String> answerMap = new HashMap<>();
+
+        for (AttemptAnswer answer : answers) {
+            answerMap.put(answer.getQuestionId(), answer.getSelectedOption());
+        }
 
         return new AttemptSubmittedEvent(
                 eventId,
