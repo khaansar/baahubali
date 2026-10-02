@@ -14,11 +14,14 @@ import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import com.example.iam.security.AuthCookieFactory;
 import lombok.RequiredArgsConstructor;
 
 import java.util.List;
+import java.util.UUID;
 
 @RestControllerAdvice
 @RequiredArgsConstructor
@@ -66,6 +69,31 @@ public class GlobalExceptionHandler {
                 "Validation failed for the submitted input",
                 "INVALID_INPUT",
                 details
+        );
+    }
+
+    @ExceptionHandler(ConstraintViolationException.class)
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolations(ConstraintViolationException ex) {
+        List<ApiErrorDetail> details = ex.getConstraintViolations().stream()
+                .map(violation -> new ApiErrorDetail(
+                        violation.getPropertyPath().toString().replaceAll(".*\\.", ""),
+                        violation.getMessage()))
+                .toList();
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed for the submitted input",
+                "INVALID_INPUT",
+                details
+        );
+    }
+
+    @ExceptionHandler(MethodArgumentTypeMismatchException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                "Validation failed for the submitted input",
+                "INVALID_INPUT",
+                List.of(new ApiErrorDetail(ex.getName(), "Value has an invalid format"))
         );
     }
 
@@ -122,13 +150,16 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(
             Exception ex, HttpServletRequest request) {
-        log.error("Unhandled exception for {} {}", request.getMethod(), request.getRequestURI(), ex);
-        return buildResponse(
-                HttpStatus.INTERNAL_SERVER_ERROR,
-                "An unexpected error occurred",
-                "INTERNAL_SERVER_ERROR",
-                List.of()
-        );
+        String traceId = "err-" + UUID.randomUUID();
+        log.error("Unhandled request failure service=iam-service trace_id={} method={} path={}",
+                traceId, request.getMethod(), request.getRequestURI(), ex);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
+                .body(ApiResponse.error(
+                        HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                        "The server could not complete the request. Contact support with the trace ID.",
+                        "INTERNAL_SERVER_ERROR",
+                        List.of(),
+                        traceId));
     }
 
     private ResponseEntity<ApiResponse<Void>> buildResponse(
