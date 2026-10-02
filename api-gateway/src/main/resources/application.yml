@@ -82,7 +82,7 @@ spring:
                   args:
                     key-resolver: "#{@userOrIpKeyResolver}"
                     redis-rate-limiter.replenishRate: 20
-                    redis-rate-limiter.burstCapacity: 10
+                    redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
 
 logging:
