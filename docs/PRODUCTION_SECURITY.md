@@ -1,7 +1,7 @@
 # Production security architecture
 
 Production is intentionally fail-closed: the gateway and IAM default to RS256
-and need `JWT_PRIVATE_KEY_BASE64` (IAM only), `JWT_PUBLIC_KEY_BASE64` (gateway
+and need `JWT_PRIVATE_KEY_PATH` (IAM only), `JWT_PUBLIC_KEY_PATH` (gateway
 only), `JWT_ISSUER`, and `JWT_AUDIENCE`. Store these in a managed secret store
 and mount them as runtime secrets; never restore the prior shared JWT secret.
 

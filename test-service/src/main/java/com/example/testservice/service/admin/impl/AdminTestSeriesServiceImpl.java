@@ -1,5 +1,6 @@
 package com.example.testservice.service.admin.impl;
 
+import com.example.common.audit.AuditEvent;
 import com.example.testservice.dto.admin.TestSeriesCreateDto;
 import com.example.testservice.dto.admin.TestSeriesDetailDto;
 import com.example.testservice.dto.admin.TestSeriesListDto;
@@ -12,19 +13,20 @@ import com.example.testservice.entity.TestSeries;
 import com.example.testservice.exception.ResourceConflictException;
 import com.example.testservice.exception.ResourceNotFoundException;
 import com.example.testservice.repository.CategoryRepository;
+import com.example.testservice.repository.MockTestRepository;
 import com.example.testservice.repository.TestSeriesRepository;
+import com.example.testservice.service.KafkaPublisherService;
 import com.example.testservice.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.common.audit.AuditEvent;
-import com.example.testservice.service.KafkaPublisherService;
 
-import java.util.Map;
+import java.math.BigDecimal;
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.Map;
 import java.util.UUID;
 
 @Service
@@ -32,6 +34,7 @@ import java.util.UUID;
 public class AdminTestSeriesServiceImpl {
 
     private final TestSeriesRepository testSeriesRepository;
+    private final MockTestRepository mockTestRepository;
     private final CategoryRepository categoryRepository;
     private final KafkaPublisherService kafkaPublisherService;
     private final SlugService slugService;
@@ -203,12 +206,26 @@ public class AdminTestSeriesServiceImpl {
                     .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
         }
 
+        BigDecimal oldPrice = series.getBasePrice();
+        BigDecimal newPrice = dto.basePrice();
+
         series.setTitle(dto.title());
-        series.setBasePrice(dto.basePrice());
+        series.setBasePrice(newPrice);
         series.setCategory(category);
         series.setUpdatedBy(adminId);
 
         testSeriesRepository.save(series);
+
+        if (oldPrice == null || newPrice == null || oldPrice.compareTo(newPrice) != 0) {
+            boolean isFree = newPrice != null && newPrice.compareTo(BigDecimal.ZERO) == 0;
+            Instant updatedAt = Instant.now();
+
+            mockTestRepository.updateFreeStatusBySeriesId(
+                    id,
+                    isFree,
+                    updatedAt
+            );
+        }
 
         return getSeriesById(id);
     }
