@@ -1,8 +1,6 @@
 server:
   servlet:
     context-path: /attempts-api
-  tomcat:
-    redirect-context-root: false
 
 spring:
   application:
@@ -16,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: ${JPA_DDL_AUTO}
     show-sql: false
     properties:
       hibernate:
@@ -38,23 +36,20 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
-      password: ${REDIS_PASSWORD:}
   
   flyway:
-    enabled: true
-    baseline-on-migrate: true
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${ATTEMPT_SERVICE_DATABASE:attempt_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
-    user: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:root}
+    enabled: ${SPRING_FLYWAY_ENABLED}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
+    baseline-version: 4
 
 internal:
   auth:
-    my-secret: ${ATTEMPT_SERVICE_SECRET:attempt-secret-key}
+    my-secret: ${ATTEMPT_SERVICE_SECRET}
     allowed-clients:
-      community-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+      community-service: ${COMMUNITY_SERVICE_SECRET}
   services:
-    test-url: ${TEST_SERVICE_URL:http://test-service:8080/tests-api}
+    test-url: ${TEST_SERVICE_URL}
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}

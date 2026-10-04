@@ -14,8 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: update
-    show-sql: true
+      ddl-auto: ${JPA_DDL_AUTO}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -24,22 +23,23 @@ spring:
 
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
-    baseline-on-migrate: true
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
+    baseline-version: 3
 
   kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
 
 internal:
   auth:
-    my-secret: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+    my-secret: ${COMMUNITY_SERVICE_SECRET}
     allowed-clients:
-      test-service: ${TEST_SERVICE_SECRET:test-secret-key}
+      test-service: ${TEST_SERVICE_SECRET}
   services:
-    iam-url: ${IAM_SERVICE_URL:http://iam-service:8080/auth-api}
-    attempt-url: ${ATTEMPT_SERVICE_URL:http://attempt-service:8080/attempts-api}
+    iam-url: ${IAM_SERVICE_URL}
+    attempt-url: ${ATTEMPT_SERVICE_URL}
 
 logging:
   level:
@@ -48,4 +48,4 @@ logging:
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}

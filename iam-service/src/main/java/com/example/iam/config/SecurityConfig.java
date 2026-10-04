@@ -61,6 +61,7 @@ public class SecurityConfig {
                                 "/refresh"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/users").hasRole("ADMIN")
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         .anyRequest().authenticated()

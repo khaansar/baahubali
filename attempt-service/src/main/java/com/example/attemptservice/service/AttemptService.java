@@ -199,9 +199,11 @@ public class AttemptService {
     }
 
     @Transactional
-    public SubmitAttemptResponse submitAttempt(String attemptId) {
+    public SubmitAttemptResponse submitAttempt(String attemptId, String userId) {
         Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.EXPIRED) {
             return toSubmitResponse(attempt);
@@ -378,9 +380,11 @@ public class AttemptService {
     }
 
     @Transactional(readOnly = true)
-    public AttemptReviewResponse getReview(String attemptId) {
+    public AttemptReviewResponse getReview(String attemptId, String userId) {
         Attempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
 
         List<AttemptAnswer> studentAnswers = attemptAnswerRepository.findByAttemptId(attemptId);
 
@@ -453,7 +457,12 @@ public class AttemptService {
                 .build();
     }
 
-    public AttemptStateSnapshot getAttemptState(String attemptId) {
+    public AttemptStateSnapshot getAttemptState(String attemptId, String userId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         AttemptRedisHash hash = attemptRedisRepository.findById(attemptId)
                 .orElseGet(() -> rehydrate(attemptId));
 
@@ -461,7 +470,12 @@ public class AttemptService {
     }
 
     @Transactional
-    public Long patchAttempt(String attemptId, PatchAttemptRequest request) {
+    public Long patchAttempt(String attemptId, String userId, PatchAttemptRequest request) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
@@ -520,15 +534,18 @@ public class AttemptService {
             );
         }
 
-        attemptRepository.findById(attemptId).ifPresent(attempt -> {
-            attempt.setUpdatedAt(Instant.now());
-            attemptRepository.save(attempt);
-        });
+        attempt.setUpdatedAt(Instant.now());
+        attemptRepository.save(attempt);
 
         return nextVersion;
     }
 
-    public SseEmitter getSseEmitter(String attemptId) {
+    public SseEmitter getSseEmitter(String attemptId, String userId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         SseEmitter emitter = new SseEmitter(0L);
 
         CopyOnWriteArrayList<SseEmitter> group = emitters.computeIfAbsent(
@@ -643,6 +660,15 @@ public class AttemptService {
             throw new IllegalStateException(
                     "Could not serialize answers",
                     e
+            );
+        }
+    }
+
+    private void verifyOwnership(Attempt attempt, String userId) {
+        if (!attempt.getUserId().equals(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not authorized to access this attempt"
             );
         }
     }
