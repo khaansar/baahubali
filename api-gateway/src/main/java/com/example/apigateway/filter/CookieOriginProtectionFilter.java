@@ -29,7 +29,7 @@ public class CookieOriginProtectionFilter implements GlobalFilter, Ordered {
     private final PublicRouteMatcher publicRouteMatcher;
 
     public CookieOriginProtectionFilter(
-            @Value("${CORS_ALLOWED_ORIGINS}") String configuredOrigins,
+            @Value("${CORS_ALLOWED_ORIGINS:http://localhost:3000}") String configuredOrigins,
             PublicRouteMatcher publicRouteMatcher) {
 
         this.publicRouteMatcher = publicRouteMatcher;
