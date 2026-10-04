@@ -13,6 +13,9 @@ import org.springframework.http.HttpMethod;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.server.ServerWebExchange;
+
+import com.example.apigateway.security.PublicRouteMatcher;
+
 import reactor.core.publisher.Mono;
 
 /**
@@ -23,9 +26,14 @@ import reactor.core.publisher.Mono;
 public class CookieOriginProtectionFilter implements GlobalFilter, Ordered {
 
     private final Set<String> allowedOrigins;
+    private final PublicRouteMatcher publicRouteMatcher;
 
     public CookieOriginProtectionFilter(
-            @Value("${CORS_ALLOWED_ORIGINS}") String configuredOrigins) {
+            @Value("${CORS_ALLOWED_ORIGINS}") String configuredOrigins,
+            PublicRouteMatcher publicRouteMatcher) {
+
+        this.publicRouteMatcher = publicRouteMatcher;
+
         this.allowedOrigins = Arrays.stream(configuredOrigins.split(","))
                 .map(String::trim)
                 .filter(value -> !value.isEmpty())
@@ -35,6 +43,10 @@ public class CookieOriginProtectionFilter implements GlobalFilter, Ordered {
 
     @Override
     public Mono<Void> filter(ServerWebExchange exchange, GatewayFilterChain chain) {
+        if (publicRouteMatcher.isPublic(exchange.getRequest())) {
+            return chain.filter(exchange);
+        }
+
         HttpMethod method = exchange.getRequest().getMethod();
         boolean unsafeMethod = method != null && !(method == HttpMethod.GET || method == HttpMethod.HEAD
                 || method == HttpMethod.OPTIONS || method == HttpMethod.TRACE);

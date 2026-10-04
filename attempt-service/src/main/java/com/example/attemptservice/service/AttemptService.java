@@ -116,8 +116,6 @@ public class AttemptService {
         }
         InternalTestBlueprintDto blueprint = response.data();
         if (!Boolean.TRUE.equals(blueprint.getFree())) {
-            // Fail closed until a payment service supplies an authoritative,
-            // server-side entitlement decision.
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "A verified entitlement is required for this test");
         }
