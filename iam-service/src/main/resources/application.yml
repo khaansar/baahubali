@@ -16,9 +16,16 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    properties:
+      security.protocol: ${KAFKA_SECURITY_PROTOCOL:PLAINTEXT}
+      sasl.mechanism: ${KAFKA_SASL_MECHANISM:}
+      sasl.jaas.config: ${KAFKA_SASL_JAAS_CONFIG:}
 
   jpa:
     hibernate:
@@ -40,7 +47,11 @@ app:
     version: ${API_VERSION:1.2.0}
   jwt:
     # MUST be overridden via env var in every real environment — this default is for local dev only.
-    secret: ${JWT_SECRET}
+    secret: ${JWT_SECRET:}
+    signing-algorithm: ${JWT_SIGNING_ALGORITHM:RS256}
+    private-key: ${JWT_PRIVATE_KEY_PATH}
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
     expiration-ms: ${JWT_EXPIRATION_MS}
     refresh-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS}
     cookie-name: ACCESS_TOKEN
@@ -57,5 +68,7 @@ internal:
 springdoc:
   api-docs:
     path: /v3/api-docs
+    enabled: ${SPRINGDOC_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SPRINGDOC_ENABLED:false}
