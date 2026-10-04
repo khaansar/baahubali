@@ -1,0 +1,131 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: api-gateway-test
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      redis-rate-limiter:
+        include-headers: true
+        deny-empty-key: true
+
+      server:
+        webflux:
+          routes:
+            - id: iam-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/auth-api/**
+
+            - id: test-service
+              uri: http://localhost:8082
+              predicates:
+                - Path=/tests-api/**
+
+            - id: attempt-service
+              uri: http://localhost:8083
+              predicates:
+                - Path=/attempts-api/**
+
+            - id: community-service
+              uri: http://localhost:8084
+              predicates:
+                - Path=/community-api/**
+
+            - id: analytics-service
+              uri: http://localhost:8085
+              predicates:
+                - Path=/analytics-api/**
+
+gateway:
+  security:
+    public-paths:
+      - /auth-api/login
+      - /auth-api/register
+      - /auth-api/refresh
+
+      - /tests-api/public/**
+      - /tests-api/catalog/mock-tests/*/structure
+      - /tests-api/catalog/mock-tests/slug/*/structure
+      - /community-api/public/**
+
+      - /auth-api/swagger-ui.html
+      - /auth-api/swagger-ui/**
+      - /auth-api/v3/api-docs
+      - /auth-api/v3/api-docs/**
+      - /auth-api/webjars/**
+
+      - /tests-api/swagger-ui.html
+      - /tests-api/swagger-ui/**
+      - /tests-api/v3/api-docs
+      - /tests-api/v3/api-docs/**
+      - /tests-api/webjars/**
+
+      - /attempts-api/swagger-ui.html
+      - /attempts-api/swagger-ui/**
+      - /attempts-api/v3/api-docs
+      - /attempts-api/v3/api-docs/**
+      - /attempts-api/webjars/**
+
+      - /community-api/swagger-ui.html
+      - /community-api/swagger-ui/**
+      - /community-api/v3/api-docs
+      - /community-api/v3/api-docs/**
+      - /community-api/webjars/**
+
+      - /analytics-api/swagger-ui.html
+      - /analytics-api/swagger-ui/**
+      - /analytics-api/v3/api-docs
+      - /analytics-api/v3/api-docs/**
+      - /analytics-api/webjars/**
+
+      - /swagger-ui.html
+      - /swagger-ui/**
+      - /v3/api-docs/**
+      - /webjars/**
+
+    jwt:
+      # Base64 encoded test-only secret.
+      # This is NOT used in production.
+      secret: c2VjdXJlLXRlc3Qtc2VjcmV0LWtleS0zMi1ieXRlcy1sb25n
+      cookie-name: ACCESS_TOKEN
+      user-id-claim: sub
+      role-claim: role
+      issuer: ""
+      clock-skew-seconds: 30
+
+app:
+  api:
+    version: test
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: IAM Service
+        url: /auth-api/v3/api-docs
+      - name: Test Service
+        url: /tests-api/v3/api-docs
+      - name: Attempts Service
+        url: /attempts-api/v3/api-docs
