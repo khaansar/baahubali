@@ -16,13 +16,16 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${JPA_DDL_AUTO}
     properties:
       hibernate:
         format_sql: true
@@ -31,34 +34,37 @@ spring:
     open-in-view: false
 
   flyway:
-    enabled: true
-    baseline-on-migrate: true
+    enabled: ${SPRING_FLYWAY_ENABLED}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
     baseline-version: 5
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${IAM_SERVICE_DATABASE:iam_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
-    user: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:root}
 
 app:
   api:
     version: ${API_VERSION:1.2.0}
   jwt:
     # MUST be overridden via env var in every real environment — this default is for local dev only.
-    secret: ${JWT_SECRET:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI}
-    expiration-ms: ${JWT_EXPIRATION_MS:3600000}
-    refresh-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS:2592000000}
+    secret: ${JWT_SECRET:}
+    signing-algorithm: ${JWT_SIGNING_ALGORITHM:RS256}
+    private-key: ${JWT_PRIVATE_KEY_PATH}
+    issuer: ${JWT_ISSUER}
+    audience: ${JWT_AUDIENCE}
+    expiration-ms: ${JWT_EXPIRATION_MS}
+    refresh-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS}
     cookie-name: ACCESS_TOKEN
     refresh-cookie-name: REFRESH_TOKEN
     cookie-domain: ${COOKIE_DOMAIN:}
-    cookie-secure: ${COOKIE_SECURE:true}
-    cookie-same-site: ${COOKIE_SAME_SITE:Strict}
+    cookie-secure: ${COOKIE_SECURE}
+    cookie-same-site: ${COOKIE_SAME_SITE}
 
 internal:
   auth:
     allowed-clients:
-      community-service: ${COMMUNITY_SERVICE_SECRET:community-secret-key}
+      community-service: ${COMMUNITY_SERVICE_SECRET}
 
 springdoc:
   api-docs:
     path: /v3/api-docs
+    enabled: ${SPRINGDOC_ENABLED:false}
   swagger-ui:
     path: /swagger-ui.html
+    enabled: ${SPRINGDOC_ENABLED:false}

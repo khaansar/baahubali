@@ -8,6 +8,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
   cloud:
     gateway:
       globalcors:
@@ -30,7 +33,7 @@ spring:
         webflux:
           routes:
             - id: iam-service
-              uri: ${IAM_SERVICE_URL:http://localhost:8080}
+              uri: ${IAM_SERVICE_URL}
               predicates:
                 - Path=/auth-api/**
               filters:
@@ -40,8 +43,30 @@ spring:
                     redis-rate-limiter.replenishRate: 5
                     redis-rate-limiter.burstCapacity: 10
                     redis-rate-limiter.requestedTokens: 1
+            - id: iam-login
+              uri: ${IAM_SERVICE_URL}
+              predicates:
+                - Path=/auth-api/login
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 5
+                    redis-rate-limiter.requestedTokens: 1
+            - id: iam-register
+              uri: ${IAM_SERVICE_URL}
+              predicates:
+                - Path=/auth-api/register
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 1
+                    redis-rate-limiter.burstCapacity: 3
+                    redis-rate-limiter.requestedTokens: 1
             - id: test-service
-              uri: ${TEST_SERVICE_URL:http://localhost:8080}
+              uri: ${TEST_SERVICE_URL}
               predicates:
                 - Path=/tests-api/**
               filters:
@@ -52,7 +77,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
             - id: attempt-service
-              uri: ${ATTEMPT_SERVICE_URL:http://localhost:8080}
+              uri: ${ATTEMPT_SERVICE_URL}
               predicates:
                 - Path=/attempts-api/**
               filters:
@@ -63,7 +88,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
             - id: community-service
-              uri: ${COMMUNITY_SERVICE_URL:http://localhost:8080}
+              uri: ${COMMUNITY_SERVICE_URL}
               predicates:
                 - Path=/community-api/**
               filters:
@@ -74,7 +99,7 @@ spring:
                     redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
             - id: analytics-service
-              uri: ${ANALYTICS_SERVICE_URL:http://localhost:8080}
+              uri: ${ANALYTICS_SERVICE_URL}
               predicates:
                 - Path=/analytics-api/**
               filters:
@@ -87,10 +112,13 @@ spring:
 
 logging:
   level:
-    org.springframework.cloud.gateway: TRACE
+    org.springframework.cloud.gateway: INFO
 
 springdoc:
+  api-docs:
+    enabled: ${SPRINGDOC_ENABLED:false}
   swagger-ui:
+    enabled: ${SPRINGDOC_ENABLED:false}
     path: /swagger-ui.html
     urls:
       - name: IAM Service
@@ -109,51 +137,18 @@ gateway:
       - /auth-api/refresh
 
       - /tests-api/public/**
-      - /tests-api/catalog/mock-tests/*/structure
-      - /tests-api/catalog/mock-tests/slug/*/structure
       - /community-api/public/**
-
-      - /auth-api/swagger-ui.html
-      - /auth-api/swagger-ui/**
-      - /auth-api/v3/api-docs
-      - /auth-api/v3/api-docs/**
-      - /auth-api/webjars/**
-
-      - /tests-api/swagger-ui.html
-      - /tests-api/swagger-ui/**
-      - /tests-api/v3/api-docs
-      - /tests-api/v3/api-docs/**
-      - /tests-api/webjars/**
-
-      - /attempts-api/swagger-ui.html
-      - /attempts-api/swagger-ui/**
-      - /attempts-api/v3/api-docs
-      - /attempts-api/v3/api-docs/**
-      - /attempts-api/webjars/**
-      
-      - /community-api/swagger-ui.html
-      - /community-api/swagger-ui/**
-      - /community-api/v3/api-docs
-      - /community-api/v3/api-docs/**
-      - /community-api/webjars/**
-
-      - /analytics-api/swagger-ui.html
-      - /analytics-api/swagger-ui/**
-      - /analytics-api/v3/api-docs
-      - /analytics-api/v3/api-docs/**
-      - /analytics-api/webjars/**
-      - /swagger-ui.html
-      - /swagger-ui/**
-      - /v3/api-docs/**
-      - /webjars/**
     jwt:
-      secret: ${JWT_SECRET:MTIzNDU2Nzg5MDEyMzQ1Njc4OTAxMjM0NTY3ODkwMTI}
+      algorithm: ${JWT_SIGNING_ALGORITHM:RS256}
+      secret: ${JWT_SECRET:}
+      public-key: ${JWT_PUBLIC_KEY_PATH}
       cookie-name: ACCESS_TOKEN
       user-id-claim: sub
       role-claim: role
-      issuer: ${JWT_ISSUER:}
+      issuer: ${JWT_ISSUER}
+      audience: ${JWT_AUDIENCE}
       clock-skew-seconds: 30
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}
