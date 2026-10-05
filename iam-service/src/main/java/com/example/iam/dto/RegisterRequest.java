@@ -18,5 +18,9 @@ public record RegisterRequest(
         // 72 is BCrypt's effective max input length in bytes.
         @NotBlank(message = "Password is required")
         @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
-        String password
+        String password,
+
+        String phone,
+
+        String targetExam
 ) {}
