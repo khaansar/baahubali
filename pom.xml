@@ -26,6 +26,7 @@
         <module>attempt-service</module>
         <module>analytics-service</module>
         <module>community-service</module>
+        <module>notification-service</module>
     </modules>
 
     <properties>
