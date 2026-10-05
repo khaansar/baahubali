@@ -37,6 +37,7 @@ public class ReportPersistenceService {
     private final TestReportRepository reports;
     private final SectionPerformanceRepository sections;
     private final TestLeaderboardSnapshotRepository snapshots;
+    private final UserTopicPerformanceRepository topicPerformanceRepository;
 
     /**
      * Claims the attempt for processing.
@@ -144,6 +145,50 @@ public class ReportPersistenceService {
         snapshot.setTimeTakenSeconds(toInt(event.timeTakenSeconds()));
         snapshot.setRankPosition(peer.rank());
         snapshots.save(snapshot);
+
+        if (event.topicAnswers() != null && !event.topicAnswers().isEmpty()) {
+            for (com.example.analyticsservice.contract.TopicAnswerPayload topicPayload : event.topicAnswers()) {
+                if (topicPayload.topic() == null || topicPayload.topic().isBlank()) {
+                    continue;
+                }
+                String topicName = topicPayload.topic().trim();
+                UserTopicPerformanceEntity topicEntity = topicPerformanceRepository
+                        .findByUserIdAndTopic(event.userId(), topicName)
+                        .orElseGet(() -> {
+                            UserTopicPerformanceEntity entity = new UserTopicPerformanceEntity();
+                            entity.setUserId(event.userId());
+                            entity.setTopic(topicName);
+                            entity.setTotalQuestions(0);
+                            entity.setCorrectCount(0);
+                            entity.setIncorrectCount(0);
+                            entity.setUnattemptedCount(0);
+                            entity.setAttemptsCount(0);
+                            return entity;
+                        });
+
+                int totalQ = (topicEntity.getTotalQuestions() != null ? topicEntity.getTotalQuestions() : 0)
+                        + (topicPayload.totalQuestions() != null ? topicPayload.totalQuestions() : 0);
+                int correct = (topicEntity.getCorrectCount() != null ? topicEntity.getCorrectCount() : 0)
+                        + (topicPayload.correct() != null ? topicPayload.correct() : 0);
+                int incorrect = (topicEntity.getIncorrectCount() != null ? topicEntity.getIncorrectCount() : 0)
+                        + (topicPayload.incorrect() != null ? topicPayload.incorrect() : 0);
+                int unattempted = (topicEntity.getUnattemptedCount() != null ? topicEntity.getUnattemptedCount() : 0)
+                        + (topicPayload.unattempted() != null ? topicPayload.unattempted() : 0);
+                int attempts = (topicEntity.getAttemptsCount() != null ? topicEntity.getAttemptsCount() : 0) + 1;
+
+                topicEntity.setTotalQuestions(totalQ);
+                topicEntity.setCorrectCount(correct);
+                topicEntity.setIncorrectCount(incorrect);
+                topicEntity.setUnattemptedCount(unattempted);
+                topicEntity.setAttemptsCount(attempts);
+                topicEntity.setLastAttemptAt(java.time.LocalDateTime.now());
+
+                double accuracy = totalQ > 0 ? ((double) correct * 100.0) / totalQ : 0.0;
+                topicEntity.setAccuracyPercentage(scale2(accuracy));
+
+                topicPerformanceRepository.save(topicEntity);
+            }
+        }
     }
 
     /** Marks a non-completed report FAILED. Never downgrades a COMPLETED report. */

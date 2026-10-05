@@ -5,13 +5,14 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 
 import java.time.Instant;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 
-public interface MockTestRepository extends JpaRepository<MockTest, UUID> {
+public interface MockTestRepository extends JpaRepository<MockTest, UUID>, JpaSpecificationExecutor<MockTest> {
 
     List<MockTest> findBySeriesIdAndDeletedAtIsNull(UUID seriesId);
 

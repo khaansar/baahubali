@@ -16,5 +16,6 @@ public record QuestionUpdateDto(
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         String explanation,
+        String topic,
         Difficulty difficulty
 ) {}

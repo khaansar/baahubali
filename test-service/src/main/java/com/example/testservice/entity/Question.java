@@ -35,6 +35,9 @@ public class Question extends BaseEntity {
     @Column(columnDefinition = "TEXT")
     private String explanation;
 
+    @Column(name = "topic", length = 100)
+    private String topic;
+
     @Enumerated(EnumType.STRING)
     private Difficulty difficulty;
 

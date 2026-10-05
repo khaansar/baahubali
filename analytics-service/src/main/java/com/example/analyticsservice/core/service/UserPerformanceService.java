@@ -1,11 +1,14 @@
 package com.example.analyticsservice.core.service;
 
 import com.example.analyticsservice.contract.UserPerformanceResponse;
+import com.example.analyticsservice.contract.UserTopicPerformanceResponse;
 import com.example.analyticsservice.core.entity.ReportStatus;
 import com.example.analyticsservice.core.entity.SectionPerformanceEntity;
 import com.example.analyticsservice.core.entity.TestReportEntity;
+import com.example.analyticsservice.core.entity.UserTopicPerformanceEntity;
 import com.example.analyticsservice.core.repository.SectionPerformanceRepository;
 import com.example.analyticsservice.core.repository.TestReportRepository;
+import com.example.analyticsservice.core.repository.UserTopicPerformanceRepository;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.ArrayList;
@@ -25,6 +28,7 @@ public class UserPerformanceService {
 
     private final TestReportRepository testReportRepository;
     private final SectionPerformanceRepository sectionPerformanceRepository;
+    private final UserTopicPerformanceRepository topicPerformanceRepository;
 
     @Transactional(readOnly = true)
     public UserPerformanceResponse getPerformance(String userId) {
@@ -78,6 +82,83 @@ public class UserPerformanceService {
                 attempts,
                 sectionPerformance
         );
+    }
+
+    @Transactional(readOnly = true)
+    public UserTopicPerformanceResponse getTopicPerformance(String userId) {
+        List<UserTopicPerformanceEntity> topicEntities =
+                topicPerformanceRepository.findByUserIdOrderByAccuracyPercentageDesc(userId);
+
+        if (topicEntities.isEmpty()) {
+            return new UserTopicPerformanceResponse(
+                    List.of(),
+                    List.of(),
+                    List.of(),
+                    "Attempt more tests to unlock AI-powered topic insights and weakness analysis."
+            );
+        }
+
+        List<UserTopicPerformanceResponse.TopicPerformanceDto> topics = topicEntities.stream()
+                .map(t -> new UserTopicPerformanceResponse.TopicPerformanceDto(
+                        t.getTopic(),
+                        t.getTotalQuestions(),
+                        t.getCorrectCount(),
+                        t.getIncorrectCount(),
+                        t.getUnattemptedCount(),
+                        t.getAccuracyPercentage(),
+                        t.getAttemptsCount(),
+                        null
+                ))
+                .toList();
+
+        // Strengths: topics with accuracy >= 70%
+        List<String> strengths = topicEntities.stream()
+                .filter(t -> t.getAccuracyPercentage() != null && t.getAccuracyPercentage().compareTo(BigDecimal.valueOf(70)) >= 0)
+                .map(t -> t.getTopic() + " (" + Math.round(t.getAccuracyPercentage().doubleValue()) + "%)")
+                .limit(5)
+                .toList();
+
+        // Weaknesses: topics with accuracy < 60%
+        List<String> weaknesses = topicEntities.stream()
+                .filter(t -> t.getAccuracyPercentage() != null && t.getAccuracyPercentage().compareTo(BigDecimal.valueOf(60)) < 0)
+                .sorted(Comparator.comparing(UserTopicPerformanceEntity::getAccuracyPercentage))
+                .map(t -> t.getTopic() + " (" + Math.round(t.getAccuracyPercentage().doubleValue()) + "%)")
+                .limit(5)
+                .toList();
+
+        // Build dynamic AI Insight
+        String aiInsight;
+        if (!strengths.isEmpty() && !weaknesses.isEmpty()) {
+            String topStrong = topicEntities.stream()
+                    .filter(t -> t.getAccuracyPercentage() != null && t.getAccuracyPercentage().compareTo(BigDecimal.valueOf(70)) >= 0)
+                    .map(UserTopicPerformanceEntity::getTopic)
+                    .limit(2)
+                    .collect(Collectors.joining(" and "));
+            String topWeak = topicEntities.stream()
+                    .filter(t -> t.getAccuracyPercentage() != null && t.getAccuracyPercentage().compareTo(BigDecimal.valueOf(60)) < 0)
+                    .sorted(Comparator.comparing(UserTopicPerformanceEntity::getAccuracyPercentage))
+                    .map(UserTopicPerformanceEntity::getTopic)
+                    .limit(2)
+                    .collect(Collectors.joining(" and "));
+            aiInsight = "You perform well in " + topStrong + ". Focus more on " + topWeak + " to improve your overall score.";
+        } else if (!weaknesses.isEmpty()) {
+            String topWeak = topicEntities.stream()
+                    .sorted(Comparator.comparing(UserTopicPerformanceEntity::getAccuracyPercentage))
+                    .map(UserTopicPerformanceEntity::getTopic)
+                    .limit(2)
+                    .collect(Collectors.joining(" and "));
+            aiInsight = "Focus your revision on " + topWeak + " to boost your accuracy.";
+        } else if (!strengths.isEmpty()) {
+            String topStrong = topicEntities.stream()
+                    .map(UserTopicPerformanceEntity::getTopic)
+                    .limit(2)
+                    .collect(Collectors.joining(" and "));
+            aiInsight = "Great job! You have strong grasp of " + topStrong + ". Keep practicing to maintain your edge.";
+        } else {
+            aiInsight = "Keep practicing across multiple topics to build accuracy and confidence.";
+        }
+
+        return new UserTopicPerformanceResponse(topics, strengths, weaknesses, aiInsight);
     }
 
     private UserPerformanceResponse.AttemptPerformance toAttemptPerformance(

@@ -12,6 +12,20 @@ public record AttemptSubmittedEvent(
         String testId,
         Long timeTakenSeconds,
         List<SectionAnswerPayload> sectionAnswers,
+        List<TopicAnswerPayload> topicAnswers,
         Instant timestamp
 ) {
+    public AttemptSubmittedEvent(
+            String eventId,
+            String attemptId,
+            String userId,
+            String categoryId,
+            String testSeriesId,
+            String testId,
+            Long timeTakenSeconds,
+            List<SectionAnswerPayload> sectionAnswers,
+            Instant timestamp
+    ) {
+        this(eventId, attemptId, userId, categoryId, testSeriesId, testId, timeTakenSeconds, sectionAnswers, List.of(), timestamp);
+    }
 }
