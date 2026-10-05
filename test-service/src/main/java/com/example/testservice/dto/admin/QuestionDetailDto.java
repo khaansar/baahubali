@@ -20,6 +20,7 @@ public record QuestionDetailDto(
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         String explanation,
+        String topic,
         Difficulty difficulty,
         boolean isLocked,
         Instant createdAt,

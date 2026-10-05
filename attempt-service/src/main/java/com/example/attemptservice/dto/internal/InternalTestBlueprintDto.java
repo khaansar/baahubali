@@ -46,6 +46,7 @@ public class InternalTestBlueprintDto {
         private String questionId;
         private Integer sequenceOrder;
         private String questionType;
+        private String topic;
         private List<InternalTranslationDto> translations;
 
         @JsonProperty(access = JsonProperty.Access.WRITE_ONLY)

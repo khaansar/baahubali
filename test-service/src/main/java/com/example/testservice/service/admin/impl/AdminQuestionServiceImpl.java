@@ -54,6 +54,7 @@ public class AdminQuestionServiceImpl {
         question.setPositiveMarks(dto.positiveMarks());
         question.setNegativeMarks(dto.negativeMarks());
         question.setExplanation(dto.explanation());
+        question.setTopic(dto.topic());
         question.setDifficulty(dto.difficulty());
         question.setCreatedBy(adminId);
         question.setUpdatedBy(adminId);
@@ -75,7 +76,6 @@ public class AdminQuestionServiceImpl {
             return qt;
         }).collect(Collectors.toList());
 
-        question.setTranslations(translations);
         question.setTranslations(translations);
 
         Question saved = questionRepository.save(question);
@@ -114,7 +114,7 @@ public class AdminQuestionServiceImpl {
             String shortText = fullText.length() > 60 ? fullText.substring(0, 57) + "..." : fullText;
 
             return new QuestionListDto(
-                    q.getId(), q.getQuestionType(), shortText, q.getPositiveMarks(),
+                    q.getId(), q.getQuestionType(), shortText, q.getTopic(), q.getPositiveMarks(),
                     q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getUpdatedAt(), q.getDeletedAt()
             );
         }).toList();
@@ -145,7 +145,7 @@ public class AdminQuestionServiceImpl {
         return new QuestionDetailDto(
                 q.getId(), q.getQuestionType(), translationDtos,
                 q.getCorrectAnswerJson(), q.getPositiveMarks(), q.getNegativeMarks(),
-                q.getExplanation(), q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getUpdatedAt(),
+                q.getExplanation(), q.getTopic(), q.getDifficulty(), q.isLocked(), q.getCreatedAt(), q.getUpdatedAt(),
                 q.getDeletedAt(), q.getCreatedBy(), null
         );
     }
@@ -176,6 +176,7 @@ public class AdminQuestionServiceImpl {
                 question.setPositiveMarks(row.positiveMarks());
                 question.setNegativeMarks(row.negativeMarks());
                 question.setExplanation(row.explanation());
+                question.setTopic(row.topic());
                 question.setDifficulty(row.difficulty());
                 question.setCreatedBy(adminId);
                 question.setUpdatedBy(adminId);
@@ -258,6 +259,7 @@ public class AdminQuestionServiceImpl {
         question.setPositiveMarks(dto.positiveMarks());
         question.setNegativeMarks(dto.negativeMarks());
         question.setExplanation(dto.explanation());
+        question.setTopic(dto.topic());
         question.setDifficulty(dto.difficulty());
         question.setUpdatedBy(adminId);
 
@@ -289,7 +291,7 @@ public class AdminQuestionServiceImpl {
         QuestionDetailDto updatedQuestion = getQuestionById(question.getId());
         return new QuestionDetailDto(updatedQuestion.id(), updatedQuestion.questionType(), updatedQuestion.translations(),
                 updatedQuestion.correctAnswerJson(), updatedQuestion.positiveMarks(), updatedQuestion.negativeMarks(),
-                updatedQuestion.explanation(), updatedQuestion.difficulty(), updatedQuestion.isLocked(),
+                updatedQuestion.explanation(), updatedQuestion.topic(), updatedQuestion.difficulty(), updatedQuestion.isLocked(),
                 updatedQuestion.createdAt(), updatedQuestion.updatedAt(), updatedQuestion.deletedAt(),
                 updatedQuestion.createdBy(), warning);
     }
