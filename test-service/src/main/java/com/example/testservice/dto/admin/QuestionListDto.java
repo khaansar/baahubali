@@ -10,6 +10,7 @@ public record QuestionListDto(
         UUID id,
         QuestionType questionType,
         String shortText, // Truncated version of the question
+        String topic,
         BigDecimal positiveMarks,
         Difficulty difficulty,
         boolean isLocked,

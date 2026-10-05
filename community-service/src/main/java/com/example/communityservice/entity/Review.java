@@ -52,6 +52,6 @@ public class Review {
     @Column(name = "deleted_at")
     private Instant deletedAt;
 
-    public enum TargetType { TEST, SERIES }
+    public enum TargetType { TEST, SERIES, PLATFORM }
     public enum ReviewStatus { PENDING, APPROVED, REJECTED }
 }

@@ -15,5 +15,6 @@ public record QuestionCreateDto(
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         String explanation,
+        String topic,
         Difficulty difficulty
 ) {}

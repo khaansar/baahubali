@@ -10,6 +10,7 @@ public record QuestionBlueprintDto(
         UUID questionId,
         Integer sequenceOrder,
         String questionType,
+        String topic,
         List<QuestionTranslationBlueprintDto> translations,
         Map<String, Object> correctAnswer,
         BigDecimal positiveMarks,
