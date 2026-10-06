@@ -1,6 +1,8 @@
 package com.example.analyticsservice.web.service;
 
 import com.example.analyticsservice.web.event.ReportReadyEvent;
+import com.example.analyticsservice.web.dto.ApiResponse;
+import org.springframework.beans.factory.annotation.Value;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.event.EventListener;
@@ -24,6 +26,8 @@ public class ReportNotificationService implements MessageListener {
 
     private final StringRedisTemplate redisTemplate;
     private final JsonMapper jsonMapper;
+    @Value("${app.api.version:1.2.0}")
+    private String apiVersion;
 
     private final ConcurrentHashMap<String, CopyOnWriteArrayList<SseEmitter>> emitters =
             new ConcurrentHashMap<>();
@@ -68,17 +72,8 @@ public class ReportNotificationService implements MessageListener {
             return;
         }
 
-        String payload;
-
-        try {
-            payload = jsonMapper.writeValueAsString(
-                    Map.of(
-                            "type", "REPORT_READY",
-                            "attemptId", attemptId
-                    )
-            );
-        } catch (Exception e) {
-            log.error("Failed to serialize REPORT_READY payload", e);
+        String payload = serializeReadyResponse(attemptId, apiVersion);
+        if (payload == null) {
             return;
         }
 
@@ -89,6 +84,19 @@ public class ReportNotificationService implements MessageListener {
             } catch (IOException e) {
                 emitter.completeWithError(e);
             }
+        }
+    }
+
+    public String serializeReadyResponse(String attemptId, String version) {
+        try {
+            Map<String, Object> data = Map.of(
+                    "type", "REPORT_READY",
+                    "attemptId", attemptId);
+            return jsonMapper.writeValueAsString(ApiResponse.success(
+                    200, "Report retrieved successfully", data, version));
+        } catch (Exception e) {
+            log.error("Failed to serialize REPORT_READY response", e);
+            return null;
         }
     }
 }

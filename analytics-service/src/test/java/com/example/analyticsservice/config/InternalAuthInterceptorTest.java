@@ -6,6 +6,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
+import tools.jackson.databind.json.JsonMapper;
 
 class InternalAuthInterceptorTest {
 
@@ -15,7 +16,7 @@ class InternalAuthInterceptorTest {
 
     @BeforeEach
     void setUp() {
-        interceptor = new InternalAuthInterceptor();
+        interceptor = new InternalAuthInterceptor(JsonMapper.builder().build());
         interceptor.getAllowedClients().put("attempt-service", "attempt-secret-key");
         request = new MockHttpServletRequest("GET", "/analytics-api/internal/ping");
         response = new MockHttpServletResponse();
@@ -58,6 +59,9 @@ class InternalAuthInterceptorTest {
     private void assertRejected() throws Exception {
         assertThat(interceptor.preHandle(request, response, new Object())).isFalse();
         assertThat(response.getStatus()).isEqualTo(401);
-        assertThat(response.getContentAsString()).isEqualTo("Internal service authentication failed");
+        assertThat(response.getContentType()).startsWith("application/json");
+        assertThat(response.getContentAsString())
+                .contains("\"success\":false", "\"status\":401", "\"code\":\"INTERNAL_AUTH_FAILED\"",
+                        "\"trace_id\":\"err-");
     }
 }

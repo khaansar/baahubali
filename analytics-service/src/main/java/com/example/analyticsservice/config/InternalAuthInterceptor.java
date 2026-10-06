@@ -7,11 +7,16 @@ import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.List;
+import java.util.UUID;
+import com.example.analyticsservice.web.dto.ApiErrorResponse;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.web.servlet.HandlerInterceptor;
+import tools.jackson.databind.json.JsonMapper;
 
 /**
  * Service-to-service authentication for /internal/** endpoints.
@@ -23,11 +28,15 @@ public class InternalAuthInterceptor implements HandlerInterceptor {
 
     public static final String CALLER_HEADER = "X-Service-Caller";
     public static final String AUTH_HEADER = "X-Service-Auth";
-    static final String FAILURE_MESSAGE = "Internal service authentication failed";
-
     private static final Logger log = LoggerFactory.getLogger(InternalAuthInterceptor.class);
 
+    private final JsonMapper jsonMapper;
     private final Map<String, String> allowedClients = new HashMap<>();
+
+    @Autowired
+    public InternalAuthInterceptor(JsonMapper jsonMapper) {
+        this.jsonMapper = jsonMapper;
+    }
 
     public Map<String, String> getAllowedClients() {
         return allowedClients;
@@ -56,10 +65,16 @@ public class InternalAuthInterceptor implements HandlerInterceptor {
     }
 
     private boolean reject(HttpServletResponse response, String reason, String caller) throws IOException {
-        log.warn("Internal auth rejected: {} (caller={})", reason, caller);
+        String traceId = "err-" + UUID.randomUUID();
+        log.warn("Internal auth rejected trace_id={} reason={} caller={}", traceId, reason, caller);
         response.setStatus(HttpServletResponse.SC_UNAUTHORIZED);
-        response.setContentType("text/plain;charset=UTF-8");
-        response.getWriter().write(FAILURE_MESSAGE);
+        response.setContentType("application/json;charset=UTF-8");
+        response.getWriter().write(jsonMapper.writeValueAsString(ApiErrorResponse.failure(
+                HttpServletResponse.SC_UNAUTHORIZED,
+                "Internal service authentication failed",
+                "INTERNAL_AUTH_FAILED",
+                List.of(),
+                traceId)));
         return false;
     }
 
