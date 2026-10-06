@@ -12,12 +12,16 @@ public record ErrorResponse(
         Meta meta) {
 
     public static ErrorResponse of(GatewayErrorCode errorCode) {
+        return of(errorCode, "err-" + UUID.randomUUID());
+    }
+
+    public static ErrorResponse of(GatewayErrorCode errorCode, String traceId) {
         return new ErrorResponse(
                 false,
                 errorCode.getStatus().value(),
                 errorCode.getClientMessage(),
                 new Error(errorCode.name(), List.of()),
-                new Meta(Instant.now().toString(), "err-" + UUID.randomUUID()));
+                new Meta(Instant.now().toString(), traceId));
     }
 
     public record Error(String code, List<?> details) {}
