@@ -1,12 +1,12 @@
 package com.example.iam.service;
 
 import com.example.iam.dto.AuthenticationResult;
-import com.example.iam.dto.LoginRequest;
-import com.example.iam.dto.RegisterRequest;
 
 public interface AuthService {
-    AuthenticationResult register(RegisterRequest request);
-    AuthenticationResult authenticate(LoginRequest request);
+    AuthenticationResult register(com.example.iam.dto.RegisterRequest request);
+    AuthenticationResult authenticate(com.example.iam.dto.LoginRequest request);
     AuthenticationResult refresh(String refreshToken);
     void logout(String userId);
+    void verifyEmail(String token);
+    void resendVerificationEmail(String email);
 }

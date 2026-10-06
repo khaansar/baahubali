@@ -1,6 +1,6 @@
 package com.example.notification.config;
 
-import com.example.notification.event.DomainEvent;
+import org.apache.kafka.clients.consumer.ConsumerConfig;
 import org.apache.kafka.common.serialization.StringDeserializer;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -8,7 +8,6 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.kafka.config.ConcurrentKafkaListenerContainerFactory;
 import org.springframework.kafka.core.ConsumerFactory;
 import org.springframework.kafka.core.DefaultKafkaConsumerFactory;
-import org.springframework.kafka.support.serializer.JsonDeserializer;
 
 import java.util.HashMap;
 import java.util.Map;
@@ -20,49 +19,30 @@ public class KafkaConsumerConfig {
     private String bootstrapServers;
 
     @Bean
-    public ConsumerFactory<String, DomainEvent> notificationConsumerFactory() {
+    public ConsumerFactory<String, String> notificationConsumerFactory() {
         Map<String, Object> props = new HashMap<>();
 
-        props.put(
-                org.apache.kafka.clients.consumer.ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,
-                bootstrapServers
-        );
+        props.put(ConsumerConfig.BOOTSTRAP_SERVERS_CONFIG,bootstrapServers);
 
-        props.put(
-                org.apache.kafka.clients.consumer.ConsumerConfig.GROUP_ID_CONFIG,
-                "notification-service"
-        );
+        props.put(ConsumerConfig.GROUP_ID_CONFIG,"notification-service");
 
-        props.put(
-                org.apache.kafka.clients.consumer.ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,
-                "earliest"
-        );
+        props.put(ConsumerConfig.AUTO_OFFSET_RESET_CONFIG,"earliest");
 
-        props.put(
-                org.apache.kafka.clients.consumer.ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,
-                false
-        );
-
-        JsonDeserializer<DomainEvent> deserializer =
-                new JsonDeserializer<>(DomainEvent.class);
-
-        deserializer.addTrustedPackages(
-                "com.example.notification.event"
-        );
+        props.put(ConsumerConfig.ENABLE_AUTO_COMMIT_CONFIG,false);
 
         return new DefaultKafkaConsumerFactory<>(
                 props,
                 new StringDeserializer(),
-                deserializer
+                new StringDeserializer()
         );
     }
 
     @Bean
-    public ConcurrentKafkaListenerContainerFactory<String, DomainEvent>
+    public ConcurrentKafkaListenerContainerFactory<String, String>
     notificationKafkaListenerContainerFactory(
-            ConsumerFactory<String, DomainEvent> consumerFactory
+            ConsumerFactory<String, String> consumerFactory
     ) {
-        ConcurrentKafkaListenerContainerFactory<String, DomainEvent> factory =
+        ConcurrentKafkaListenerContainerFactory<String, String> factory =
                 new ConcurrentKafkaListenerContainerFactory<>();
 
         factory.setConsumerFactory(consumerFactory);

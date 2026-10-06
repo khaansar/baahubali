@@ -14,7 +14,7 @@
     <artifactId>analytics-service</artifactId>
     <packaging>jar</packaging>
     <name>analytics-service</name>
-    <description>Post-test analytics service for Baahubali</description>
+    <description>Post-test analytics service for baahubali</description>
 
     <dependencies>
         <dependency>

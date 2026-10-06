@@ -40,7 +40,9 @@ spring:
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}
+  email-verification:
+    base-url: ${EMAIL_VERIFICATION_BASE_URL}
   jwt:
     # MUST be overridden via env var in every real environment — this default is for local dev only.
     secret: ${JWT_SECRET:}
