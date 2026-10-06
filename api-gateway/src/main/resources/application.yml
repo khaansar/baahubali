@@ -135,6 +135,8 @@ gateway:
       - /auth-api/login
       - /auth-api/register
       - /auth-api/refresh
+      - /auth-api/verify-email
+      - /auth-api/resend-verification
 
       - /tests-api/public/**
       - /community-api/public/**
