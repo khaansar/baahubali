@@ -79,8 +79,9 @@ public class AttemptController {
     public ResponseEntity<ApiResponse<AttemptStateResponse>> switchSection(
             @PathVariable String id,
             @PathVariable String sectionId,
-            @RequestHeader("X-User-Id") String userId) {
-        AttemptStateResponse state = attemptService.switchSection(id, userId, sectionId);
+            @RequestHeader("X-User-Id") String userId,
+            @RequestParam(defaultValue = "false") boolean submitCurrent) {
+        AttemptStateResponse state = attemptService.switchSection(id, userId, sectionId, submitCurrent);
         return ResponseEntity.ok(ApiResponse.success(200, "Section switched successfully", state));
     }
 

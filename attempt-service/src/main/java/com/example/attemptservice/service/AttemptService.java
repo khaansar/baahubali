@@ -619,7 +619,7 @@ public class AttemptService {
     }
 
     @Transactional
-    public AttemptStateResponse switchSection(String attemptId, String userId, String newSectionId) {
+    public AttemptStateResponse switchSection(String attemptId, String userId, String newSectionId, boolean submitCurrent) {
         Attempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
         verifyOwnership(attempt, userId);
@@ -648,6 +648,10 @@ public class AttemptService {
 
             if (currentSec != null && existing.getCurrentSectionStartedAt() != null) {
                 int oldSpent = timeSpentMap.getOrDefault(currentSec, 0) + (int) (now - existing.getCurrentSectionStartedAt());
+                if (submitCurrent) {
+                    Integer oldLimit = limitsMap.get(currentSec);
+                    oldSpent = oldLimit != null ? oldLimit : 999999;
+                }
                 timeSpentMap.put(currentSec, oldSpent);
             }
             existing.setCurrentSectionId(newSectionId);
