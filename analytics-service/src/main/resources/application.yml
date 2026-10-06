@@ -14,7 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: ${JPA_DDL_AUTO}
     show-sql: false
     open-in-view: false
     properties:
@@ -24,10 +24,7 @@ spring:
 
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED:true}
-    baseline-on-migrate: true
-    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${ANALYTICS_SERVICE_DATABASE:analytics_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
-    user: ${MYSQL_USER:root}
-    password: ${MYSQL_PASSWORD:root}
+    baseline-on-migrate: false
 
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
@@ -56,13 +53,15 @@ spring:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
       password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
 
 internal:
   auth:
-    my-secret: ${ANALYTICS_SERVICE_SECRET:analytics-secret-key}
+    my-secret: ${ANALYTICS_SERVICE_SECRET}
     allowed-clients:
-      attempt-service: ${ATTEMPT_SERVICE_SECRET:attempt-secret-key}
+      attempt-service: ${ATTEMPT_SERVICE_SECRET}
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}

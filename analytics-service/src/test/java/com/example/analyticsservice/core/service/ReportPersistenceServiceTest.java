@@ -36,6 +36,7 @@ class ReportPersistenceServiceTest {
     private TestReportRepository reports;
     private SectionPerformanceRepository sections;
     private TestLeaderboardSnapshotRepository snapshots;
+    private UserTopicPerformanceRepository topicPerformanceRepository;
     private ReportPersistenceService service;
 
     private final AttemptSubmittedEvent event = new AttemptSubmittedEvent(
@@ -55,7 +56,8 @@ class ReportPersistenceServiceTest {
         reports = mock(TestReportRepository.class);
         sections = mock(SectionPerformanceRepository.class);
         snapshots = mock(TestLeaderboardSnapshotRepository.class);
-        service = new ReportPersistenceService(reports, sections, snapshots);
+        topicPerformanceRepository = mock(UserTopicPerformanceRepository.class);
+        service = new ReportPersistenceService(reports, sections, snapshots, topicPerformanceRepository);
         when(snapshots.findByAttemptId("att-1")).thenReturn(Optional.empty());
     }
 

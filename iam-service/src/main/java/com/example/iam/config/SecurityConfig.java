@@ -61,6 +61,7 @@ public class SecurityConfig {
                                 "/refresh"
                         ).permitAll()
                         .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/users").hasRole("ADMIN")
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         .anyRequest().authenticated()
@@ -114,6 +115,8 @@ public class SecurityConfig {
 
     @Bean
     public PasswordEncoder passwordEncoder() {
-        return new BCryptPasswordEncoder();
+        // Benchmark this value against production login capacity; 12 is a
+        // deliberate baseline rather than BCrypt's historical default of 10.
+        return new BCryptPasswordEncoder(12);
     }
 }

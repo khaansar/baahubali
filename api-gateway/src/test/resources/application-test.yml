@@ -1,0 +1,97 @@
+server:
+  port: 0
+
+spring:
+  application:
+    name: api-gateway-test
+
+  data:
+    redis:
+      host: localhost
+      port: 6379
+
+  cloud:
+    gateway:
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins: "http://localhost:3000"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - PATCH
+              - DELETE
+              - OPTIONS
+            allowedHeaders: "*"
+            allowCredentials: true
+
+      redis-rate-limiter:
+        include-headers: true
+        deny-empty-key: true
+
+      server:
+        webflux:
+          routes:
+            - id: iam-service
+              uri: http://localhost:8081
+              predicates:
+                - Path=/auth-api/**
+
+            - id: test-service
+              uri: http://localhost:8082
+              predicates:
+                - Path=/tests-api/**
+
+            - id: attempt-service
+              uri: http://localhost:8083
+              predicates:
+                - Path=/attempts-api/**
+
+            - id: community-service
+              uri: http://localhost:8084
+              predicates:
+                - Path=/community-api/**
+
+            - id: analytics-service
+              uri: http://localhost:8085
+              predicates:
+                - Path=/analytics-api/**
+
+gateway:
+  security:
+    public-paths:
+      - /auth-api/login
+      - /auth-api/register
+      - /auth-api/refresh
+
+      - /tests-api/public/**
+      - /community-api/public/**
+
+    jwt:
+      algorithm: HS256
+      # Base64 encoded test-only secret.
+      # This is NOT used in production.
+      secret: c2VjdXJlLXRlc3Qtc2VjcmV0LWtleS0zMi1ieXRlcy1sb25n
+      public-key: ""
+      cookie-name: ACCESS_TOKEN
+      user-id-claim: sub
+      role-claim: role
+      issuer: "https://issuer.test.example"
+      audience: "testing-platform-api"
+      clock-skew-seconds: 30
+
+app:
+  api:
+    version: test
+
+springdoc:
+  swagger-ui:
+    path: /swagger-ui.html
+    urls:
+      - name: IAM Service
+        url: /auth-api/v3/api-docs
+      - name: Test Service
+        url: /tests-api/v3/api-docs
+      - name: Attempts Service
+        url: /attempts-api/v3/api-docs

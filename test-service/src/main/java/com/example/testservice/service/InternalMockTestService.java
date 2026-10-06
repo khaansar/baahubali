@@ -59,6 +59,7 @@ public class InternalMockTestService {
                                 sq.getQuestion().getId(),
                                 sq.getSequenceOrder(),
                                 sq.getQuestion().getQuestionType().name(),
+                                sq.getQuestion().getTopic(),
                                 sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
                                         t.getLanguage(),
                                         t.getQuestionText(),

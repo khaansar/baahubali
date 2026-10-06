@@ -1,9 +1,9 @@
 services:
   baahubali-redis:
-    image: redis:7-alpine
+    image: redis:7.4.2-alpine
     container_name: baahubali-redis
     restart: unless-stopped
-    command: redis-server --appendonly yes
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
     volumes:
       - redis_prod_data:/data
     networks:
@@ -12,26 +12,28 @@ services:
       resources:
         limits:
           memory: 256M
-  
+
   baahubali-kafka:
-    image: apache/kafka:latest
+    image: apache/kafka:4.0.0
     container_name: baahubali-kafka
     restart: unless-stopped
     ports:
-      - "9092:9092"
+      # Development diagnostics only. Production uses managed Kafka over TLS
+      # and never publishes a broker listener to the host.
+      - "127.0.0.1:9092:9092"
     environment:
       KAFKA_NODE_ID: 1
-      KAFKA_PROCESS_ROLES: 'broker,controller'
-      KAFKA_LISTENERS: 'PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093'
-      KAFKA_ADVERTISED_LISTENERS: 'PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://baahubali-kafka:29092'
-      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: 'CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT'
-      KAFKA_CONTROLLER_LISTENER_NAMES: 'CONTROLLER'
-      KAFKA_LOG_DIRS: '/tmp/kraft-combined-logs'
-      KAFKA_CONTROLLER_QUORUM_VOTERS: '1@baahubali-kafka:9093'
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://baahubali-kafka:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@baahubali-kafka:9093"
       KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
       KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
       KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
-      CLUSTER_ID: 'Mk3OEYBSD3TfxwNWRZM0A'
+      CLUSTER_ID: "Mk3OEYBSD3TfxwNWRZM0A"
       KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
     networks:
       - backend-network
@@ -43,8 +45,12 @@ services:
   api-gateway:
     build:
       context: .
-      dockerfile: api-gateway/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: api-gateway
     container_name: api-gateway
+    volumes:
+      - ./secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
     restart: unless-stopped
     ports:
       - "8080:8080"
@@ -62,7 +68,11 @@ services:
   iam-service:
     build:
       context: .
-      dockerfile: iam-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: iam-service
+    volumes:
+      - ./secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
     container_name: iam-service
     restart: unless-stopped
     env_file:
@@ -82,7 +92,9 @@ services:
   test-service:
     build:
       context: .
-      dockerfile: test-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: test-service
     container_name: test-service
     restart: unless-stopped
     env_file:
@@ -102,7 +114,9 @@ services:
   attempt-service:
     build:
       context: .
-      dockerfile: attempt-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: attempt-service
     container_name: attempt-service
     restart: unless-stopped
     env_file:
@@ -118,11 +132,13 @@ services:
       resources:
         limits:
           memory: 1G
-    
+
   community-service:
     build:
       context: .
-      dockerfile: community-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: community-service
     container_name: community-service
     restart: unless-stopped
     env_file:
@@ -138,11 +154,13 @@ services:
       resources:
         limits:
           memory: 1G
-    
+
   analytics-service:
     build:
       context: .
-      dockerfile: analytics-service/Dockerfile
+      dockerfile: Dockerfile
+      args:
+        SERVICE: analytics-service
     container_name: analytics-service
     restart: unless-stopped
     env_file:
@@ -160,17 +178,18 @@ services:
           memory: 1G
 
   kafka-ui:
-    image: provectuslabs/kafka-ui:latest
+    image: provectuslabs/kafka-ui:v0.7.2
     container_name: kafka-ui
     ports:
-      - "8090:8080"
+      - "127.0.0.1:8090:8080"
     environment:
-      - KAFKA_CLUSTERS_0_NAME=baahubali-local
-      - KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS=baahubali-kafka:29092
+      KAFKA_CLUSTERS_0_NAME: baahubali-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: baahubali-kafka:29092
     networks:
       - backend-network
     depends_on:
       - baahubali-kafka
+    profiles: ["debug"]
 
 networks:
   backend-network:

@@ -1,0 +1,86 @@
+# Production topology: databases, Redis, and Kafka are managed private services
+# reached through TLS. Deploy this with the platform secret manager rather than
+# a checked-in .env file. Only the gateway joins the edge network.
+services:
+  api-gateway:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: api-gateway
+    env_file:
+      - .env.production
+    ports:
+      - "8080:8080"
+    networks: [edge, services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt:
+      - no-new-privileges:true
+
+  iam-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: iam-service
+    env_file: [.env.production]
+    networks: [services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+  test-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: test-service
+    env_file: [.env.production]
+    networks: [services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+  attempt-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: attempt-service
+    env_file: [.env.production]
+    networks: [services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+  community-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: community-service
+    env_file: [.env.production]
+    networks: [services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+  analytics-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: analytics-service
+    env_file: [.env.production]
+    networks: [services, data]
+    read_only: true
+    tmpfs: [/tmp]
+    security_opt: [no-new-privileges:true]
+
+networks:
+  edge: {}
+  services:
+    internal: true
+  data:
+    internal: true

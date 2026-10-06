@@ -9,6 +9,11 @@ import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.io.Decoders;
 import io.jsonwebtoken.security.Keys;
 import javax.crypto.SecretKey;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.security.KeyFactory;
+import java.security.PublicKey;
+import java.security.spec.X509EncodedKeySpec;
 import org.springframework.data.redis.core.ReactiveStringRedisTemplate;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -71,13 +76,40 @@ public class JwtTokenValidator implements TokenValidator {
     }
 
     private static JwtParser buildParser(GatewaySecurityProperties.Jwt jwt) {
-        SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwt.secret()));
         JwtParserBuilder builder = Jwts.parser()
-                .verifyWith(key)
                 .clockSkewSeconds(jwt.clockSkewSeconds());
-        if (StringUtils.hasText(jwt.issuer())) {
-            builder.requireIssuer(jwt.issuer());
+        if ("RS256".equalsIgnoreCase(jwt.algorithm())) {
+            builder.verifyWith(readRsaPublicKey(jwt.publicKey()));
+        } else if ("HS256".equalsIgnoreCase(jwt.algorithm())) {
+            if (!StringUtils.hasText(jwt.secret())) {
+                throw new IllegalStateException("gateway.security.jwt.secret is required for HS256");
+            }
+            SecretKey key = Keys.hmacShaKeyFor(Decoders.BASE64.decode(jwt.secret()));
+            builder.verifyWith(key);
+        } else {
+            throw new IllegalStateException("Unsupported JWT algorithm: " + jwt.algorithm());
         }
+        builder.requireIssuer(jwt.issuer());
+        builder.requireAudience(jwt.audience());
         return builder.build();
+    }
+
+    private static PublicKey readRsaPublicKey(String keyPath) {
+        if (!StringUtils.hasText(keyPath)) {
+            throw new IllegalStateException("gateway.security.jwt.public-key-path is required for RS256");
+        }
+        try {
+            String pem = Files.readString(Path.of(keyPath));
+
+            String publicKeyContent = pem
+                    .replace("-----BEGIN PUBLIC KEY-----", "")
+                    .replace("-----END PUBLIC KEY-----", "")
+                    .replaceAll("\\s", "");
+
+            return KeyFactory.getInstance("RSA").generatePublic(
+                    new X509EncodedKeySpec(Decoders.BASE64.decode(publicKeyContent)));
+        } catch (Exception ex) {
+            throw new IllegalStateException("gateway.security.jwt.public-key-path is not a valid X.509 RSA public key", ex);
+        }
     }
 }

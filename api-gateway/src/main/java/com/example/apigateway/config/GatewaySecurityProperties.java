@@ -18,11 +18,14 @@ public record GatewaySecurityProperties(
         @Valid @NotNull Jwt jwt) {
 
     public record Jwt(
-            @NotBlank String secret,
+            @DefaultValue("RS256") @NotBlank String algorithm,
+            String secret,
+            String publicKey,
             @DefaultValue("jwt_token") @NotBlank String cookieName,
             @DefaultValue("sub") @NotBlank String userIdClaim,
             @DefaultValue("role") @NotBlank String roleClaim,
-            String issuer,
+            @NotBlank String issuer,
+            @NotBlank String audience,
             @DefaultValue("30") @PositiveOrZero long clockSkewSeconds) {
     }
 }

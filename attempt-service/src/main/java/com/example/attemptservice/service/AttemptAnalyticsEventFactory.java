@@ -23,12 +23,11 @@ public final class AttemptAnalyticsEventFactory {
             Long timeTakenSeconds,
             Instant timestamp
     ) {
-        Map<String, String> answerMap = answers.stream()
-                .collect(Collectors.toMap(
-                        AttemptAnswer::getQuestionId,
-                        AttemptAnswer::getSelectedOption,
-                        (first, second) -> second
-                ));
+        Map<String, String> answerMap = new HashMap<>();
+
+        for (AttemptAnswer answer : answers) {
+            answerMap.put(answer.getQuestionId(), answer.getSelectedOption());
+        }
 
         return new AttemptSubmittedEvent(
                 eventId,
@@ -39,8 +38,73 @@ public final class AttemptAnalyticsEventFactory {
                 blueprint.getTestId(),
                 timeTakenSeconds,
                 buildSectionAnswers(blueprint, answerMap),
+                buildTopicAnswers(blueprint, answerMap),
                 timestamp
         );
+    }
+
+    private static List<AttemptSubmittedEvent.TopicAnswerPayload> buildTopicAnswers(
+            InternalTestBlueprintDto blueprint,
+            Map<String, String> answers
+    ) {
+        if (blueprint.getSections() == null) {
+            return List.of();
+        }
+
+        Map<String, List<InternalTestBlueprintDto.InternalQuestionDto>> questionsByTopic = new LinkedHashMap<>();
+
+        for (InternalTestBlueprintDto.InternalSectionDto section : blueprint.getSections()) {
+            if (section.getQuestions() == null) {
+                continue;
+            }
+            for (InternalTestBlueprintDto.InternalQuestionDto question : section.getQuestions()) {
+                String topic = (question.getTopic() != null && !question.getTopic().trim().isEmpty())
+                        ? question.getTopic().trim()
+                        : "General";
+                questionsByTopic.computeIfAbsent(topic, k -> new ArrayList<>()).add(question);
+            }
+        }
+
+        List<AttemptSubmittedEvent.TopicAnswerPayload> topicPayloads = new ArrayList<>();
+        for (Map.Entry<String, List<InternalTestBlueprintDto.InternalQuestionDto>> entry : questionsByTopic.entrySet()) {
+            String topic = entry.getKey();
+            List<InternalTestBlueprintDto.InternalQuestionDto> questions = entry.getValue();
+
+            int correct = 0;
+            int incorrect = 0;
+            int unattempted = 0;
+
+            for (InternalTestBlueprintDto.InternalQuestionDto question : questions) {
+                String selected = answers.get(question.getQuestionId());
+                if (selected == null || selected.isBlank()) {
+                    unattempted++;
+                    continue;
+                }
+
+                if (isCorrect(question, selected)) {
+                    correct++;
+                } else {
+                    incorrect++;
+                }
+            }
+
+            int totalQuestions = questions.size();
+            double accuracy = totalQuestions == 0
+                    ? 0
+                    : Math.round((correct * 10000.0) / totalQuestions) / 100.0;
+
+            topicPayloads.add(new AttemptSubmittedEvent.TopicAnswerPayload(
+                    topic,
+                    totalQuestions,
+                    correct,
+                    incorrect,
+                    unattempted,
+                    accuracy,
+                    null
+            ));
+        }
+
+        return topicPayloads;
     }
 
     private static List<AttemptSubmittedEvent.SectionAnswerPayload> buildSectionAnswers(

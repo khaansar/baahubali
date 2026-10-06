@@ -25,7 +25,7 @@ public class GatewaySecurityFilter extends OncePerRequestFilter {
             throws ServletException, IOException {
 
         // Only secure external-facing endpoints routed by API Gateway
-        if (request.getRequestURI().startsWith("/api/")) {
+        if (request.getRequestURI().startsWith("/attempts-api/")) {
             String userId = request.getHeader("X-User-Id");
             
             // If the header is missing, the request did not come through the trusted Gateway

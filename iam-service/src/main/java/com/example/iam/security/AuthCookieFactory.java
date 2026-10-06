@@ -39,7 +39,8 @@ public class AuthCookieFactory {
     }
 
     private ResponseCookie.ResponseCookieBuilder refreshBuilder(String value) {
-        return cookieBuilder(jwtProperties.refreshCookieName(), value);
+        return cookieBuilder(jwtProperties.refreshCookieName(), value)
+                .path("/auth-api/refresh");
     }
 
     private ResponseCookie.ResponseCookieBuilder cookieBuilder(String name, String value) {

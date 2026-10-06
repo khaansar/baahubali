@@ -20,6 +20,7 @@ public record RegisterRequest(
         @Size(min = 8, max = 72, message = "Password must be between 8 and 72 characters")
         String password,
 
-        @Pattern(regexp = "ADMIN|STUDENT", message = "Role must be either ADMIN or STUDENT")
-        String role
+        String phone,
+
+        String targetExam
 ) {}

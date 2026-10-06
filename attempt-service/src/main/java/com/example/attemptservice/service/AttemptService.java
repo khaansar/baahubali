@@ -22,6 +22,7 @@ import com.example.attemptservice.redis.AttemptRedisHash;
 import com.example.attemptservice.redis.AttemptRedisRepository;
 import com.example.attemptservice.repository.AttemptAnswerRepository;
 import com.example.attemptservice.repository.AttemptRepository;
+import com.example.attemptservice.repository.ActiveAttemptRepository;
 import com.example.attemptservice.repository.OutboxEventRepository;
 import com.example.attemptservice.worker.AttemptFlushWorker;
 import com.fasterxml.jackson.core.type.TypeReference;
@@ -59,11 +60,11 @@ import java.util.stream.Collectors;
 @Service
 public class AttemptService {
 
-    private static final int DEFAULT_DURATION_MINUTES = 180;
     private static final String REDIS_KEY_PREFIX = "attempt:";
 
     private final OutboxEventRepository outboxEventRepository;
     private final AttemptRepository attemptRepository;
+    private final ActiveAttemptRepository activeAttemptRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptFlushWorker attemptFlushWorker;
@@ -83,6 +84,7 @@ public class AttemptService {
     private final TestServiceFeignClient testServiceFeignClient;
 
     public AttemptService(AttemptRepository attemptRepository,
+                           ActiveAttemptRepository activeAttemptRepository,
                            AttemptAnswerRepository attemptAnswerRepository,
                            AttemptRedisRepository attemptRedisRepository,
                            OutboxEventRepository outboxEventRepository,
@@ -91,6 +93,7 @@ public class AttemptService {
                            ObjectMapper objectMapper,
                            TestServiceFeignClient testServiceFeignClient) {
         this.attemptRepository = attemptRepository;
+        this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
         this.attemptRedisRepository = attemptRedisRepository;
         this.attemptFlushWorker = attemptFlushWorker;
@@ -105,6 +108,22 @@ public class AttemptService {
     public StartAttemptResponse startAttempt(StartAttemptRequest request) {
         Instant now = Instant.now();
 
+        TestServiceResponse<InternalTestBlueprintDto> response =
+                testServiceFeignClient.getTestBlueprint(request.getTestId());
+        if (response == null || !response.success() || response.data() == null) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Test service did not return a test blueprint");
+        }
+        InternalTestBlueprintDto blueprint = response.data();
+        if (!Boolean.TRUE.equals(blueprint.getFree())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "A verified entitlement is required for this test");
+        }
+        if (blueprint.getDurationMinutes() == null || blueprint.getDurationMinutes() <= 0) {
+            throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
+                    "Test service returned an invalid test duration");
+        }
+
         Optional<Attempt> existingAttempt = attemptRepository
                 .findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(
                         request.getUserId(),
@@ -118,16 +137,6 @@ public class AttemptService {
                     .plusSeconds(attempt.getDurationMinutes() * 60L);
 
             if (now.isBefore(deadline)) {
-                TestServiceResponse<InternalTestBlueprintDto> response =
-                        testServiceFeignClient.getTestBlueprint(attempt.getTestId());
-
-                if (response == null || !response.success() || response.data() == null) {
-                    throw new ResponseStatusException(
-                            HttpStatus.BAD_GATEWAY,
-                            "Test service did not return a test blueprint"
-                    );
-                }
-
                 return StartAttemptResponse.builder()
                         .attemptId(attempt.getId())
                         .deadline(deadline)
@@ -141,16 +150,36 @@ public class AttemptService {
             now = Instant.now();
         }
 
+        String attemptId = UUID.randomUUID().toString();
+        if (activeAttemptRepository.claim(request.getUserId(), request.getTestId(), attemptId, now) == 0) {
+            Attempt activeAttempt = activeAttemptRepository.findByUserIdAndTestId(
+                            request.getUserId(), request.getTestId())
+                    .flatMap(active -> attemptRepository.findById(active.getAttemptId()))
+                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.CONFLICT,
+                            "An attempt is already being started; retry the request"));
+            Instant activeDeadline = activeAttempt.getStartedAt()
+                    .plusSeconds(activeAttempt.getDurationMinutes() * 60L);
+            if (activeAttempt.getStatus() == AttemptStatus.IN_PROGRESS && now.isBefore(activeDeadline)) {
+                return StartAttemptResponse.builder()
+                        .attemptId(activeAttempt.getId())
+                        .deadline(activeDeadline)
+                        .createdAt(activeAttempt.getCreatedAt())
+                        .updatedAt(activeAttempt.getUpdatedAt())
+                        .deletedAt(activeAttempt.getDeletedAt())
+                        .build();
+            }
+            throw new ResponseStatusException(HttpStatus.CONFLICT,
+                    "The active attempt is being finalized; retry the request");
+        }
+
         Attempt attempt = Attempt.builder()
-                .id(UUID.randomUUID().toString())
+                .id(attemptId)
                 .userId(request.getUserId())
                 .testId(request.getTestId())
                 .startedAt(now)
                 .createdAt(now)
                 .updatedAt(now)
-                .durationMinutes(request.getDurationMinutes() != null
-                        ? request.getDurationMinutes()
-                        : DEFAULT_DURATION_MINUTES)
+                .durationMinutes(blueprint.getDurationMinutes())
                 .status(AttemptStatus.IN_PROGRESS)
                 .build();
 
@@ -179,16 +208,6 @@ public class AttemptService {
                     }
                 });
 
-        TestServiceResponse<InternalTestBlueprintDto> response =
-                testServiceFeignClient.getTestBlueprint(saved.getTestId());
-
-        if (response == null || !response.success() || response.data() == null) {
-            throw new ResponseStatusException(
-                    HttpStatus.BAD_GATEWAY,
-                    "Test service did not return a test blueprint"
-            );
-        }
-
         return StartAttemptResponse.builder()
                 .attemptId(saved.getId())
                 .deadline(deadline)
@@ -199,9 +218,11 @@ public class AttemptService {
     }
 
     @Transactional
-    public SubmitAttemptResponse submitAttempt(String attemptId) {
+    public SubmitAttemptResponse submitAttempt(String attemptId, String userId) {
         Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
 
         if (attempt.getStatus() == AttemptStatus.SUBMITTED || attempt.getStatus() == AttemptStatus.EXPIRED) {
             return toSubmitResponse(attempt);
@@ -252,6 +273,7 @@ public class AttemptService {
         lockedAttempt.setStatus(effectiveStatus);
         lockedAttempt.setUpdatedAt(finalizedAt);
         attemptRepository.save(lockedAttempt);
+        activeAttemptRepository.releaseByAttemptId(attemptId);
 
         try {
             TestServiceResponse<InternalTestBlueprintDto> response =
@@ -378,9 +400,11 @@ public class AttemptService {
     }
 
     @Transactional(readOnly = true)
-    public AttemptReviewResponse getReview(String attemptId) {
+    public AttemptReviewResponse getReview(String attemptId, String userId) {
         Attempt attempt = attemptRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
 
         List<AttemptAnswer> studentAnswers = attemptAnswerRepository.findByAttemptId(attemptId);
 
@@ -453,7 +477,12 @@ public class AttemptService {
                 .build();
     }
 
-    public AttemptStateSnapshot getAttemptState(String attemptId) {
+    public AttemptStateSnapshot getAttemptState(String attemptId, String userId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         AttemptRedisHash hash = attemptRedisRepository.findById(attemptId)
                 .orElseGet(() -> rehydrate(attemptId));
 
@@ -461,7 +490,12 @@ public class AttemptService {
     }
 
     @Transactional
-    public Long patchAttempt(String attemptId, PatchAttemptRequest request) {
+    public Long patchAttempt(String attemptId, String userId, PatchAttemptRequest request) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
@@ -520,15 +554,18 @@ public class AttemptService {
             );
         }
 
-        attemptRepository.findById(attemptId).ifPresent(attempt -> {
-            attempt.setUpdatedAt(Instant.now());
-            attemptRepository.save(attempt);
-        });
+        attempt.setUpdatedAt(Instant.now());
+        attemptRepository.save(attempt);
 
         return nextVersion;
     }
 
-    public SseEmitter getSseEmitter(String attemptId) {
+    public SseEmitter getSseEmitter(String attemptId, String userId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        verifyOwnership(attempt, userId);
+
         SseEmitter emitter = new SseEmitter(0L);
 
         CopyOnWriteArrayList<SseEmitter> group = emitters.computeIfAbsent(
@@ -643,6 +680,15 @@ public class AttemptService {
             throw new IllegalStateException(
                     "Could not serialize answers",
                     e
+            );
+        }
+    }
+
+    private void verifyOwnership(Attempt attempt, String userId) {
+        if (!attempt.getUserId().equals(userId)) {
+            throw new ResponseStatusException(
+                    HttpStatus.FORBIDDEN,
+                    "You are not authorized to access this attempt"
             );
         }
     }

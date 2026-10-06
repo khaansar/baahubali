@@ -1,8 +1,11 @@
 package com.example.analyticsservice.web.controller;
 
 import com.example.analyticsservice.contract.ReportData;
+import com.example.analyticsservice.contract.UserPerformanceResponse;
+import com.example.analyticsservice.contract.UserTopicPerformanceResponse;
 import com.example.analyticsservice.web.service.ReportCacheService;
 import com.example.analyticsservice.web.service.ReportNotificationService;
+import com.example.analyticsservice.core.service.UserPerformanceService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -20,6 +23,27 @@ public class AnalyticsController {
 
     private final ReportCacheService reportCacheService;
     private final ReportNotificationService reportNotificationService;
+    private final UserPerformanceService userPerformanceService;
+
+    @GetMapping(value = "/performance", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<UserPerformanceResponse> getUserPerformance(
+            @RequestHeader("X-User-Id") String userId) {
+
+        UserPerformanceResponse performance =
+                userPerformanceService.getPerformance(userId);
+
+        return ResponseEntity.ok(performance);
+    }
+
+    @GetMapping(value = "/topics", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<UserTopicPerformanceResponse> getUserTopicPerformance(
+            @RequestHeader("X-User-Id") String userId) {
+
+        UserTopicPerformanceResponse topicPerformance =
+                userPerformanceService.getTopicPerformance(userId);
+
+        return ResponseEntity.ok(topicPerformance);
+    }
 
     @GetMapping(value = "/{attemptId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ReportData> getReport(

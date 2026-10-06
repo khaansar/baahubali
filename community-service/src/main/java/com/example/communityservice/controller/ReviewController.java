@@ -25,7 +25,7 @@ public class ReviewController {
     private final ReviewService reviewService;
 
     @Operation(summary = "Submit a new review (Requires previous attempt)")
-    @PostMapping("/public/reviews")
+    @PostMapping("/reviews")
     public ResponseEntity<ApiResponse<Map<String, Object>>> submitReview(@Valid @RequestBody ReviewRequestDto request) {
         String userId = UserContextHolder.getUserId();
         if (userId == null) {

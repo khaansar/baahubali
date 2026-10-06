@@ -14,8 +14,7 @@ spring:
 
   jpa:
     hibernate:
-      ddl-auto: validate
-    show-sql: true
+      ddl-auto: ${JPA_DDL_AUTO}
     properties:
       hibernate:
         dialect: org.hibernate.dialect.MySQLDialect
@@ -23,12 +22,12 @@ spring:
         default_batch_fetch_size: 100
 
   flyway:
-    enabled: ${SPRING_FLYWAY_ENABLED:true}
-    baseline-on-migrate: true
+    enabled: ${SPRING_FLYWAY_ENABLED}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
     baseline-version: 18
 
   kafka:
-    bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
       key-serializer: org.apache.kafka.common.serialization.StringSerializer
       value-serializer: org.springframework.kafka.support.serializer.JsonSerializer
@@ -37,6 +36,9 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
+      ssl:
+        enabled: ${REDIS_SSL_ENABLED:false}
       timeout: 2000
       lettuce:
         pool:
@@ -50,11 +52,11 @@ spring:
 
 internal:
   auth:
-    my-secret: ${TEST_SERVICE_SECRET:test-secret-key}
+    my-secret: ${TEST_SERVICE_SECRET}
     allowed-clients:
-      attempt-service: ${ATTEMPT_SERVICE_SECRET:attempt-secret-key}
+      attempt-service: ${ATTEMPT_SERVICE_SECRET}
   services:
-    community-url: ${COMMUNITY_SERVICE_URL:http://community-service:8080/community-api}
+    community-url: ${COMMUNITY_SERVICE_URL}
 
 logging:
   level:
@@ -63,7 +65,7 @@ logging:
 
 app:
   api:
-    version: ${API_VERSION:1.2.0}
+    version: ${API_VERSION}
 
 
 management:
