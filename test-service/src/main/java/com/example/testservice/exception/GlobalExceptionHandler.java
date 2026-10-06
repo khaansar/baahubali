@@ -16,9 +16,11 @@ import org.springframework.web.bind.MissingServletRequestParameterException;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
+import jakarta.servlet.http.HttpServletRequest;
 
 import java.util.Collections;
 import java.util.List;
+import java.util.UUID;
 
 @Slf4j
 @RestControllerAdvice
@@ -106,10 +108,13 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiErrorResponse> handleGenericException(Exception ex) {
-        log.error("Unhandled exception occurred: ", ex);
+    public ResponseEntity<ApiErrorResponse> handleGenericException(Exception ex, HttpServletRequest request) {
+        String traceId = "err-" + UUID.randomUUID();
+        log.error("Unhandled request failure service=test-service trace_id={} method={} path={}",
+                traceId, request.getMethod(), request.getRequestURI(), ex);
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(new ApiErrorResponse(500,
-                "An unexpected server error occurred.", "INTERNAL_ERROR", Collections.emptyList()));
+                "The server could not complete the request. Contact support with the trace ID.",
+                "INTERNAL_ERROR", Collections.emptyList(), traceId));
     }
 
     private record ValidationDetail(String field, String issue) {}

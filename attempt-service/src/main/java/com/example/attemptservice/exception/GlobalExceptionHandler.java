@@ -18,6 +18,7 @@ import org.springframework.web.servlet.resource.NoResourceFoundException;
 
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
 import jakarta.servlet.http.HttpServletRequest;
 
 @RestControllerAdvice
@@ -87,9 +88,14 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(Exception.class)
-    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex) {
-        log.error("Unhandled attempt service error", ex);
-        return failure(HttpStatus.INTERNAL_SERVER_ERROR, "INTERNAL_ERROR", "An unexpected error occurred", null);
+    public ResponseEntity<ApiResponse<Void>> handleGeneric(Exception ex, HttpServletRequest request) {
+        String traceId = "err-" + UUID.randomUUID();
+        log.error("Unhandled request failure service=attempt-service trace_id={} method={} path={}",
+                traceId, request.getMethod(), request.getRequestURI(), ex);
+        ApiResponse<Void> response = ApiResponse.failure(HttpStatus.INTERNAL_SERVER_ERROR.value(),
+                "The server could not complete the request. Contact support with the trace ID.",
+                new ApiResponse.ApiError("INTERNAL_ERROR", List.of()), traceId);
+        return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(response);
     }
 
     private ResponseEntity<ApiResponse<Void>> failure(HttpStatusCode status, String code, String message, Object details) {

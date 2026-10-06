@@ -15,6 +15,9 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.validation.annotation.Validated;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -24,6 +27,7 @@ import com.example.iam.service.CalendarAnalyticsService;
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Validated
 public class UserController {
 
     private final UserRepository userRepository;
@@ -40,7 +44,7 @@ public class UserController {
     }
 
     @GetMapping
-    public ApiResponse<org.springframework.data.domain.Page<UserResponse>> getAllUsers(
+    public ApiResponse<java.util.List<UserResponse>> getAllUsers(
             @RequestParam(required = false) String search,
             @RequestParam(required = false) String firstName,
             @RequestParam(required = false) String lastName,
@@ -63,13 +67,14 @@ public class UserController {
                 createdAfter, createdBefore, updatedAfter, updatedBefore, deletedAfter, deletedBefore);
         org.springframework.data.domain.Page<UserResponse> users = userRepository.findAll(filters, pageable)
                 .map(UserResponse::from);
-        return ApiResponse.success(HttpStatus.OK.value(), "Users retrieved successfully", users);
+        return ApiResponse.paginated(HttpStatus.OK.value(), "Users retrieved successfully", users);
     }
 
     @GetMapping("/calendar")
     public ApiResponse<com.example.iam.dto.CalendarAnalyticsResponse> getCalendarAnalytics(
-            @RequestParam int year,
-            @RequestParam int month,
+            @RequestParam @Min(value = 1, message = "Year must be positive") int year,
+            @RequestParam @Min(value = 1, message = "Month must be between 1 and 12")
+                    @Max(value = 12, message = "Month must be between 1 and 12") int month,
             Authentication authentication) {
         UUID userId = (UUID) authentication.getPrincipal();
         com.example.iam.dto.CalendarAnalyticsResponse data = calendarAnalyticsService.getCalendarAnalytics(userId.toString(), year, month);
