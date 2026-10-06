@@ -54,6 +54,9 @@ public class Attempt {
     @Column(name = "final_score")
     private Double finalScore;
 
+    @Column(name = "section_time_spent_json", columnDefinition = "json")
+    private String sectionTimeSpentJson;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private Instant createdAt;

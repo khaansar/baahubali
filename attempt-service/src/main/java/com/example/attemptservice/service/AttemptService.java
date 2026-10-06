@@ -172,6 +172,24 @@ public class AttemptService {
                     "The active attempt is being finalized; retry the request");
         }
 
+        Map<String, Integer> sectionDurations = new java.util.HashMap<>();
+        String firstSectionId = null;
+        if (blueprint.getSections() != null && !blueprint.getSections().isEmpty()) {
+            for (InternalTestBlueprintDto.InternalSectionDto sec : blueprint.getSections()) {
+                if (firstSectionId == null) firstSectionId = sec.getSectionId();
+                if (sec.getDurationMinutes() != null) {
+                    sectionDurations.put(sec.getSectionId(), sec.getDurationMinutes() * 60);
+                }
+            }
+        }
+        String sectionDurationsStr = "{}";
+        try {
+            sectionDurationsStr = objectMapper.writeValueAsString(sectionDurations);
+        } catch (Exception e) {}
+
+        String finalFirstSectionId = firstSectionId;
+        String finalSectionDurationsStr = sectionDurationsStr;
+
         Attempt attempt = Attempt.builder()
                 .id(attemptId)
                 .userId(request.getUserId())
@@ -181,6 +199,7 @@ public class AttemptService {
                 .updatedAt(now)
                 .durationMinutes(blueprint.getDurationMinutes())
                 .status(AttemptStatus.IN_PROGRESS)
+                .sectionTimeSpentJson("{}")
                 .build();
 
         Attempt saved = attemptRepository.save(attempt);
@@ -204,6 +223,10 @@ public class AttemptService {
                                 .answersJson("{}")
                                 .version(0L)
                                 .ttlSeconds((long) saved.getDurationMinutes() * 60 + 3600)
+                                .currentSectionId(finalFirstSectionId)
+                                .currentSectionStartedAt(saved.getStartedAt().getEpochSecond())
+                                .sectionTimeSpentJson("{}")
+                                .sectionDurationsJson(finalSectionDurationsStr)
                                 .build());
                     }
                 });
@@ -515,6 +538,38 @@ public class AttemptService {
             );
         }
 
+        long now = Instant.now().getEpochSecond();
+        String currentSec = current.getCurrentSectionId();
+        Map<String, Integer> timeSpentMap = readSectionTimes(current.getSectionTimeSpentJson());
+        Map<String, Integer> limitsMap = readSectionTimes(current.getSectionDurationsJson());
+
+        String incomingSec = request.getCurrentSectionId();
+        if (incomingSec != null && !incomingSec.equals(currentSec)) {
+            // Section switch
+            if (currentSec != null && current.getCurrentSectionStartedAt() != null) {
+                int spent = timeSpentMap.getOrDefault(currentSec, 0) + (int) (now - current.getCurrentSectionStartedAt());
+                timeSpentMap.put(currentSec, spent);
+            }
+            current.setCurrentSectionId(incomingSec);
+            current.setCurrentSectionStartedAt(now);
+            try {
+                current.setSectionTimeSpentJson(objectMapper.writeValueAsString(timeSpentMap));
+            } catch (Exception e) {}
+            currentSec = incomingSec;
+        } else {
+            // Check limit
+            if (currentSec != null) {
+                int spent = timeSpentMap.getOrDefault(currentSec, 0);
+                if (current.getCurrentSectionStartedAt() != null) {
+                    spent += (int) (now - current.getCurrentSectionStartedAt());
+                }
+                Integer limit = limitsMap.get(currentSec);
+                if (limit != null && spent > limit) {
+                    throw new ResponseStatusException(HttpStatus.GONE, "Section deadline has expired");
+                }
+            }
+        }
+
         Map<String, String> answers = readAnswers(current.getAnswersJson());
         answers.put(request.getQuestionId(), request.getSelectedOption());
 
@@ -528,7 +583,7 @@ public class AttemptService {
                 "local startedAt = tonumber(redis.call('HGET', KEYS[1], 'startedAt')) " +
                 "local durationSec = tonumber(redis.call('HGET', KEYS[1], 'durationSec')) " +
                 "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec then return -1 end " +
-                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4]) " +
+                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8]) " +
                 "return 1",
                 Long.class
         );
@@ -540,7 +595,10 @@ public class AttemptService {
                 updatedAnswers,
                 request.getCurrentQuestionIndex().toString(),
                 Long.toString(nextVersion),
-                Long.toString(Instant.now().getEpochSecond())
+                Long.toString(now),
+                current.getCurrentSectionId() != null ? current.getCurrentSectionId() : "",
+                current.getCurrentSectionStartedAt() != null ? current.getCurrentSectionStartedAt().toString() : Long.toString(now),
+                current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}"
         );
 
         if (result == -1L) {
@@ -558,6 +616,50 @@ public class AttemptService {
         attemptRepository.save(attempt);
 
         return nextVersion;
+    }
+
+    @Transactional
+    public AttemptStateResponse switchSection(String attemptId, String userId, String newSectionId) {
+        Attempt attempt = attemptRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+        verifyOwnership(attempt, userId);
+
+        AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
+                .orElseThrow(() -> new AttemptNotFoundException(attemptId));
+
+        if (existing.getStartedAt() == null
+                || existing.getDurationSec() == null
+                || Instant.now().getEpochSecond() >= existing.getStartedAt() + existing.getDurationSec()) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Attempt deadline has expired");
+        }
+
+        long now = Instant.now().getEpochSecond();
+        String currentSec = existing.getCurrentSectionId();
+        Map<String, Integer> timeSpentMap = readSectionTimes(existing.getSectionTimeSpentJson());
+        Map<String, Integer> limitsMap = readSectionTimes(existing.getSectionDurationsJson());
+
+        if (newSectionId != null && !newSectionId.equals(currentSec)) {
+            // Validate if new section is allowed (e.g. not expired)
+            Integer limit = limitsMap.get(newSectionId);
+            int spent = timeSpentMap.getOrDefault(newSectionId, 0);
+            if (limit != null && spent >= limit) {
+                throw new ResponseStatusException(HttpStatus.GONE, "Target section deadline has expired");
+            }
+
+            if (currentSec != null && existing.getCurrentSectionStartedAt() != null) {
+                int oldSpent = timeSpentMap.getOrDefault(currentSec, 0) + (int) (now - existing.getCurrentSectionStartedAt());
+                timeSpentMap.put(currentSec, oldSpent);
+            }
+            existing.setCurrentSectionId(newSectionId);
+            existing.setCurrentSectionStartedAt(now);
+            try {
+                existing.setSectionTimeSpentJson(objectMapper.writeValueAsString(timeSpentMap));
+            } catch (Exception e) {}
+
+            attemptRedisRepository.save(existing);
+        }
+
+        return toStateResponse(existing);
     }
 
     public SseEmitter getSseEmitter(String attemptId, String userId) {
@@ -613,6 +715,10 @@ public class AttemptService {
                 .dirtyFlag(false)
                 .currentQuestionIndex(0)
                 .answersJson(writeAnswers(answers))
+                .currentSectionId(null)
+                .sectionTimeSpentJson(attempt.getSectionTimeSpentJson() != null ? attempt.getSectionTimeSpentJson() : "{}")
+                .currentSectionStartedAt(Instant.now().getEpochSecond())
+                .sectionDurationsJson("{}")
                 .version(0L)
                 .ttlSeconds(Math.max(
                         60L,
@@ -634,12 +740,22 @@ public class AttemptService {
                 ? Instant.ofEpochSecond(hash.getStartedAt() + hash.getDurationSec())
                 : null;
 
+        Map<String, Integer> timeSpentMap = new java.util.HashMap<>();
+        try {
+            if (hash.getSectionTimeSpentJson() != null) {
+                timeSpentMap = objectMapper.readValue(hash.getSectionTimeSpentJson(), new TypeReference<>() {});
+            }
+        } catch (Exception e) {}
+
         return AttemptStateResponse.builder()
                 .attemptId(hash.getAttemptId())
                 .userId(hash.getUserId())
                 .testId(hash.getExamId())
                 .status(hash.getStatus())
                 .currentQuestionIndex(hash.getCurrentQuestionIndex())
+                .currentSectionId(hash.getCurrentSectionId())
+                .sectionTimeSpentSec(timeSpentMap)
+                .currentSectionStartedAt(hash.getCurrentSectionStartedAt() != null ? Instant.ofEpochSecond(hash.getCurrentSectionStartedAt()) : null)
                 .answers(readAnswers(hash.getAnswersJson()))
                 .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt())
@@ -652,6 +768,15 @@ public class AttemptService {
             AttemptStateResponse state,
             Long attemptVersion
     ) {}
+
+    private Map<String, Integer> readSectionTimes(String json) {
+        if (json == null || json.isBlank()) return new java.util.HashMap<>();
+        try {
+            return new java.util.HashMap<>(objectMapper.readValue(json, new TypeReference<Map<String, Integer>>() {}));
+        } catch (Exception e) {
+            return new java.util.HashMap<>();
+        }
+    }
 
     private Map<String, String> readAnswers(String json) {
         if (json == null || json.isBlank()) {

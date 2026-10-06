@@ -75,6 +75,15 @@ public class AttemptController {
                         .build(), java.util.Map.of("attemptVersion", attemptVersion)));
     }
 
+    @PostMapping("/{id}/sections/{sectionId}/switch")
+    public ResponseEntity<ApiResponse<AttemptStateResponse>> switchSection(
+            @PathVariable String id,
+            @PathVariable String sectionId,
+            @RequestHeader("X-User-Id") String userId) {
+        AttemptStateResponse state = attemptService.switchSection(id, userId, sectionId);
+        return ResponseEntity.ok(ApiResponse.success(200, "Section switched successfully", state));
+    }
+
     @GetMapping(value = "/{id}/stream", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public SseEmitter streamAttempt(
             @PathVariable String id,
