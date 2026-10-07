@@ -17,6 +17,7 @@ COPY test-service/pom.xml test-service/pom.xml
 COPY attempt-service/pom.xml attempt-service/pom.xml
 COPY analytics-service/pom.xml analytics-service/pom.xml
 COPY community-service/pom.xml community-service/pom.xml
+COPY notification-service/pom.xml notification-service/pom.xml
 
 # Make Maven wrapper executable.
 RUN chmod +x mvnw
@@ -29,6 +30,7 @@ COPY test-service/src test-service/src
 COPY attempt-service/src attempt-service/src
 COPY analytics-service/src analytics-service/src
 COPY community-service/src community-service/src
+COPY notification-service/src notification-service/src
 
 # Build only the requested service and required internal modules.
 RUN --mount=type=cache,target=/root/.m2 \

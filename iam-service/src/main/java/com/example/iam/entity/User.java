@@ -31,7 +31,7 @@ import java.util.UUID;
 @NoArgsConstructor
 @AllArgsConstructor
 @Builder
-@ToString(exclude = "passwordHash") // never let the hash leak into logs
+@ToString(exclude = "passwordHash")
 public class User {
 
     @Id
@@ -68,6 +68,10 @@ public class User {
     @Column(name = "is_active")
     @Builder.Default
     private Boolean isActive = true;
+
+    @Column(name = "email_verified", nullable = false)
+    @Builder.Default
+    private Boolean emailVerified = false;
 
     @Column(name = "tests_attempted_count", nullable = false)
     @Builder.Default

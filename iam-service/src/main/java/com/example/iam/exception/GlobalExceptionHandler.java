@@ -59,6 +59,27 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(EmailNotVerifiedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleEmailNotVerified(EmailNotVerifiedException ex) {
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                "EMAIL_NOT_VERIFIED",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidEmailVerificationToken(
+            InvalidEmailVerificationTokenException ex) {
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                "EMAIL_VERIFICATION_TOKEN_INVALID",
+                List.of()
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ApiResponse<Void>> handleValidationErrors(MethodArgumentNotValidException ex) {
         List<ApiErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()

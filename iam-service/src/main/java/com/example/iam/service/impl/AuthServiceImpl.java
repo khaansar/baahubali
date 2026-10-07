@@ -7,10 +7,12 @@ import com.example.iam.entity.Role;
 import com.example.iam.entity.User;
 import com.example.iam.exception.EmailAlreadyExistsException;
 import com.example.iam.exception.InvalidCredentialsException;
+import com.example.iam.exception.EmailNotVerifiedException;
 import com.example.iam.repository.UserRepository;
 import com.example.iam.security.JwtService;
 import com.example.iam.security.RefreshTokenService;
 import com.example.iam.service.AuthService;
+import com.example.iam.service.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -26,11 +28,16 @@ public class AuthServiceImpl implements AuthService {
     private final JwtService jwtService;
     private final RefreshTokenService refreshTokenService;
     private final StringRedisTemplate redisTemplate;
+    private final EmailVerificationService emailVerificationService;
 
     @Override
     @Transactional
-    public AuthenticationResult register(RegisterRequest request) {
-        String normalizedEmail = request.email().trim().toLowerCase();
+    public User register(RegisterRequest request) {
+
+        String normalizedEmail = request.email()
+                .trim()
+                .toLowerCase();
+
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new EmailAlreadyExistsException(normalizedEmail);
         }
@@ -46,11 +53,10 @@ public class AuthServiceImpl implements AuthService {
                 .build();
 
         user = userRepository.save(user);
-        String sessionId = jwtService.createSession(user);
-        String token = jwtService.generateToken(user, sessionId);
-        String refreshToken = refreshTokenService.issue(user, sessionId);
-        
-        return new AuthenticationResult(user, token, refreshToken);
+
+        emailVerificationService.issueVerificationEmail(user);
+
+        return user;
     }
 
     @Override
@@ -62,6 +68,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
             throw new InvalidCredentialsException();
+        }
+
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            throw new EmailNotVerifiedException();
         }
 
         String sessionId = jwtService.createSession(user);
@@ -84,5 +94,15 @@ public class AuthServiceImpl implements AuthService {
     public void logout(String userId) {
         redisTemplate.delete("user:session:" + userId);
         refreshTokenService.revokeForUser(userId);
+    }
+
+    @Override
+    public void verifyEmail(String token) {
+        emailVerificationService.verifyEmail(token);
+    }
+
+    @Override
+    public void resendVerificationEmail(String email) {
+        emailVerificationService.resendVerificationEmail(email);
     }
 }
