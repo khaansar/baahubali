@@ -25,6 +25,7 @@ public class AttemptFlushWorker {
 
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
+    private final com.example.attemptservice.repository.AttemptRepository attemptRepository;
     private final ObjectMapper objectMapper;
 
     @Scheduled(fixedDelayString = "15000")
@@ -107,6 +108,12 @@ public class AttemptFlushWorker {
     }
 
     attemptAnswerRepository.saveAll(toSave);
+
+    com.example.attemptservice.entity.Attempt attempt = attemptRepository.findById(hash.getAttemptId()).orElse(null);
+    if (attempt != null && hash.getSectionTimeSpentJson() != null) {
+        attempt.setSectionTimeSpentJson(hash.getSectionTimeSpentJson());
+        attemptRepository.save(attempt);
+    }
 
     log.debug(
             "Flushed {} answers for attempt {}",

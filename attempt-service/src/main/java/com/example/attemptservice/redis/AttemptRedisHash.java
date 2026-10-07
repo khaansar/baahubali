@@ -36,6 +36,11 @@ public class AttemptRedisHash implements Serializable {
 
     private Integer currentQuestionIndex;
 
+    private String currentSectionId;
+    private String sectionTimeSpentJson;
+    private Long currentSectionStartedAt;
+    private String sectionDurationsJson;
+
     /** JSON-serialized map of questionId -> selectedOption, e.g. {"q1":"B"} */
     private String answersJson;
 

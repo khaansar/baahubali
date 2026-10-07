@@ -20,6 +20,9 @@ public class AttemptStateResponse {
     private String testId;
     private String status;
     private Integer currentQuestionIndex;
+    private String currentSectionId;
+    private Map<String, Integer> sectionTimeSpentSec;
+    private Instant currentSectionStartedAt;
     private Map<String, String> answers;
     private Instant expiresAt;
     private Instant createdAt;

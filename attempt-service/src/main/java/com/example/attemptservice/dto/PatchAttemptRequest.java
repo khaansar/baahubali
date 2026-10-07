@@ -13,6 +13,8 @@ public class PatchAttemptRequest {
     @NotBlank(message = "questionId is required")
     private String questionId;
     
+    private String currentSectionId;
+    
     private String selectedOption;
     
     @NotNull(message = "currentQuestionIndex is required")
