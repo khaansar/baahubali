@@ -2,6 +2,9 @@ package com.example.iam.config;
 
 import com.example.iam.dto.ApiResponse;
 import com.example.iam.security.GatewayHeaderAuthenticationFilter;
+import com.example.iam.security.OAuth2AuthenticationFailureHandler;
+import com.example.iam.security.OAuth2AuthenticationSuccessHandler;
+import com.example.iam.security.OAuth2AuthorizationRequestResolver;
 import com.example.platformcommon.openapi.SwaggerPaths;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import org.springframework.context.annotation.Bean;
@@ -25,12 +28,29 @@ import java.util.List;
 public class SecurityConfig {
 
     private final GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter;
+    private final OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler;
+    private final OAuth2AuthenticationFailureHandler oauth2AuthenticationFailureHandler;
+    private final OAuth2AuthorizationRequestResolver oauth2AuthorizationRequestResolver;
 
     private static final ObjectMapper OBJECT_MAPPER = new ObjectMapper();
 
     public SecurityConfig(
-            GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter) {
-        this.gatewayHeaderAuthenticationFilter = gatewayHeaderAuthenticationFilter;
+            GatewayHeaderAuthenticationFilter gatewayHeaderAuthenticationFilter,
+            OAuth2AuthenticationSuccessHandler oauth2AuthenticationSuccessHandler,
+            OAuth2AuthenticationFailureHandler oauth2AuthenticationFailureHandler,
+            OAuth2AuthorizationRequestResolver oauth2AuthorizationRequestResolver) {
+
+        this.gatewayHeaderAuthenticationFilter =
+                gatewayHeaderAuthenticationFilter;
+
+        this.oauth2AuthenticationSuccessHandler =
+                oauth2AuthenticationSuccessHandler;
+
+        this.oauth2AuthenticationFailureHandler =
+                oauth2AuthenticationFailureHandler;
+
+        this.oauth2AuthorizationRequestResolver =
+                oauth2AuthorizationRequestResolver;
     }
 
     @Bean
@@ -40,13 +60,22 @@ public class SecurityConfig {
         return http
                 .csrf(AbstractHttpConfigurer::disable)
                 .logout(AbstractHttpConfigurer::disable)
+
+                /*
+                 * Normal platform authentication remains cookie/JWT based.
+                 *
+                 * IF_REQUIRED allows Spring Security to create a temporary
+                 * session only for the OAuth2 authorization-code flow.
+                 */
                 .sessionManagement(session ->
                         session.sessionCreationPolicy(
-                                SessionCreationPolicy.STATELESS
+                                SessionCreationPolicy.IF_REQUIRED
                         )
                 )
+
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
+
                         .requestMatchers(
                                 "/v3/api-docs",
                                 "/v3/api-docs/**",
@@ -54,20 +83,45 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/webjars/**"
                         ).permitAll()
+
                         .requestMatchers(
                                 "/register",
                                 "/login",
                                 "/internal/**",
                                 "/refresh",
                                 "/verify-email",
-                                "/resend-verification"
+                                "/resend-verification",
+
+                                /*
+                                 * Spring Security OAuth2 login endpoints.
+                                 */
+                                "/oauth2/authorization/**",
+                                "/login/oauth2/code/**"
                         ).permitAll()
+
                         .requestMatchers("/admin/**").hasRole("ADMIN")
                         .requestMatchers("/users").hasRole("ADMIN")
                         .requestMatchers(SwaggerPaths.PUBLIC).permitAll()
                         .requestMatchers("/v3/api-docs").permitAll()
                         .anyRequest().authenticated()
                 )
+
+                .oauth2Login(oauth2 ->
+                        oauth2
+                                .authorizationEndpoint(authorization ->
+                                        authorization
+                                                .authorizationRequestResolver(
+                                                        oauth2AuthorizationRequestResolver
+                                                )
+                                )
+                                .successHandler(
+                                        oauth2AuthenticationSuccessHandler
+                                )
+                                .failureHandler(
+                                        oauth2AuthenticationFailureHandler
+                                )
+                )
+
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint(
                                 (request, response, authException) ->
@@ -88,10 +142,12 @@ public class SecurityConfig {
                                         )
                         )
                 )
+
                 .addFilterBefore(
                         gatewayHeaderAuthenticationFilter,
                         UsernamePasswordAuthenticationFilter.class
                 )
+
                 .build();
     }
 

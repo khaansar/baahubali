@@ -1,6 +1,12 @@
 server:
   servlet:
     context-path: /auth-api
+    session:
+      cookie:
+        name: OAUTH_SESSION
+        http-only: true
+        secure: ${OAUTH_SESSION_COOKIE_SECURE:false}
+        same-site: ${OAUTH_SESSION_COOKIE_SAME_SITE:Lax}
 
 spring:
   application:
@@ -37,6 +43,29 @@ spring:
     enabled: ${SPRING_FLYWAY_ENABLED}
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
     baseline-version: 5
+  
+  session:
+    timeout: 5m
+    redis:
+      namespace: clearit:oauth-session
+
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: ${GOOGLE_CLIENT_ID:}
+            client-secret: ${GOOGLE_CLIENT_SECRET:}
+            authorization-grant-type: authorization_code
+            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/auth-api/login/oauth2/code/google}
+            scope:
+              - openid
+              - profile
+              - email
+
+        provider:
+          google:
+            issuer-uri: https://accounts.google.com
 
 app:
   api:

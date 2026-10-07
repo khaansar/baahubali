@@ -138,6 +138,9 @@ gateway:
       - /auth-api/verify-email
       - /auth-api/resend-verification
 
+      - /auth-api/oauth2/authorization/**
+      - /auth-api/login/oauth2/code/**
+
       - /tests-api/public/**
       - /community-api/public/**
     jwt:
