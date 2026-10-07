@@ -25,6 +25,7 @@ public class EmailVerificationService {
     private static final String TOKEN_KEY_PREFIX = "email-verification:token:";
     private static final String USER_KEY_PREFIX = "email-verification:user:";
     private static final Duration TOKEN_TTL = Duration.ofMinutes(15);
+    private static final SecureRandom SECURE_RANDOM = new SecureRandom();
 
     private final UserRepository userRepository;
     private final StringRedisTemplate redisTemplate;
@@ -40,31 +41,21 @@ public class EmailVerificationService {
         String userKey = USER_KEY_PREFIX + user.getId();
         String tokenKey = TOKEN_KEY_PREFIX + tokenHash;
 
+        // Invalidate an older verification token.
         String previousTokenHash = redisTemplate.opsForValue().get(userKey);
-
         if (previousTokenHash != null) {
             redisTemplate.delete(TOKEN_KEY_PREFIX + previousTokenHash);
         }
 
-        redisTemplate.opsForValue().set(
-                tokenKey,
-                user.getId().toString(),
-                TOKEN_TTL
-        );
+        // token hash -> userId
+        redisTemplate.opsForValue().set(tokenKey, user.getId().toString(), TOKEN_TTL);
 
-        redisTemplate.opsForValue().set(
-                userKey,
-                tokenHash,
-                TOKEN_TTL
-        );
+        // userId -> current token hash
+        redisTemplate.opsForValue().set(userKey, tokenHash, TOKEN_TTL);
 
-        String verificationUrl =
-                verificationBaseUrl + "?token=" + rawToken;
+        String verificationUrl = verificationBaseUrl + "?token=" + rawToken;
 
-        iamEventPublisher.publishEmailVerificationRequested(
-                user,
-                verificationUrl
-        );
+        iamEventPublisher.publishEmailVerificationRequested(user, verificationUrl);
     }
 
     @Transactional
@@ -75,7 +66,6 @@ public class EmailVerificationService {
 
         String tokenHash = hashToken(rawToken);
         String tokenKey = TOKEN_KEY_PREFIX + tokenHash;
-
         String userId = redisTemplate.opsForValue().get(tokenKey);
 
         if (userId == null) {
@@ -85,14 +75,13 @@ public class EmailVerificationService {
         User user = userRepository.findById(UUID.fromString(userId))
                 .orElseThrow(InvalidEmailVerificationTokenException::new);
 
-        if (Boolean.TRUE.equals(user.getEmailVerified())) {
-            deleteVerificationKeys(user.getId(), tokenHash);
-            return;
+        // Idempotent DB state.
+        if (!Boolean.TRUE.equals(user.getEmailVerified())) {
+            user.setEmailVerified(true);
+            userRepository.save(user);
         }
 
-        user.setEmailVerified(true);
-        userRepository.save(user);
-
+        // Verification tokens are single-use.
         deleteVerificationKeys(user.getId(), tokenHash);
     }
 
@@ -115,7 +104,7 @@ public class EmailVerificationService {
 
     private String generateToken() {
         byte[] tokenBytes = new byte[32];
-        new SecureRandom().nextBytes(tokenBytes);
+        SECURE_RANDOM.nextBytes(tokenBytes);
 
         return Base64.getUrlEncoder()
                 .withoutPadding()
@@ -125,24 +114,16 @@ public class EmailVerificationService {
     private String hashToken(String token) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-
-            byte[] hash = digest.digest(
-                    token.getBytes(StandardCharsets.UTF_8)
-            );
+            byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
 
             StringBuilder result = new StringBuilder(hash.length * 2);
-
             for (byte value : hash) {
                 result.append(String.format("%02x", value));
             }
 
             return result.toString();
-
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException(
-                    "SHA-256 algorithm is not available",
-                    e
-            );
+            throw new IllegalStateException("SHA-256 algorithm is not available", e);
         }
     }
 }

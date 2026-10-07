@@ -32,8 +32,12 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public AuthenticationResult register(RegisterRequest request) {
-        String normalizedEmail = request.email().trim().toLowerCase();
+    public User register(RegisterRequest request) {
+
+        String normalizedEmail = request.email()
+                .trim()
+                .toLowerCase();
+
         if (userRepository.existsByEmail(normalizedEmail)) {
             throw new EmailAlreadyExistsException(normalizedEmail);
         }
@@ -52,11 +56,7 @@ public class AuthServiceImpl implements AuthService {
 
         emailVerificationService.issueVerificationEmail(user);
 
-        String sessionId = jwtService.createSession(user);
-        String token = jwtService.generateToken(user, sessionId);
-        String refreshToken = refreshTokenService.issue(user, sessionId);
-
-        return new AuthenticationResult(user, token, refreshToken);
+        return user;
     }
 
     @Override

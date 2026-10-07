@@ -5,6 +5,8 @@ import com.example.iam.dto.AuthenticationResult;
 import com.example.iam.dto.LoginRequest;
 import com.example.iam.dto.RegisterRequest;
 import com.example.iam.dto.UserResponse;
+import com.example.iam.dto.VerifyEmailRequest;
+import com.example.iam.entity.User;
 import com.example.iam.security.AuthCookieFactory;
 import com.example.iam.service.AuthService;
 import jakarta.validation.Valid;
@@ -14,7 +16,6 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
-import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -33,16 +34,13 @@ public class AuthController {
 
     @PostMapping("/register")
     public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
-        AuthenticationResult result = authService.register(request);
-        ResponseCookie cookie = authCookieFactory.buildAuthCookie(result.token());
-        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
+        User user = authService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
-                .header(HttpHeaders.SET_COOKIE, cookie.toString(), refreshCookie.toString())
                 .body(ApiResponse.success(
                         HttpStatus.CREATED.value(),
-                        "Account registered successfully",
-                        UserResponse.from(result.user())
+                        "Account created successfully. Please verify your email address.",
+                        UserResponse.from(user)
                 ));
     }
 
@@ -84,11 +82,9 @@ public class AuthController {
                 .body(ApiResponse.success(HttpStatus.OK.value(), "Token refreshed", Map.of()));
     }
 
-    @GetMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(
-            @RequestParam String token) {
-
-        authService.verifyEmail(token);
+    @PostMapping("/verify-email")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+        authService.verifyEmail(request.token());
 
         return ResponseEntity.ok()
                 .body(ApiResponse.success(
