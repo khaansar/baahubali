@@ -8,6 +8,7 @@ public record PublicSectionDto(
         UUID sectionId,
         String title,
         Integer sequenceOrder,
+        Integer durationMinutes,
         Instant createdAt,
         Instant updatedAt,
         Instant deletedAt,

@@ -420,6 +420,7 @@ public class AdminMockTestServiceImpl {
                         section.getId(),
                         section.getTitle(),
                         section.getSequenceOrder(),
+                        section.getDurationMinutes(),
                         section.getCreatedAt(),
                         section.getUpdatedAt(),
                         section.getDeletedAt(),

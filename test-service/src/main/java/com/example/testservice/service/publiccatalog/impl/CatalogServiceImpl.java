@@ -61,6 +61,7 @@ public class CatalogServiceImpl {
                         section.getId(),
                         section.getTitle(),
                         section.getSequenceOrder(),
+                        section.getDurationMinutes(),
                         section.getCreatedAt(),
                         section.getUpdatedAt(),
                         section.getDeletedAt(),
