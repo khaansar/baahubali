@@ -91,6 +91,10 @@ public class SecurityConfig {
                                 "/refresh",
                                 "/verify-email",
                                 "/resend-verification",
+                                "/forgot-password",
+                                "/reset-password",
+                                "/reset-password/validate",
+                                "/verify-email/validate",
 
                                 /*
                                  * Spring Security OAuth2 login endpoints.

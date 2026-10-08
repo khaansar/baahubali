@@ -2,23 +2,23 @@ package com.example.iam.exception;
 
 import com.example.iam.dto.ApiErrorDetail;
 import com.example.iam.dto.ApiResponse;
+import com.example.iam.security.AuthCookieFactory;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.validation.ConstraintViolationException;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
 import org.springframework.web.HttpMediaTypeNotSupportedException;
+import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
-import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
-import jakarta.validation.ConstraintViolationException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
-import com.example.iam.security.AuthCookieFactory;
-import lombok.RequiredArgsConstructor;
 
 import java.util.List;
 import java.util.UUID;
@@ -27,20 +27,41 @@ import java.util.UUID;
 @RequiredArgsConstructor
 public class GlobalExceptionHandler {
 
-    private static final Logger log = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+    private static final Logger log =
+            LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
     private final AuthCookieFactory authCookieFactory;
 
-    @ExceptionHandler({InvalidRefreshTokenException.class, RefreshTokenReuseException.class})
-    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenFailure(RuntimeException ex) {
-        String code = ex instanceof RefreshTokenReuseException ? "REFRESH_TOKEN_REUSED" : "REFRESH_TOKEN_INVALID";
+    @ExceptionHandler({
+            InvalidRefreshTokenException.class,
+            RefreshTokenReuseException.class
+    })
+    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenFailure(
+            RuntimeException ex) {
+
+        String code =
+                ex instanceof RefreshTokenReuseException
+                        ? "REFRESH_TOKEN_REUSED"
+                        : "REFRESH_TOKEN_INVALID";
+
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
-                .header("Set-Cookie", authCookieFactory.buildExpiredAuthCookie().toString(),
-                        authCookieFactory.buildExpiredRefreshCookie().toString())
-                .body(ApiResponse.error(HttpStatus.UNAUTHORIZED.value(), ex.getMessage(), code, List.of()));
+                .header(
+                        "Set-Cookie",
+                        authCookieFactory.buildExpiredAuthCookie().toString(),
+                        authCookieFactory.buildExpiredRefreshCookie().toString()
+                )
+                .body(ApiResponse.error(
+                        HttpStatus.UNAUTHORIZED.value(),
+                        ex.getMessage(),
+                        code,
+                        List.of()
+                ));
     }
 
     @ExceptionHandler(EmailAlreadyExistsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleEmailAlreadyExists(EmailAlreadyExistsException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleEmailAlreadyExists(
+            EmailAlreadyExistsException ex) {
+
         return buildResponse(
                 HttpStatus.CONFLICT,
                 "An account with this email already exists",
@@ -50,7 +71,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(InvalidCredentialsException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(InvalidCredentialsException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleInvalidCredentials(
+            InvalidCredentialsException ex) {
+
         return buildResponse(
                 HttpStatus.UNAUTHORIZED,
                 ex.getMessage(),
@@ -60,7 +83,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(EmailNotVerifiedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleEmailNotVerified(EmailNotVerifiedException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleEmailNotVerified(
+            EmailNotVerifiedException ex) {
+
         return buildResponse(
                 HttpStatus.FORBIDDEN,
                 ex.getMessage(),
@@ -72,19 +97,43 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(InvalidEmailVerificationTokenException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidEmailVerificationToken(
             InvalidEmailVerificationTokenException ex) {
+
         return buildResponse(
-                HttpStatus.BAD_REQUEST,
+                HttpStatus.GONE,
                 ex.getMessage(),
                 "EMAIL_VERIFICATION_TOKEN_INVALID",
                 List.of()
         );
     }
 
+    @ExceptionHandler(InvalidPasswordResetTokenException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidPasswordResetToken(
+            InvalidPasswordResetTokenException ex) {
+
+        return buildResponse(
+                HttpStatus.GONE,
+                ex.getMessage(),
+                "PASSWORD_RESET_TOKEN_INVALID",
+                List.of()
+        );
+    }
+
     @ExceptionHandler(MethodArgumentNotValidException.class)
-    public ResponseEntity<ApiResponse<Void>> handleValidationErrors(MethodArgumentNotValidException ex) {
-        List<ApiErrorDetail> details = ex.getBindingResult().getFieldErrors().stream()
-                .map(fieldError -> new ApiErrorDetail(fieldError.getField(), fieldError.getDefaultMessage()))
-                .toList();
+    public ResponseEntity<ApiResponse<Void>> handleValidationErrors(
+            MethodArgumentNotValidException ex) {
+
+        List<ApiErrorDetail> details =
+                ex.getBindingResult()
+                        .getFieldErrors()
+                        .stream()
+                        .map(fieldError ->
+                                new ApiErrorDetail(
+                                        fieldError.getField(),
+                                        fieldError.getDefaultMessage()
+                                )
+                        )
+                        .toList();
+
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failed for the submitted input",
@@ -94,12 +143,22 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(ConstraintViolationException.class)
-    public ResponseEntity<ApiResponse<Void>> handleConstraintViolations(ConstraintViolationException ex) {
-        List<ApiErrorDetail> details = ex.getConstraintViolations().stream()
-                .map(violation -> new ApiErrorDetail(
-                        violation.getPropertyPath().toString().replaceAll(".*\\.", ""),
-                        violation.getMessage()))
-                .toList();
+    public ResponseEntity<ApiResponse<Void>> handleConstraintViolations(
+            ConstraintViolationException ex) {
+
+        List<ApiErrorDetail> details =
+                ex.getConstraintViolations()
+                        .stream()
+                        .map(violation ->
+                                new ApiErrorDetail(
+                                        violation.getPropertyPath()
+                                                .toString()
+                                                .replaceAll(".*\\.", ""),
+                                        violation.getMessage()
+                                )
+                        )
+                        .toList();
+
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failed for the submitted input",
@@ -109,17 +168,26 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MethodArgumentTypeMismatchException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(MethodArgumentTypeMismatchException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleTypeMismatch(
+            MethodArgumentTypeMismatchException ex) {
+
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Validation failed for the submitted input",
                 "INVALID_INPUT",
-                List.of(new ApiErrorDetail(ex.getName(), "Value has an invalid format"))
+                List.of(
+                        new ApiErrorDetail(
+                                ex.getName(),
+                                "Value has an invalid format"
+                        )
+                )
         );
     }
 
     @ExceptionHandler(HttpMessageNotReadableException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(HttpMessageNotReadableException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUnreadableRequest(
+            HttpMessageNotReadableException ex) {
+
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "Request body is missing or malformed",
@@ -129,7 +197,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(HttpMediaTypeNotSupportedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleUnsupportedMediaType(HttpMediaTypeNotSupportedException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleUnsupportedMediaType(
+            HttpMediaTypeNotSupportedException ex) {
+
         return buildResponse(
                 HttpStatus.UNSUPPORTED_MEDIA_TYPE,
                 "Content-Type must be application/json",
@@ -139,17 +209,26 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(MissingRequestHeaderException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeader(MissingRequestHeaderException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleMissingRequestHeader(
+            MissingRequestHeaderException ex) {
+
         return buildResponse(
                 HttpStatus.BAD_REQUEST,
                 "A required request header is missing",
                 "MISSING_REQUIRED_HEADER",
-                List.of(new ApiErrorDetail(ex.getHeaderName(), "Header is required"))
+                List.of(
+                        new ApiErrorDetail(
+                                ex.getHeaderName(),
+                                "Header is required"
+                        )
+                )
         );
     }
 
     @ExceptionHandler(HttpRequestMethodNotSupportedException.class)
-    public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(HttpRequestMethodNotSupportedException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleMethodNotAllowed(
+            HttpRequestMethodNotSupportedException ex) {
+
         return buildResponse(
                 HttpStatus.METHOD_NOT_ALLOWED,
                 "HTTP method is not supported for this endpoint",
@@ -159,7 +238,9 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(NoResourceFoundException.class)
-    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(NoResourceFoundException ex) {
+    public ResponseEntity<ApiResponse<Void>> handleNoResourceFound(
+            NoResourceFoundException ex) {
+
         return buildResponse(
                 HttpStatus.NOT_FOUND,
                 "Endpoint not found",
@@ -170,22 +251,42 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ApiResponse<Void>> handleGenericException(
-            Exception ex, HttpServletRequest request) {
-        String traceId = "err-" + UUID.randomUUID();
-        log.error("Unhandled request failure service=iam-service trace_id={} method={} path={}",
-                traceId, request.getMethod(), request.getRequestURI(), ex);
+            Exception ex,
+            HttpServletRequest request) {
+
+        String traceId =
+                "err-" + UUID.randomUUID();
+
+        log.error(
+                "Unhandled request failure service=iam-service trace_id={} method={} path={}",
+                traceId,
+                request.getMethod(),
+                request.getRequestURI(),
+                ex
+        );
+
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(ApiResponse.error(
                         HttpStatus.INTERNAL_SERVER_ERROR.value(),
                         "The server could not complete the request. Contact support with the trace ID.",
                         "INTERNAL_SERVER_ERROR",
                         List.of(),
-                        traceId));
+                        traceId
+                ));
     }
 
     private ResponseEntity<ApiResponse<Void>> buildResponse(
-            HttpStatus status, String message, String code, List<ApiErrorDetail> details) {
+            HttpStatus status,
+            String message,
+            String code,
+            List<ApiErrorDetail> details) {
+
         return ResponseEntity.status(status)
-                .body(ApiResponse.error(status.value(), message, code, details));
+                .body(ApiResponse.error(
+                        status.value(),
+                        message,
+                        code,
+                        details
+                ));
     }
 }

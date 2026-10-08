@@ -16,6 +16,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CookieValue;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestHeader;
@@ -33,7 +34,9 @@ public class AuthController {
     private final AuthCookieFactory authCookieFactory;
 
     @PostMapping("/register")
-    public ResponseEntity<ApiResponse<UserResponse>> register(@Valid @RequestBody RegisterRequest request) {
+    public ResponseEntity<ApiResponse<UserResponse>> register(
+            @Valid @RequestBody RegisterRequest request) {
+
         User user = authService.register(request);
 
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -45,13 +48,26 @@ public class AuthController {
     }
 
     @PostMapping("/login")
-    public ResponseEntity<ApiResponse<UserResponse>> login(@Valid @RequestBody LoginRequest request) {
-        AuthenticationResult result = authService.authenticate(request);
-        ResponseCookie cookie = authCookieFactory.buildAuthCookie(result.token());
-        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
+    public ResponseEntity<ApiResponse<UserResponse>> login(
+            @Valid @RequestBody LoginRequest request) {
+
+        AuthenticationResult result =
+                authService.authenticate(request);
+
+        ResponseCookie cookie =
+                authCookieFactory.buildAuthCookie(result.token());
+
+        ResponseCookie refreshCookie =
+                authCookieFactory.buildRefreshCookie(
+                        result.refreshToken()
+                );
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, cookie.toString(), refreshCookie.toString())
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        cookie.toString(),
+                        refreshCookie.toString()
+                )
                 .body(ApiResponse.success(
                         HttpStatus.OK.value(),
                         "Login successful",
@@ -60,30 +76,68 @@ public class AuthController {
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> logout(@RequestHeader("X-User-Id") String userId) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> logout(
+            @RequestHeader("X-User-Id") String userId) {
+
         authService.logout(userId);
-        ResponseCookie expiredCookie = authCookieFactory.buildExpiredAuthCookie();
-        ResponseCookie expiredRefreshCookie = authCookieFactory.buildExpiredRefreshCookie();
+
+        ResponseCookie expiredCookie =
+                authCookieFactory.buildExpiredAuthCookie();
+
+        ResponseCookie expiredRefreshCookie =
+                authCookieFactory.buildExpiredRefreshCookie();
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, expiredCookie.toString(), expiredRefreshCookie.toString())
-                .body(ApiResponse.success(HttpStatus.OK.value(), "Logout successful", Map.of()));
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        expiredCookie.toString(),
+                        expiredRefreshCookie.toString()
+                )
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Logout successful",
+                        Map.of()
+                ));
     }
 
     @PostMapping("/refresh")
     public ResponseEntity<ApiResponse<Map<String, Object>>> refresh(
-            @CookieValue(name = "${app.jwt.refresh-cookie-name}", required = false) String refreshToken) {
-        AuthenticationResult result = authService.refresh(refreshToken);
-        ResponseCookie authCookie = authCookieFactory.buildAuthCookie(result.token());
-        ResponseCookie refreshCookie = authCookieFactory.buildRefreshCookie(result.refreshToken());
+            @CookieValue(
+                    name = "${app.jwt.refresh-cookie-name}",
+                    required = false
+            )
+            String refreshToken) {
+
+        AuthenticationResult result =
+                authService.refresh(refreshToken);
+
+        ResponseCookie authCookie =
+                authCookieFactory.buildAuthCookie(
+                        result.token()
+                );
+
+        ResponseCookie refreshCookie =
+                authCookieFactory.buildRefreshCookie(
+                        result.refreshToken()
+                );
 
         return ResponseEntity.ok()
-                .header(HttpHeaders.SET_COOKIE, authCookie.toString(), refreshCookie.toString())
-                .body(ApiResponse.success(HttpStatus.OK.value(), "Token refreshed", Map.of()));
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        authCookie.toString(),
+                        refreshCookie.toString()
+                )
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Token refreshed",
+                        Map.of()
+                ));
     }
 
     @PostMapping("/verify-email")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(@Valid @RequestBody VerifyEmailRequest request) {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(
+            @Valid @RequestBody VerifyEmailRequest request) {
+
         authService.verifyEmail(request.token());
 
         return ResponseEntity.ok()
@@ -91,6 +145,22 @@ public class AuthController {
                         HttpStatus.OK.value(),
                         "Email verified successfully",
                         Map.of()
+                ));
+    }
+
+    @GetMapping("/verify-email/validate")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> validateEmailVerificationToken(
+            @RequestParam String token) {
+
+        if (!authService.isEmailVerificationTokenValid(token)) {
+            throw new com.example.iam.exception.InvalidEmailVerificationTokenException();
+        }
+
+        return ResponseEntity.ok()
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Email verification link is valid",
+                        Map.of("valid", true)
                 ));
     }
 
@@ -111,7 +181,7 @@ public class AuthController {
     @PostMapping("/forgot-password")
     public ResponseEntity<ApiResponse<Map<String, Object>>> forgotPassword(
             @Valid @RequestBody com.example.iam.dto.ForgotPasswordRequest request) {
-        
+
         authService.forgotPassword(request.getEmail());
 
         return ResponseEntity.ok()
@@ -122,11 +192,30 @@ public class AuthController {
                 ));
     }
 
+    @GetMapping("/reset-password/validate")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> validatePasswordResetToken(
+            @RequestParam String token) {
+
+        if (!authService.isPasswordResetTokenValid(token)) {
+            throw new com.example.iam.exception.InvalidPasswordResetTokenException();
+        }
+
+        return ResponseEntity.ok()
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Password reset link is valid",
+                        Map.of("valid", true)
+                ));
+    }
+
     @PostMapping("/reset-password")
     public ResponseEntity<ApiResponse<Map<String, Object>>> resetPassword(
             @Valid @RequestBody com.example.iam.dto.ResetPasswordRequest request) {
-        
-        authService.resetPassword(request.getToken(), request.getNewPassword());
+
+        authService.resetPassword(
+                request.getToken(),
+                request.getNewPassword()
+        );
 
         return ResponseEntity.ok()
                 .body(ApiResponse.success(
