@@ -29,6 +29,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final StringRedisTemplate redisTemplate;
     private final EmailVerificationService emailVerificationService;
+    private final com.example.iam.event.IamEventPublisher iamEventPublisher;
 
     @Override
     @Transactional
@@ -104,5 +105,43 @@ public class AuthServiceImpl implements AuthService {
     @Override
     public void resendVerificationEmail(String email) {
         emailVerificationService.resendVerificationEmail(email);
+    }
+
+    @Override
+    public void forgotPassword(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+        userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+            String token = java.util.UUID.randomUUID().toString();
+            redisTemplate.opsForValue().set(
+                    "reset_token:" + token,
+                    user.getId().toString(),
+                    java.time.Duration.ofMinutes(15)
+            );
+            String resetUrl = "http://localhost:3000/reset-password?token=" + token;
+            iamEventPublisher.publishPasswordResetRequested(user, resetUrl);
+        });
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(String token, String newPassword) {
+        String redisKey = "reset_token:" + token;
+        String userIdStr = redisTemplate.opsForValue().get(redisKey);
+        
+        if (userIdStr == null) {
+            throw new IllegalArgumentException("Invalid or expired reset token");
+        }
+        
+        java.util.UUID userId = java.util.UUID.fromString(userIdStr);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found"));
+                
+        user.setPasswordHash(passwordEncoder.encode(newPassword));
+        userRepository.save(user);
+        
+        redisTemplate.delete(redisKey);
+        
+        // Also revoke all active sessions for security
+        logout(userId.toString());
     }
 }

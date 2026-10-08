@@ -107,4 +107,32 @@ public class AuthController {
                         Map.of()
                 ));
     }
+
+    @PostMapping("/forgot-password")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> forgotPassword(
+            @Valid @RequestBody com.example.iam.dto.ForgotPasswordRequest request) {
+        
+        authService.forgotPassword(request.getEmail());
+
+        return ResponseEntity.ok()
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "If the account exists, a password reset email has been sent",
+                        Map.of()
+                ));
+    }
+
+    @PostMapping("/reset-password")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> resetPassword(
+            @Valid @RequestBody com.example.iam.dto.ResetPasswordRequest request) {
+        
+        authService.resetPassword(request.getToken(), request.getNewPassword());
+
+        return ResponseEntity.ok()
+                .body(ApiResponse.success(
+                        HttpStatus.OK.value(),
+                        "Password has been reset successfully",
+                        Map.of()
+                ));
+    }
 }

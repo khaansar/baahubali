@@ -137,6 +137,8 @@ gateway:
       - /auth-api/refresh
       - /auth-api/verify-email
       - /auth-api/resend-verification
+      - /auth-api/forgot-password
+      - /auth-api/reset-password
 
       - /auth-api/oauth2/authorization/**
       - /auth-api/login/oauth2/code/**

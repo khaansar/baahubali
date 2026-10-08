@@ -72,4 +72,56 @@ public class IamEventPublisher {
             );
         }
     }
+
+    public void publishPasswordResetRequested(
+            User user,
+            String resetUrl
+    ) {
+        PasswordResetRequestedEvent event =
+                new PasswordResetRequestedEvent(
+                        UUID.randomUUID().toString(),
+                        "PASSWORD_RESET_REQUESTED",
+                        1,
+                        Instant.now(),
+                        "iam-service",
+                        user.getId().toString(),
+                        null,
+                        user.getEmail(),
+                        Map.of(
+                                "channel", "EMAIL",
+                                "firstName", user.getFirstName(),
+                                "resetUrl", resetUrl
+                        )
+                );
+
+        try {
+            String message = objectMapper.writeValueAsString(event);
+
+            kafkaTemplate.send(
+                    IAM_EVENTS_TOPIC,
+                    user.getId().toString(),
+                    message
+            ).whenComplete((result, exception) -> {
+                if (exception != null) {
+                    log.error(
+                            "Failed to publish password reset event userId={}",
+                            user.getId(),
+                            exception
+                    );
+                    return;
+                }
+
+                log.debug(
+                        "Published password reset event userId={}",
+                        user.getId()
+                );
+            });
+
+        } catch (Exception e) {
+            throw new IllegalStateException(
+                    "Failed to serialize password reset event",
+                    e
+            );
+        }
+    }
 }
