@@ -1,6 +1,5 @@
 package com.example.iam.security;
 
-import com.example.iam.dto.AuthenticationResult;
 import com.example.iam.entity.User;
 import com.example.iam.service.OAuth2UserProvisioningService;
 import jakarta.servlet.ServletException;
@@ -8,6 +7,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import jakarta.servlet.http.HttpSession;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -28,6 +28,9 @@ public class OAuth2AuthenticationSuccessHandler
     private final RefreshTokenService refreshTokenService;
     private final AuthCookieFactory authCookieFactory;
 
+    @Value("${app.frontend-url:http://localhost:3000}")
+    private String frontendUrl;
+
     @Override
     public void onAuthenticationSuccess(
             HttpServletRequest request,
@@ -36,7 +39,9 @@ public class OAuth2AuthenticationSuccessHandler
             throws IOException, ServletException {
 
         if (!(authentication.getPrincipal() instanceof OidcUser oidcUser)) {
-            response.sendRedirect("/login?oauth_error=invalid_provider");
+            response.sendRedirect(
+                    buildFrontendUrl("/login?oauth_error=invalid_provider")
+            );
             return;
         }
 
@@ -44,7 +49,10 @@ public class OAuth2AuthenticationSuccessHandler
 
         if (!Boolean.TRUE.equals(user.getIsActive())
                 || user.getDeletedAt() != null) {
-            response.sendRedirect("/login?oauth_error=account_disabled");
+
+            response.sendRedirect(
+                    buildFrontendUrl("/login?oauth_error=account_disabled")
+            );
             return;
         }
 
@@ -74,7 +82,7 @@ public class OAuth2AuthenticationSuccessHandler
 
         invalidateOAuthSession(request);
 
-        response.sendRedirect(next);
+        response.sendRedirect(buildFrontendUrl(next));
     }
 
     private String getSafeNext(HttpServletRequest request) {
@@ -99,10 +107,31 @@ public class OAuth2AuthenticationSuccessHandler
     }
 
     private boolean isSafeRelativePath(String value) {
-        return value.startsWith("/")
+
+        return value != null
+                && value.startsWith("/")
                 && !value.startsWith("//")
                 && !value.contains("\\")
                 && !value.contains("://");
+    }
+
+    private String buildFrontendUrl(String path) {
+
+        String base = frontendUrl;
+
+        if (base.endsWith("/")) {
+            base = base.substring(0, base.length() - 1);
+        }
+
+        if (path == null || path.isBlank()) {
+            return base + "/";
+        }
+
+        if (!path.startsWith("/")) {
+            path = "/" + path;
+        }
+
+        return base + path;
     }
 
     private void invalidateOAuthSession(
