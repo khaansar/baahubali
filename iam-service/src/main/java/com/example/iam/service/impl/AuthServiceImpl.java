@@ -107,6 +107,9 @@ public class AuthServiceImpl implements AuthService {
         emailVerificationService.resendVerificationEmail(email);
     }
 
+    @org.springframework.beans.factory.annotation.Value("${app.password-reset.base-url:http://localhost:3000/reset-password}")
+    private String passwordResetBaseUrl;
+
     @Override
     public void forgotPassword(String email) {
         String normalizedEmail = email.trim().toLowerCase();
@@ -117,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
                     user.getId().toString(),
                     java.time.Duration.ofMinutes(15)
             );
-            String resetUrl = "http://localhost:3000/reset-password?token=" + token;
+            String resetUrl = passwordResetBaseUrl + "?token=" + token;
             iamEventPublisher.publishPasswordResetRequested(user, resetUrl);
         });
     }
