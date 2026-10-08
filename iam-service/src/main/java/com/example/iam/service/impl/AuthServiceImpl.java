@@ -6,18 +6,23 @@ import com.example.iam.dto.RegisterRequest;
 import com.example.iam.entity.Role;
 import com.example.iam.entity.User;
 import com.example.iam.exception.EmailAlreadyExistsException;
-import com.example.iam.exception.InvalidCredentialsException;
 import com.example.iam.exception.EmailNotVerifiedException;
+import com.example.iam.exception.InvalidCredentialsException;
+import com.example.iam.exception.InvalidPasswordResetTokenException;
 import com.example.iam.repository.UserRepository;
 import com.example.iam.security.JwtService;
 import com.example.iam.security.RefreshTokenService;
 import com.example.iam.service.AuthService;
 import com.example.iam.service.EmailVerificationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
+import java.time.Duration;
+import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,6 +34,7 @@ public class AuthServiceImpl implements AuthService {
     private final RefreshTokenService refreshTokenService;
     private final StringRedisTemplate redisTemplate;
     private final EmailVerificationService emailVerificationService;
+    private final com.example.iam.event.IamEventPublisher iamEventPublisher;
 
     @Override
     @Transactional
@@ -63,10 +69,14 @@ public class AuthServiceImpl implements AuthService {
     @Transactional(readOnly = true)
     public AuthenticationResult authenticate(LoginRequest request) {
         String normalizedEmail = request.email().trim().toLowerCase();
+
         User user = userRepository.findByEmail(normalizedEmail)
                 .orElseThrow(InvalidCredentialsException::new);
 
-        if (!passwordEncoder.matches(request.password(), user.getPasswordHash())) {
+        if (!passwordEncoder.matches(
+                request.password(),
+                user.getPasswordHash()
+        )) {
             throw new InvalidCredentialsException();
         }
 
@@ -77,17 +87,33 @@ public class AuthServiceImpl implements AuthService {
         String sessionId = jwtService.createSession(user);
         String token = jwtService.generateToken(user, sessionId);
         String refreshToken = refreshTokenService.issue(user, sessionId);
-        return new AuthenticationResult(user, token, refreshToken);
+
+        return new AuthenticationResult(
+                user,
+                token,
+                refreshToken
+        );
     }
 
     @Override
     @Transactional(readOnly = true)
     public AuthenticationResult refresh(String refreshToken) {
-        RefreshTokenService.Rotation rotation = refreshTokenService.rotate(refreshToken);
+        RefreshTokenService.Rotation rotation =
+                refreshTokenService.rotate(refreshToken);
+
         User user = userRepository.findById(rotation.userId())
-                .orElseThrow(() -> new com.example.iam.exception.InvalidRefreshTokenException());
-        String accessToken = jwtService.generateToken(user, rotation.sessionId());
-        return new AuthenticationResult(user, accessToken, rotation.refreshToken());
+                .orElseThrow(
+                        () -> new com.example.iam.exception.InvalidRefreshTokenException()
+                );
+
+        String accessToken =
+                jwtService.generateToken(user, rotation.sessionId());
+
+        return new AuthenticationResult(
+                user,
+                accessToken,
+                rotation.refreshToken()
+        );
     }
 
     @Override
@@ -102,7 +128,89 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
+    public boolean isEmailVerificationTokenValid(String token) {
+        return emailVerificationService.isVerificationTokenValid(token);
+    }
+
+    @Override
     public void resendVerificationEmail(String email) {
         emailVerificationService.resendVerificationEmail(email);
+    }
+
+    @Value("${app.password-reset.base-url:http://localhost:3000/reset-password}")
+    private String passwordResetBaseUrl;
+
+    @Override
+    public void forgotPassword(String email) {
+        String normalizedEmail = email.trim().toLowerCase();
+
+        userRepository.findByEmail(normalizedEmail).ifPresent(user -> {
+
+            String token = UUID.randomUUID().toString();
+
+            redisTemplate.opsForValue().set(
+                    "reset_token:" + token,
+                    user.getId().toString(),
+                    Duration.ofMinutes(15)
+            );
+
+            String resetUrl =
+                    passwordResetBaseUrl + "?token=" + token;
+
+            iamEventPublisher.publishPasswordResetRequested(
+                    user,
+                    resetUrl
+            );
+        });
+    }
+
+    @Override
+    public boolean isPasswordResetTokenValid(String token) {
+        if (token == null || token.isBlank()) {
+            return false;
+        }
+
+        return Boolean.TRUE.equals(
+                redisTemplate.hasKey("reset_token:" + token)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void resetPassword(
+            String token,
+            String newPassword
+    ) {
+        String redisKey = "reset_token:" + token;
+
+        String userIdStr =
+                redisTemplate.opsForValue().get(redisKey);
+
+        if (userIdStr == null) {
+            throw new InvalidPasswordResetTokenException();
+        }
+
+        UUID userId;
+
+        try {
+            userId = UUID.fromString(userIdStr);
+        } catch (IllegalArgumentException e) {
+            throw new InvalidPasswordResetTokenException();
+        }
+
+        User user = userRepository.findById(userId)
+                .orElseThrow(
+                        InvalidPasswordResetTokenException::new
+                );
+
+        user.setPasswordHash(
+                passwordEncoder.encode(newPassword)
+        );
+
+        userRepository.save(user);
+
+        redisTemplate.delete(redisKey);
+
+        logout(userId.toString());
     }
 }

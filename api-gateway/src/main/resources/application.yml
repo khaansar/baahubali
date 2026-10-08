@@ -136,7 +136,11 @@ gateway:
       - /auth-api/register
       - /auth-api/refresh
       - /auth-api/verify-email
+      - /auth-api/verify-email/validate
       - /auth-api/resend-verification
+      - /auth-api/forgot-password
+      - /auth-api/reset-password
+      - /auth-api/reset-password/validate
 
       - /auth-api/oauth2/authorization/**
       - /auth-api/login/oauth2/code/**

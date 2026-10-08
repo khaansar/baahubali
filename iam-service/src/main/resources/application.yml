@@ -72,6 +72,8 @@ app:
     version: ${API_VERSION}
   email-verification:
     base-url: ${EMAIL_VERIFICATION_BASE_URL}
+  password-reset:
+    base-url: ${PASSWORD_RESET_BASE_URL}
   jwt:
     # MUST be overridden via env var in every real environment — this default is for local dev only.
     secret: ${JWT_SECRET:}

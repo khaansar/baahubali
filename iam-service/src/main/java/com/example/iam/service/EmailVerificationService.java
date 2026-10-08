@@ -58,6 +58,18 @@ public class EmailVerificationService {
         iamEventPublisher.publishEmailVerificationRequested(user, verificationUrl);
     }
 
+    public boolean isVerificationTokenValid(String rawToken) {
+        if (rawToken == null || rawToken.isBlank()) {
+            return false;
+        }
+
+        String tokenHash = hashToken(rawToken);
+
+        return Boolean.TRUE.equals(
+                redisTemplate.hasKey(TOKEN_KEY_PREFIX + tokenHash)
+        );
+    }
+
     @Transactional
     public void verifyEmail(String rawToken) {
         if (rawToken == null || rawToken.isBlank()) {
@@ -117,13 +129,18 @@ public class EmailVerificationService {
             byte[] hash = digest.digest(token.getBytes(StandardCharsets.UTF_8));
 
             StringBuilder result = new StringBuilder(hash.length * 2);
+
             for (byte value : hash) {
                 result.append(String.format("%02x", value));
             }
 
             return result.toString();
+
         } catch (NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 algorithm is not available", e);
+            throw new IllegalStateException(
+                    "SHA-256 algorithm is not available",
+                    e
+            );
         }
     }
 }
