@@ -1,0 +1,61 @@
+server:
+  servlet:
+    context-path: /payments-api
+
+spring:
+  application:
+    name: payment-service
+  datasource:
+    url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${PAYMENT_SERVICE_DATABASE:payment_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
+    username: ${MYSQL_USER:root}
+    password: ${MYSQL_PASSWORD:root}
+    driver-class-name: com.mysql.cj.jdbc.Driver
+  jpa:
+    hibernate.ddl-auto: ${JPA_DDL_AUTO}
+    open-in-view: false
+    properties.hibernate.jdbc.time_zone: UTC
+  flyway:
+    enabled: true
+    locations: classpath:db/migration
+  data:
+    redis:
+      host: ${REDIS_HOST:redis}
+      port: ${REDIS_PORT:6379}
+  kafka:
+    bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
+    producer:
+      acks: all
+      key-serializer: org.apache.kafka.common.serialization.StringSerializer
+      value-serializer: org.apache.kafka.common.serialization.StringSerializer
+      properties:
+        enable.idempotence: true
+
+payment:
+  currency-default: INR
+  order-ttl-minutes: ${PAYMENT_ORDER_TTL_MINUTES:30}
+  quote-ttl-seconds: 300
+  internal-token: ${IAM_SERVICE_SECRET} 
+  test-service-url: ${TEST_SERVICE_URL}
+  admin-roles: ADMIN
+  refund-roles: ADMIN
+  topics:
+    order: order-events
+    payment: payment-events
+    refund: refund-events
+    entitlement: entitlement-events
+  reconciliation:
+    pending-older-than-minutes: 10
+    fixed-delay-ms: 300000
+
+razorpay:
+  base-url: https://api.razorpay.com/v1
+  key-id: ${RAZORPAY_KEY_ID}
+  key-secret: ${RAZORPAY_KEY_SECRET}
+  webhook-secret: ${RAZORPAY_WEBHOOK_SECRET}
+  connect-timeout-ms: 3000
+  read-timeout-ms: 8000
+
+management:
+  endpoints.web.exposure.include: health,info,prometheus
+springdoc:
+  api-docs.path: /payments-api/v3/api-docs
