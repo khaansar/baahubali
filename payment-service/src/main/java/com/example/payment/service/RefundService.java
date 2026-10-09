@@ -38,6 +38,14 @@ public class RefundService {
     public Refund request(UUID adminId, UUID paymentId, long amount, String reason, String idemKey) {
         if (idemKey == null || idemKey.isBlank()) throw new PaymentException(ErrorCode.VALIDATION_FAILED, "Idempotency-Key is required");
 
+        Refund existing = refunds
+                .findByPaymentIdAndIdempotencyKey(paymentId, idemKey)
+                .orElse(null);
+
+        if (existing != null) {
+            return existing;
+        }
+
         Refund r = tx.execute(s -> {
             Payment pay = payments.lockById(paymentId).orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "Payment not found"));
             var dup = refunds.findByPaymentIdAndIdempotencyKey(paymentId, idemKey);

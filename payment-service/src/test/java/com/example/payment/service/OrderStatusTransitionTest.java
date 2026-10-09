@@ -21,8 +21,9 @@ class OrderStatusTransitionTest {
     }
 
     @Test
-    void lateCaptureOnExpiredAllowed() {
-        assertTrue(OrderStatus.EXPIRED.canTransitionTo(OrderStatus.PAID));
+    void lateCaptureOnExpiredRequiresReview() {
+        assertTrue(OrderStatus.EXPIRED.canTransitionTo(OrderStatus.PAYMENT_REVIEW));
+        assertFalse(OrderStatus.EXPIRED.canTransitionTo(OrderStatus.PAID));
     }
 
     @Test
