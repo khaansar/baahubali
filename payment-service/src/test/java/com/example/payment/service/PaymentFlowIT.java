@@ -25,20 +25,20 @@ import com.example.payment.service.ProductService;
 import com.example.payment.service.ProductService.ProductSyncRequest;
 import com.example.payment.service.RefundService;
 import com.example.payment.service.WebhookProcessor;
+import java.time.Instant;
+import java.util.UUID;
+import java.util.concurrent.CompletableFuture;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.kafka.core.KafkaTemplate;
+import org.springframework.test.context.bean.override.mockito.MockitoBean;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.test.context.TestPropertySource;
 import org.testcontainers.containers.MySQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
-import java.time.Instant;
-import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
@@ -52,7 +52,6 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-// Boot 3.4+: @MockBean is deprecated in favour of @MockitoBean; both work.
 @SpringBootTest
 @Testcontainers
 @TestPropertySource(properties = {
@@ -60,15 +59,26 @@ import static org.mockito.Mockito.when;
     "spring.jpa.hibernate.ddl-auto=none" })
 class PaymentFlowIT {
     @Container static MySQLContainer<?> mysql = new MySQLContainer<>("mysql:8.0");
-    @DynamicPropertySource static void db(DynamicPropertyRegistry r) {
-        r.add("spring.datasource.url", mysql::getJdbcUrl); r.add("spring.datasource.username", mysql::getUsername);
+
+    @DynamicPropertySource
+    static void db(DynamicPropertyRegistry r) {
+        r.add("spring.datasource.url", mysql::getJdbcUrl);
+        r.add("spring.datasource.username", mysql::getUsername);
         r.add("spring.datasource.password", mysql::getPassword);
     }
-    @MockBean PaymentGateway gateway; @MockBean TestServiceClient testClient; @MockBean KafkaTemplate<String, String> kafka;
 
-    @Autowired ProductService products; @Autowired CheckoutService checkout; @Autowired WebhookProcessor webhooks;
-    @Autowired EntitlementService entitlements; @Autowired RefundService refundService;
-    @Autowired CouponRepository coupons; @Autowired OrderRepository orderRepo; @Autowired PaymentRepository paymentRepo;
+    @MockitoBean PaymentGateway gateway;
+    @MockitoBean TestServiceClient testClient;
+    @MockitoBean KafkaTemplate<String, String> kafka;
+
+    @Autowired ProductService products;
+    @Autowired CheckoutService checkout;
+    @Autowired WebhookProcessor webhooks;
+    @Autowired EntitlementService entitlements;
+    @Autowired RefundService refundService;
+    @Autowired CouponRepository coupons;
+    @Autowired OrderRepository orderRepo;
+    @Autowired PaymentRepository paymentRepo;
     @Autowired OutboxRepository outbox;
 
     @Test
@@ -83,10 +93,8 @@ class PaymentFlowIT {
         c.setStartsAt(Instant.now().minusSeconds(60)); c.setExpiresAt(Instant.now().plusSeconds(3600)); c.setUsageLimit(10);
         coupons.save(c);
 
-        // quote (UX only)
         assertEquals(39920, checkout.quote(user, new QuoteRequest(product.getId(), "save20")).price().total());
 
-        // order creation, idempotent
         String provOrder = "order_" + UUID.randomUUID().toString().substring(0, 8);
         when(gateway.createOrder(anyString(), anyLong(), anyString(), anyMap())).thenReturn(new ProviderOrder(provOrder, 39920, "INR", "created"));
         CreateOrderRequest req = new CreateOrderRequest(product.getId(), "save20");
@@ -94,20 +102,17 @@ class PaymentFlowIT {
         CreateOrderResponse o2 = checkout.createOrder(user, "key-1", req);
         assertEquals(o1.orderId(), o2.orderId());
         verify(gateway, times(1)).createOrder(anyString(), anyLong(), anyString(), anyMap());
-        var conflict = assertThrows(PaymentException.class,
-            () -> checkout.createOrder(user, "key-1", new CreateOrderRequest(product.getId(), null)));
+
+        var conflict = assertThrows(PaymentException.class, () -> checkout.createOrder(user, "key-1", new CreateOrderRequest(product.getId(), null)));
         assertEquals(ErrorCode.IDEMPOTENCY_CONFLICT, conflict.getCode());
         assertEquals(1, coupons.findByCode("SAVE20").orElseThrow().getUsedCount());
 
-        // price change must not touch the existing order
         products.sync(new ProductSyncRequest(ProductType.TEST_SERIES, series, "JEE Series", true, 79900L, "INR"));
         assertEquals(39920, orderRepo.findById(o1.orderId()).orElseThrow().getTotalAmount());
 
-        // access denied before payment
         when(testClient.seriesIdOf(testId)).thenReturn(series);
         assertFalse(entitlements.canAccessTest(user, testId));
 
-        // webhook, delivered twice
         String body = "{\"event\":\"payment.captured\",\"payload\":{\"payment\":{\"entity\":{\"id\":\"pay_X\",\"order_id\":\""
             + provOrder + "\",\"amount\":39920,\"currency\":\"INR\",\"method\":\"upi\"}}}}";
         when(gateway.verifyWebhookSignature(eq(body), any())).thenReturn(true);
@@ -118,17 +123,15 @@ class PaymentFlowIT {
         assertEquals(OrderStatus.FULFILLED, paid.getStatus());
         assertTrue(entitlements.hasActive(user, ProductType.TEST_SERIES, series));
         assertTrue(entitlements.canAccessTest(user, testId));
-        assertTrue(outbox.countByEventType("PaymentCaptured") >= 1);
-        assertTrue(outbox.countByEventType("EntitlementGranted") >= 1);
+        assertTrue(outbox.countByEventType("PAYMENT_CAPTURED") >= 1);
+        assertTrue(outbox.countByEventType("ENTITLEMENT_GRANTED") >= 1);
 
-        // full refund revokes entitlement
         Payment pay = paymentRepo.findByOrderId(o1.orderId()).get(0);
         when(gateway.refundPayment(eq("pay_X"), eq(39920L), anyString(), anyMap())).thenReturn(new ProviderRefund("rfnd_1", "pay_X", 39920, "processed"));
         refundService.request(admin, pay.getId(), 39920, "duplicate payment", "refund-1");
         assertFalse(entitlements.hasActive(user, ProductType.TEST_SERIES, series));
         assertEquals(OrderStatus.REFUNDED, orderRepo.findById(o1.orderId()).orElseThrow().getStatus());
 
-        // cannot refund more than captured
         assertThrows(PaymentException.class, () -> refundService.request(admin, pay.getId(), 1, "again", "refund-2"));
     }
 }

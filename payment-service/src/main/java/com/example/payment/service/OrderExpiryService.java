@@ -1,7 +1,7 @@
 package com.example.payment.service;
 
-import com.example.payment.entity.Order;
-import com.example.payment.enums.OrderStatus;
+import com.example.payment.audit.AuditService;
+import com.example.payment.entity.enums.OrderStatus;
 import com.example.payment.repository.OrderRepository;
 import io.micrometer.core.instrument.MeterRegistry;
 import java.time.Instant;
@@ -30,16 +30,12 @@ public class OrderExpiryService {
         for (UUID id : orders.findExpiredIds(List.of(OrderStatus.CREATED, OrderStatus.PAYMENT_PENDING), Instant.now(), PageRequest.of(0, 200))) {
             tx.executeWithoutResult(s -> orders.lockById(id).ifPresent(o -> {
                 if (o.getStatus() != OrderStatus.CREATED && o.getStatus() != OrderStatus.PAYMENT_PENDING) {
-                    // Paid meanwhile.
                     return;
                 }
 
                 o.transitionTo(OrderStatus.EXPIRED);
-
                 coupons.release(id);
-
                 audit.record("SYSTEM", null, "ORDER_EXPIRED", "ORDER", id, id, null);
-
                 metrics.counter("orders_expired_total").increment();
             }));
         }

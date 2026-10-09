@@ -5,8 +5,8 @@ server:
       cookie:
         name: OAUTH_SESSION
         http-only: true
-        secure: ${OAUTH_SESSION_COOKIE_SECURE:false}
-        same-site: ${OAUTH_SESSION_COOKIE_SAME_SITE:Lax}
+        secure: ${OAUTH_SESSION_COOKIE_SECURE}
+        same-site: ${OAUTH_SESSION_COOKIE_SAME_SITE}
 
 spring:
   application:
@@ -43,7 +43,7 @@ spring:
     enabled: ${SPRING_FLYWAY_ENABLED}
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
     baseline-version: 5
-  
+
   session:
     timeout: 5m
     redis:
@@ -57,7 +57,7 @@ spring:
             client-id: ${GOOGLE_CLIENT_ID:}
             client-secret: ${GOOGLE_CLIENT_SECRET:}
             authorization-grant-type: authorization_code
-            redirect-uri: ${GOOGLE_REDIRECT_URI:http://localhost:8080/auth-api/login/oauth2/code/google}
+            redirect-uri: ${GOOGLE_REDIRECT_URI}
             scope:
               - openid
               - profile
@@ -70,12 +70,14 @@ spring:
 app:
   api:
     version: ${API_VERSION}
+
   email-verification:
     base-url: ${EMAIL_VERIFICATION_BASE_URL}
+
   password-reset:
     base-url: ${PASSWORD_RESET_BASE_URL}
+
   jwt:
-    # MUST be overridden via env var in every real environment — this default is for local dev only.
     secret: ${JWT_SECRET:}
     signing-algorithm: ${JWT_SIGNING_ALGORITHM:RS256}
     private-key: ${JWT_PRIVATE_KEY_PATH}
@@ -91,7 +93,9 @@ app:
 
 internal:
   auth:
+    my-secret: ${IAM_SERVICE_SECRET}
     allowed-clients:
+      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
       community-service: ${COMMUNITY_SERVICE_SECRET}
 
 springdoc:

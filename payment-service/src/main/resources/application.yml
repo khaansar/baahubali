@@ -5,22 +5,27 @@ server:
 spring:
   application:
     name: payment-service
+
   datasource:
     url: jdbc:mysql://${MYSQL_HOST:localhost}:${MYSQL_PORT:3306}/${PAYMENT_SERVICE_DATABASE:payment_db}?sslMode=VERIFY_IDENTITY&enabledTLSProtocols=TLSv1.2,TLSv1.3
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+
   jpa:
     hibernate.ddl-auto: ${JPA_DDL_AUTO}
     open-in-view: false
     properties.hibernate.jdbc.time_zone: UTC
+
   flyway:
     enabled: true
     locations: classpath:db/migration
+
   data:
     redis:
       host: ${REDIS_HOST:redis}
       port: ${REDIS_PORT:6379}
+
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:kafka:9092}
     producer:
@@ -30,11 +35,18 @@ spring:
       properties:
         enable.idempotence: true
 
+internal:
+  auth:
+    my-secret: ${PAYMENT_SERVICE_SECRET}
+    allowed-clients:
+      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
+      attempt-service: ${ATTEMPT_SERVICE_SECRET}
+      test-service: ${TEST_SERVICE_SECRET}
+
 payment:
   currency-default: INR
   order-ttl-minutes: ${PAYMENT_ORDER_TTL_MINUTES:30}
   quote-ttl-seconds: 300
-  internal-token: ${IAM_SERVICE_SECRET} 
   test-service-url: ${TEST_SERVICE_URL}
   admin-roles: ADMIN
   refund-roles: ADMIN
@@ -56,6 +68,11 @@ razorpay:
   read-timeout-ms: 8000
 
 management:
-  endpoints.web.exposure.include: health,info,prometheus
+  endpoints:
+    web:
+      exposure:
+        include: health,info,prometheus
+
 springdoc:
-  api-docs.path: /payments-api/v3/api-docs
+  api-docs:
+    path: /v3/api-docs

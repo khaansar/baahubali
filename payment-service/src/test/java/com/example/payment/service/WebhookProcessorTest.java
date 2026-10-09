@@ -20,6 +20,9 @@ import com.example.payment.repository.RefundRepository;
 import com.example.payment.repository.WebhookEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.util.List;
+import java.util.Optional;
+import java.util.UUID;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -28,9 +31,6 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
 import org.springframework.dao.DataIntegrityViolationException;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
@@ -43,10 +43,17 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class WebhookProcessorTest {
-    @Mock PaymentGateway gateway; @Mock WebhookEventRepository inbox; @Mock PaymentRepository payments;
-    @Mock OrderRepository orders; @Mock OrderItemRepository orderItems; @Mock RefundRepository refunds;
-    @Mock EntitlementService entitlements; @Mock CouponService coupons; @Mock RefundEntitlementPolicy refundPolicy;
-    @Mock DomainEventPublisher events; @Mock AuditService audit;
+    @Mock PaymentGateway gateway;
+    @Mock WebhookEventRepository inbox;
+    @Mock PaymentRepository payments;
+    @Mock OrderRepository orders;
+    @Mock OrderItemRepository orderItems;
+    @Mock RefundRepository refunds;
+    @Mock EntitlementService entitlements;
+    @Mock CouponService coupons;
+    @Mock RefundEntitlementPolicy refundPolicy;
+    @Mock DomainEventPublisher events;
+    @Mock AuditService audit;
     WebhookProcessor processor;
 
     static final String CAPTURED = """
@@ -61,22 +68,25 @@ class WebhookProcessorTest {
             refundPolicy, events, audit, new ObjectMapper(), TestTx.template(), new SimpleMeterRegistry());
     }
 
-    Payment payment(PaymentStatus st) {
+    Payment payment(PaymentStatus status) {
         Payment p = new Payment(); p.setOrderId(UUID.randomUUID()); p.setProvider("RAZORPAY"); p.setProviderOrderId("order_1");
-        p.setAmount(49900); p.setCurrency("INR"); p.setStatus(st); return p;
-    }
-    Order order(UUID id, OrderStatus st) {
-        Order o = new Order(); o.setId(id); o.setOrderNumber("ORD-1"); o.setUserId(UUID.randomUUID()); o.setStatus(st); o.setTotalAmount(49900); return o;
+        p.setAmount(49900); p.setCurrency("INR"); p.setStatus(status); return p;
     }
 
-    @Test void invalidSignatureRejectedAndNothingStored() {
+    Order order(UUID id, OrderStatus status) {
+        Order o = new Order(); o.setId(id); o.setOrderNumber("ORD-1"); o.setUserId(UUID.randomUUID()); o.setStatus(status); o.setTotalAmount(49900); return o;
+    }
+
+    @Test
+    void invalidSignatureRejectedAndNothingStored() {
         when(gateway.verifyWebhookSignature(any(), any())).thenReturn(false);
         var ex = assertThrows(PaymentException.class, () -> processor.receive(CAPTURED, "bad", "e1"));
         assertEquals(ErrorCode.WEBHOOK_SIGNATURE_INVALID, ex.getCode());
         verifyNoInteractions(inbox, payments);
     }
 
-    @Test void duplicateProcessedEventIsIgnored() {
+    @Test
+    void duplicateProcessedEventIsIgnored() {
         when(inbox.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("dup"));
         WebhookEvent seen = WebhookEvent.of("RAZORPAY", "e1", "payment.captured", CAPTURED); seen.setProcessed(true);
         when(inbox.findByProviderAndProviderEventId("RAZORPAY", "e1")).thenReturn(Optional.of(seen));
@@ -84,7 +94,8 @@ class WebhookProcessorTest {
         verifyNoInteractions(payments, entitlements);
     }
 
-    @Test void duplicateUnprocessedEventIsRetried() {
+    @Test
+    void duplicateUnprocessedEventIsRetried() {
         when(inbox.saveAndFlush(any())).thenThrow(new DataIntegrityViolationException("dup"));
         when(inbox.findByProviderAndProviderEventId("RAZORPAY", "e1"))
             .thenReturn(Optional.of(WebhookEvent.of("RAZORPAY", "e1", "payment.captured", CAPTURED)));
@@ -93,7 +104,8 @@ class WebhookProcessorTest {
         verify(payments).lockByProviderOrderId("RAZORPAY", "order_1");
     }
 
-    @Test void capturedPaymentFulfilsOrderAndGrantsEntitlement() {
+    @Test
+    void capturedPaymentFulfilsOrderAndGrantsEntitlement() {
         Payment pay = payment(PaymentStatus.CREATED);
         Order o = order(pay.getOrderId(), OrderStatus.PAYMENT_PENDING);
         OrderItem it = new OrderItem(); it.setProductType(ProductType.TEST_SERIES); it.setProductReferenceId(UUID.randomUUID());
@@ -109,7 +121,8 @@ class WebhookProcessorTest {
         verify(inbox).markProcessed(any(), any());
     }
 
-    @Test void replayOnAlreadyCapturedIsNoop() {
+    @Test
+    void replayOnAlreadyCapturedIsNoop() {
         Payment pay = payment(PaymentStatus.CAPTURED);
         when(payments.lockByProviderOrderId("RAZORPAY", "order_1")).thenReturn(Optional.of(pay));
         processor.receive(CAPTURED, "sig", "e2");
@@ -117,7 +130,8 @@ class WebhookProcessorTest {
         verify(orders, never()).lockById(any());
     }
 
-    @Test void amountMismatchRejectedAndNeverGrants() {
+    @Test
+    void amountMismatchRejectedAndNeverGrants() {
         Payment pay = payment(PaymentStatus.CREATED); pay.setAmount(10000);
         when(payments.lockByProviderOrderId("RAZORPAY", "order_1")).thenReturn(Optional.of(pay));
         assertThrows(PaymentException.class, () -> processor.receive(CAPTURED, "sig", "e3"));
@@ -126,17 +140,22 @@ class WebhookProcessorTest {
         assertEquals(PaymentStatus.CREATED, pay.getStatus());
     }
 
-    @Test void lateCaptureOnExpiredOrderStillGrants() {
+    @Test
+    void lateCaptureOnExpiredOrderRequiresReviewAndDoesNotGrantAccess() {
         Payment pay = payment(PaymentStatus.CREATED);
         Order o = order(pay.getOrderId(), OrderStatus.EXPIRED);
         when(payments.lockByProviderOrderId("RAZORPAY", "order_1")).thenReturn(Optional.of(pay));
         when(orders.lockById(pay.getOrderId())).thenReturn(Optional.of(o));
-        when(orderItems.findByOrderId(o.getId())).thenReturn(List.of());
+
         processor.receive(CAPTURED, "sig", "e4");
-        assertEquals(OrderStatus.FULFILLED, o.getStatus());
+
+        assertEquals(PaymentStatus.CAPTURED, pay.getStatus());
+        assertEquals(OrderStatus.PAYMENT_REVIEW, o.getStatus());
+        verify(entitlements, never()).grantPurchase(any(), any(), any(), any());
     }
 
-    @Test void failedAfterCapturedDoesNotRegress() {
+    @Test
+    void failedAfterCapturedDoesNotRegress() {
         Payment pay = payment(PaymentStatus.CAPTURED);
         when(payments.lockByProviderOrderId("RAZORPAY", "order_1")).thenReturn(Optional.of(pay));
         String failed = """

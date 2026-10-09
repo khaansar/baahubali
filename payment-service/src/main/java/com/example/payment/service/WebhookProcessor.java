@@ -25,6 +25,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.time.Instant;
@@ -54,21 +55,22 @@ public class WebhookProcessor {
     public void receive(String raw, String signature, String eventId) {
         metrics.counter("webhook_received_total").increment();
         if (!gateway.verifyWebhookSignature(raw, signature)) {
-            log.warn("webhook signature invalid");                 // never log body/secret
+            log.warn("webhook signature invalid");
             throw new PaymentException(ErrorCode.WEBHOOK_SIGNATURE_INVALID, "invalid signature");
         }
+
         JsonNode root = parse(raw);
         String type = root.path("event").asText();
         String evId = (eventId != null && !eventId.isBlank()) ? eventId : sha(raw);
-
         WebhookEvent ev;
+
         try {
             ev = tx.execute(s -> inbox.saveAndFlush(WebhookEvent.of(gateway.name(), evId, type, raw)));
-        } catch (DataIntegrityViolationException dup) {            // uq_webhook(provider, provider_event_id)
+        } catch (DataIntegrityViolationException dup) {
             ev = inbox.findByProviderAndProviderEventId(gateway.name(), evId).orElseThrow();
             if (ev.isProcessed()) { metrics.counter("webhook_duplicate_total").increment(); return; }
-            // seen but not processed (earlier failure): retry below
         }
+
         final UUID inboxId = ev.getId();
         try {
             tx.executeWithoutResult(s -> { dispatch(type, root); inbox.markProcessed(inboxId, Instant.now()); });
@@ -76,17 +78,17 @@ public class WebhookProcessor {
             tx.executeWithoutResult(s -> inbox.recordFailure(inboxId, truncate(e.getMessage())));
             metrics.counter("webhook_processing_failure_total").increment();
             log.error("webhook processing failed eventId={} type={}", evId, type, e);
-            throw e;                                                // 5xx => provider retries
+            throw e;
         }
     }
 
     private void dispatch(String type, JsonNode root) {
         switch (type) {
             case "payment.authorized" -> onAuthorized(root.at("/payload/payment/entity"));
-            case "payment.captured"   -> onCaptured(root.at("/payload/payment/entity"));
-            case "payment.failed"     -> onFailed(root.at("/payload/payment/entity"));
-            case "refund.processed"   -> onRefund(root.at("/payload/refund/entity"), true);
-            case "refund.failed"      -> onRefund(root.at("/payload/refund/entity"), false);
+            case "payment.captured" -> onCaptured(root.at("/payload/payment/entity"));
+            case "payment.failed" -> onFailed(root.at("/payload/payment/entity"));
+            case "refund.processed" -> onRefund(root.at("/payload/refund/entity"), true);
+            case "refund.failed" -> onRefund(root.at("/payload/refund/entity"), false);
             default -> log.debug("ignored webhook type={}", type);
         }
     }
@@ -99,17 +101,37 @@ public class WebhookProcessor {
             p.path("method").asText(null), "PROVIDER");
     }
 
-    /** Single capture code path shared by webhook, /verify and reconciliation. Caller must hold the payment row lock. */
+    /** Shared by webhook, /verify and reconciliation. Caller must hold the payment row lock. */
     public void applyCapture(Payment pay, String providerPaymentId, long amount, String currency, String method, String actor) {
         if (pay.getStatus() == PaymentStatus.CAPTURED || pay.getStatus() == PaymentStatus.PARTIALLY_REFUNDED
-            || pay.getStatus() == PaymentStatus.REFUNDED) return;                        // replay-safe
-        if (amount != pay.getAmount() || !currency.equals(pay.getCurrency()))
+            || pay.getStatus() == PaymentStatus.REFUNDED) return;
+        if (amount != pay.getAmount() || currency == null || !currency.equals(pay.getCurrency()))
             throw new PaymentException(ErrorCode.PROVIDER_ERROR, "Provider amount/currency mismatch for payment " + pay.getId());
 
         Order order = orders.lockById(pay.getOrderId()).orElseThrow();
+        OrderStatus previousStatus = order.getStatus();
         Instant now = Instant.now();
         pay.setProviderPaymentId(providerPaymentId); pay.setMethod(method);
         pay.setProviderStatus("captured"); pay.setStatus(PaymentStatus.CAPTURED); pay.setCapturedAt(now);
+
+        if (previousStatus == OrderStatus.EXPIRED || previousStatus == OrderStatus.CANCELLED || previousStatus == OrderStatus.FAILED) {
+            order.transitionTo(OrderStatus.PAYMENT_REVIEW);
+            events.publish("payment", "PAYMENT", pay.getId(), order.getUserId(), "PAYMENT_CAPTURED_LATE",
+                Map.of("orderId", order.getId().toString(), "amount", pay.getAmount(), "currency", pay.getCurrency(), "previousOrderStatus", previousStatus.name()));
+            audit.record(actor, null, "PAYMENT_CAPTURED_LATE", "PAYMENT", pay.getId(), order.getId(), "Manual refund or fulfilment review required");
+            metrics.counter("payment_late_capture_total").increment();
+            log.error("late capture requires review orderId={} paymentId={} providerPaymentId={} previousOrderStatus={}", order.getId(), pay.getId(), providerPaymentId, previousStatus);
+            return;
+        }
+
+        if (previousStatus != OrderStatus.CREATED && previousStatus != OrderStatus.PAYMENT_PENDING) {
+            events.publish("payment", "PAYMENT", pay.getId(), order.getUserId(), "PAYMENT_CAPTURE_REVIEW_REQUIRED",
+                Map.of("orderId", order.getId().toString(), "amount", pay.getAmount(), "currency", pay.getCurrency(), "orderStatus", previousStatus.name()));
+            audit.record(actor, null, "PAYMENT_CAPTURE_REVIEW_REQUIRED", "PAYMENT", pay.getId(), order.getId(), "Capture received for an order that is not awaiting payment");
+            metrics.counter("payment_capture_review_total").increment();
+            log.error("capture received for order not awaiting payment orderId={} paymentId={} orderStatus={}", order.getId(), pay.getId(), previousStatus);
+            return;
+        }
 
         order.transitionTo(OrderStatus.PAID);
         order.setPaidAt(now);
@@ -129,24 +151,21 @@ public class WebhookProcessor {
 
     private void onAuthorized(JsonNode p) {
         payments.lockByProviderOrderId(gateway.name(), p.path("order_id").asText()).ifPresent(pay -> {
-            if (pay.getStatus() != PaymentStatus.CREATED) return;                        // out-of-order: capture already won
+            if (pay.getStatus() != PaymentStatus.CREATED) return;
             pay.setStatus(PaymentStatus.AUTHORIZED); pay.setProviderPaymentId(p.path("id").asText());
             pay.setAuthorizedAt(Instant.now());
-            events.publish("payment", "PAYMENT", pay.getId(), null, EventTypes.PAYMENT_AUTHORIZED,
-                Map.of("orderId", pay.getOrderId().toString()));
+            events.publish("payment", "PAYMENT", pay.getId(), null, EventTypes.PAYMENT_AUTHORIZED, Map.of("orderId", pay.getOrderId().toString()));
         });
     }
 
     private void onFailed(JsonNode p) {
         payments.lockByProviderOrderId(gateway.name(), p.path("order_id").asText()).ifPresent(pay -> {
             if (pay.getStatus() == PaymentStatus.CAPTURED || pay.getStatus() == PaymentStatus.FAILED
-                || pay.getStatus() == PaymentStatus.PARTIALLY_REFUNDED || pay.getStatus() == PaymentStatus.REFUNDED) return; // never regress
+                || pay.getStatus() == PaymentStatus.PARTIALLY_REFUNDED || pay.getStatus() == PaymentStatus.REFUNDED) return;
             pay.setStatus(PaymentStatus.FAILED); pay.setProviderPaymentId(p.path("id").asText());
             pay.setFailureCode(p.path("error_code").asText(null));
             pay.setFailureReason(truncate(p.path("error_description").asText(null)));
-            // Order stays PAYMENT_PENDING: the user can retry on the same provider order until expiry.
-            events.publish("payment", "PAYMENT", pay.getId(), null, EventTypes.PAYMENT_FAILED,
-                Map.of("orderId", pay.getOrderId().toString()));
+            events.publish("payment", "PAYMENT", pay.getId(), null, EventTypes.PAYMENT_FAILED, Map.of("orderId", pay.getOrderId().toString()));
             audit.record("PROVIDER", null, "PAYMENT_FAILED", "PAYMENT", pay.getId(), pay.getOrderId(), pay.getFailureCode());
             metrics.counter("payment_failure_total").increment();
         });
@@ -162,9 +181,11 @@ public class WebhookProcessor {
         try { return mapper.readTree(raw); }
         catch (Exception e) { throw new PaymentException(ErrorCode.VALIDATION_FAILED, "Malformed webhook payload"); }
     }
+
     private static String sha(String s) {
         try { return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(s.getBytes(StandardCharsets.UTF_8))); }
         catch (Exception e) { throw new IllegalStateException(e); }
     }
+
     private static String truncate(String s) { return s == null ? null : s.substring(0, Math.min(480, s.length())); }
 }

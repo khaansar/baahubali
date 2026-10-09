@@ -1,43 +1,18 @@
-package com.example.payment.enums;
+package com.example.payment.event;
 
 public final class EventTypes {
 
-    public static final String ORDER_CREATED =
-        "OrderCreated";
+    private EventTypes() {}
 
-    public static final String ORDER_PAID =
-        "OrderPaid";
-
-    public static final String PAYMENT_CREATED =
-        "PaymentCreated";
-
-    public static final String PAYMENT_AUTHORIZED =
-        "PaymentAuthorized";
-
-    public static final String PAYMENT_CAPTURED =
-        "PaymentCaptured";
-
-    public static final String PAYMENT_FAILED =
-        "PaymentFailed";
-
-    public static final String REFUND_REQUESTED =
-        "RefundRequested";
-
-    public static final String REFUND_SUCCEEDED =
-        "RefundSucceeded";
-
-    public static final String REFUND_FAILED =
-        "RefundFailed";
-
-    public static final String ENTITLEMENT_GRANTED =
-        "EntitlementGranted";
-
-    public static final String ENTITLEMENT_REVOKED =
-        "EntitlementRevoked";
-
-    public static final String COUPON_REDEEMED =
-        "CouponRedeemed";
-
-    private EventTypes() {
-    }
+    public static final String ORDER_CREATED = "ORDER_CREATED";
+    public static final String ORDER_PAID = "ORDER_PAID";
+    public static final String PAYMENT_CREATED = "PAYMENT_CREATED";
+    public static final String PAYMENT_AUTHORIZED = "PAYMENT_AUTHORIZED";
+    public static final String PAYMENT_CAPTURED = "PAYMENT_CAPTURED";
+    public static final String PAYMENT_FAILED = "PAYMENT_FAILED";
+    public static final String REFUND_REQUESTED = "REFUND_REQUESTED";
+    public static final String REFUND_SUCCEEDED = "REFUND_SUCCEEDED";
+    public static final String REFUND_FAILED = "REFUND_FAILED";
+    public static final String ENTITLEMENT_GRANTED = "ENTITLEMENT_GRANTED";
+    public static final String ENTITLEMENT_REVOKED = "ENTITLEMENT_REVOKED";
 }

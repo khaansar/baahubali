@@ -1,4 +1,4 @@
-package com.example.attemptservice.config;
+package com.example.iam.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;
@@ -7,7 +7,7 @@ import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 
 @Configuration
 @RequiredArgsConstructor
-public class WebConfig implements WebMvcConfigurer {
+public class InternalAuthWebConfig implements WebMvcConfigurer {
 
     private final InternalAuthInterceptor internalAuthInterceptor;
 

@@ -1,7 +1,7 @@
-package com.example.test.controller;
+package com.example.testservice.controller;
 
-import com.example.test.entity.MockTest;
-import com.example.test.repository.MockTestRepository;
+import com.example.testservice.entity.MockTest;
+import com.example.testservice.repository.MockTestRepository;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -19,16 +19,22 @@ public class InternalTestLookupController {
     private final MockTestRepository tests;
 
     public record TestSeriesRef(
-        UUID testId,
-        UUID seriesId,
-        boolean free
-    ) {
+            UUID testId,
+            UUID seriesId,
+            boolean free) {
     }
 
     @GetMapping("/{testId}/series")
     public TestSeriesRef series(@PathVariable UUID testId) {
-        MockTest t = tests.findById(testId).orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND));
+        MockTest test = tests.findById(testId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND));
 
-        return new TestSeriesRef(testId, t.getTestSeries() == null ? null : t.getTestSeries().getId(), t.isFree());
+        return new TestSeriesRef(
+                testId,
+                test.getTestSeries() == null
+                        ? null
+                        : test.getTestSeries().getId(),
+                test.isFree());
     }
 }

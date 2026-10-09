@@ -15,6 +15,7 @@ import com.example.payment.repository.PaymentRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionTemplate;
+
 import java.util.UUID;
 
 @Service
@@ -29,7 +30,7 @@ public class PaymentService {
     public PaymentStatusView get(UUID userId, UUID paymentId) {
         Payment pay = payments.findById(paymentId).orElseThrow(PaymentService::notFound);
         Order order = orders.findById(pay.getOrderId()).orElseThrow(PaymentService::notFound);
-        if (!order.getUserId().equals(userId)) throw notFound();        // wrong user => 404, no existence leak
+        if (!order.getUserId().equals(userId)) throw notFound();
         return view(pay, order);
     }
 
@@ -37,7 +38,8 @@ public class PaymentService {
     public PaymentStatusView verify(UUID userId, UUID paymentId, VerifyPaymentRequest req) {
         PaymentStatusView current = get(userId, paymentId);
         Payment pay = payments.findById(paymentId).orElseThrow(PaymentService::notFound);
-        if (pay.getStatus() == PaymentStatus.CAPTURED) return current;  // idempotent
+        if (pay.getStatus() == PaymentStatus.CAPTURED || pay.getStatus() == PaymentStatus.PARTIALLY_REFUNDED
+            || pay.getStatus() == PaymentStatus.REFUNDED) return current;
 
         if (!gateway.verifyCheckoutSignature(pay.getProviderOrderId(), req.providerPaymentId(), req.signature()))
             throw new PaymentException(ErrorCode.WEBHOOK_SIGNATURE_INVALID, "Payment signature invalid");
@@ -51,16 +53,18 @@ public class PaymentService {
                 processor.applyCapture(locked, pp.id(), pp.amount(), pp.currency(), pp.method(), "USER_VERIFY");
             });
         }
-        return get(userId, paymentId);       // authorized/pending => PROCESSING; webhook or reconciliation finalizes
+        return get(userId, paymentId);
     }
 
     static PaymentStatusView view(Payment p, Order o) {
         String state = switch (o.getStatus()) {
             case PAID, FULFILLED, PARTIALLY_REFUNDED, REFUNDED -> "SUCCESS";
             case FAILED, EXPIRED, CANCELLED -> "FAILED";
+            case PAYMENT_REVIEW -> "PROCESSING";
             default -> "PROCESSING";
         };
         return new PaymentStatusView(p.getId(), o.getId(), p.getStatus(), o.getStatus(), state, p.getFailureReason());
     }
+
     private static PaymentException notFound() { return new PaymentException(ErrorCode.NOT_FOUND, "Payment not found"); }
 }

@@ -35,7 +35,9 @@ internal:
   auth:
     my-secret: ${COMMUNITY_SERVICE_SECRET}
     allowed-clients:
+      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
       test-service: ${TEST_SERVICE_SECRET}
+
   services:
     iam-url: ${IAM_SERVICE_URL}
     attempt-url: ${ATTEMPT_SERVICE_URL}

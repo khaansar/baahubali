@@ -20,7 +20,7 @@ spring:
       hibernate:
         format_sql: true
         dialect: org.hibernate.dialect.MySQLDialect
-  
+
   kafka:
     bootstrap-servers: ${SPRING_KAFKA_BOOTSTRAP_SERVERS:localhost:9092}
     producer:
@@ -39,16 +39,16 @@ spring:
       password: ${REDIS_PASSWORD:}
       ssl:
         enabled: ${REDIS_SSL_ENABLED:false}
-  
+
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED}
     baseline-on-migrate: false
-    # baseline-version: 5
 
 internal:
   auth:
     my-secret: ${ATTEMPT_SERVICE_SECRET}
     allowed-clients:
+      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
       community-service: ${COMMUNITY_SERVICE_SECRET}
       test-service: ${TEST_SERVICE_SECRET}
   services:

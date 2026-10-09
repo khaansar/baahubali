@@ -57,7 +57,7 @@ public class AdminCouponService {
     @Transactional
     public CouponView setEnabled(UUID adminId, UUID id, boolean enabled) {
         Coupon c = find(id);
-        c.setStatus(enabled ? "ACTIVE" : "DISABLED");        // never deleted: redemption history stays
+        c.setStatus(enabled ? "ACTIVE" : "DISABLED");
         coupons.saveAndFlush(c);
         audit.record("ADMIN", adminId.toString(), enabled ? "COUPON_ENABLED" : "COUPON_DISABLED", "COUPON", id, null, "code=" + c.getCode());
         return CouponView.of(c);
@@ -89,6 +89,12 @@ public class AdminCouponService {
         c.setStackable(r.stackable()); c.setFirstOrderOnly(r.firstOrderOnly());
         c.setProductIds(new HashSet<>(ids));
     }
-    private Coupon find(UUID id) { return coupons.findById(id).orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "Coupon not found")); }
-    private static PaymentException bad(String m) { return new PaymentException(ErrorCode.VALIDATION_FAILED, m); }
+
+    private Coupon find(UUID id) {
+        return coupons.findById(id).orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "Coupon not found"));
+    }
+
+    private static PaymentException bad(String m) {
+        return new PaymentException(ErrorCode.VALIDATION_FAILED, m);
+    }
 }

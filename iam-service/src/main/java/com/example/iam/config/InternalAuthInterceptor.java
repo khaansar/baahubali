@@ -2,42 +2,54 @@ package com.example.iam.config;
 
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import lombok.extern.slf4j.Slf4j;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import lombok.Setter;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
-
-import java.util.Map;
-import java.util.HashMap;
 
 @Component
 @ConfigurationProperties(prefix = "internal.auth")
-@Setter
-@Slf4j
 public class InternalAuthInterceptor implements HandlerInterceptor {
 
     private Map<String, String> allowedClients = new HashMap<>();
 
+    public Map<String, String> getAllowedClients() {
+        return allowedClients;
+    }
+
+    public void setAllowedClients(Map<String, String> allowedClients) {
+        this.allowedClients = new HashMap<>(allowedClients);
+    }
+
     @Override
-    public boolean preHandle(HttpServletRequest request, HttpServletResponse response, Object handler) throws Exception {
+    public boolean preHandle(
+            HttpServletRequest request,
+            HttpServletResponse response,
+            Object handler) throws Exception {
+
         String caller = request.getHeader("X-Service-Caller");
-        String authSecret = request.getHeader("X-Service-Auth");
+        String supplied = request.getHeader("X-Service-Auth");
+        String expected = caller == null ? null : allowedClients.get(caller);
 
-        if (caller == null || authSecret == null) {
-            log.warn("Internal auth failed: Missing headers");
-            response.sendError(HttpStatus.UNAUTHORIZED.value(), "Missing internal auth headers");
-            return false;
+        boolean valid = StringUtils.hasText(caller)
+                && StringUtils.hasText(supplied)
+                && expected != null
+                && MessageDigest.isEqual(
+                        expected.getBytes(StandardCharsets.UTF_8),
+                        supplied.getBytes(StandardCharsets.UTF_8));
+
+        if (valid) {
+            return true;
         }
 
-        String expectedSecret = allowedClients.get(caller);
-        if (expectedSecret == null || !expectedSecret.equals(authSecret)) {
-            log.warn("Internal auth failed for caller: {}", caller);
-            response.sendError(HttpStatus.FORBIDDEN.value(), "Invalid internal auth credentials");
-            return false;
-        }
-
-        return true;
+        response.sendError(
+                HttpStatus.UNAUTHORIZED.value(),
+                "Service authentication failed");
+        return false;
     }
 }

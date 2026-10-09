@@ -1,4 +1,4 @@
-package com.example.attemptservice.config;
+package com.example.analyticsservice.config;
 
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Configuration;

@@ -26,6 +26,7 @@
         <module>attempt-service</module>
         <module>analytics-service</module>
         <module>community-service</module>
+        <module>payment-service</module>
         <module>notification-service</module>
     </modules>
 
@@ -73,6 +74,14 @@
                 <groupId>org.springdoc</groupId>
                 <artifactId>springdoc-openapi-starter-webflux-ui</artifactId>
                 <version>${springdoc.version}</version>
+            </dependency>
+
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>1.21.3</version>
+                <type>pom</type>
+                <scope>import</scope>
             </dependency>
         </dependencies>
     </dependencyManagement>

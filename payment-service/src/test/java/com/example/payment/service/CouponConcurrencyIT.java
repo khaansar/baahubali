@@ -3,15 +3,15 @@ package com.example.payment.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.payment.entity.Coupon;
-import com.example.payment.enums.DiscountType;
+import com.example.payment.entity.enums.DiscountType;
 import com.example.payment.repository.CouponRepository;
 import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
 import java.util.concurrent.CountDownLatch;
-import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
+import java.util.concurrent.Executors;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -46,7 +46,6 @@ class CouponConcurrencyIT {
     @Test
     void neverExceedsUsageLimit() throws Exception {
         Coupon c = new Coupon();
-
         c.setCode("RACE");
         c.setDiscountType(DiscountType.FIXED_AMOUNT);
         c.setDiscountValue(100);
@@ -55,7 +54,6 @@ class CouponConcurrencyIT {
         c.setUsageLimit(10);
 
         UUID id = coupons.save(c).getId();
-
         var pool = Executors.newFixedThreadPool(50);
         var ok = new AtomicInteger();
         var latch = new CountDownLatch(1);
@@ -64,23 +62,16 @@ class CouponConcurrencyIT {
         for (int i = 0; i < 100; i++) {
             fs.add(pool.submit(() -> {
                 latch.await();
-
-                if (tx.execute(s -> coupons.tryIncrementUsage(id)) == 1) {
-                    ok.incrementAndGet();
-                }
-
+                if (tx.execute(s -> coupons.tryIncrementUsage(id)) == 1) ok.incrementAndGet();
                 return null;
             }));
         }
 
         latch.countDown();
-
-        for (var f : fs) {
-            f.get();
-        }
+        for (var f : fs) f.get();
+        pool.shutdown();
 
         assertEquals(10, ok.get());
-
         assertEquals(10, coupons.findById(id).orElseThrow().getUsedCount());
     }
 }

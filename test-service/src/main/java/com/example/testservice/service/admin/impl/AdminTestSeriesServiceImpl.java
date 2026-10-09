@@ -16,6 +16,7 @@ import com.example.testservice.repository.CategoryRepository;
 import com.example.testservice.repository.MockTestRepository;
 import com.example.testservice.repository.TestSeriesRepository;
 import com.example.testservice.service.KafkaPublisherService;
+import com.example.testservice.service.PaymentProductSyncOutboxService;
 import com.example.testservice.service.SlugService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -38,6 +39,7 @@ public class AdminTestSeriesServiceImpl {
     private final CategoryRepository categoryRepository;
     private final KafkaPublisherService kafkaPublisherService;
     private final SlugService slugService;
+    private final PaymentProductSyncOutboxService paymentProductSyncOutboxService;
 
     @Transactional
     @CacheEvict(value = {"baahubali:test:series:list", "baahubali:test:homepage:series:popular"}, allEntries = true)
@@ -59,6 +61,7 @@ public class AdminTestSeriesServiceImpl {
         series.setUpdatedBy(adminId);
 
         TestSeries saved = testSeriesRepository.save(series);
+        paymentProductSyncOutboxService.enqueue(saved.getId(), saved.getTitle(), false, saved.getBasePrice());
 
         kafkaPublisherService.emitAuditEvent(new AuditEvent(
                 UUID.randomUUID(),
@@ -103,6 +106,7 @@ public class AdminTestSeriesServiceImpl {
         series.getMockTests().forEach(test -> test.setDeletedAt(deletedAt));
 
         testSeriesRepository.save(series);
+        paymentProductSyncOutboxService.enqueue(series.getId(), series.getTitle(), false, series.getBasePrice());
         return getSeriesById(seriesId);
     }
 
@@ -214,7 +218,9 @@ public class AdminTestSeriesServiceImpl {
         series.setCategory(category);
         series.setUpdatedBy(adminId);
 
-        testSeriesRepository.save(series);
+        TestSeries saved = testSeriesRepository.save(series);
+        boolean active = saved.getStatus() == Status.PUBLISHED && saved.getDeletedAt() == null;
+        paymentProductSyncOutboxService.enqueue(saved.getId(), saved.getTitle(), active, saved.getBasePrice());
 
         if (oldPrice == null || newPrice == null || oldPrice.compareTo(newPrice) != 0) {
             boolean isFree = newPrice != null && newPrice.compareTo(BigDecimal.ZERO) == 0;

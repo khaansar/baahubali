@@ -1,22 +1,69 @@
-# Production topology: databases, Redis, and Kafka are managed private services
-# reached through TLS. Deploy this with the platform secret manager rather than
-# a checked-in .env file. Only the gateway joins the edge network.
 services:
+  baahubali-redis:
+    image: redis:7.4.2-alpine
+    container_name: baahubali-redis
+    restart: unless-stopped
+    command: redis-server --appendonly yes --requirepass ${REDIS_PASSWORD:?REDIS_PASSWORD is required}
+    volumes:
+      - redis_prod_data:/data
+    networks:
+      - backend-network
+    deploy:
+      resources:
+        limits:
+          memory: 256M
+
+  baahubali-kafka:
+    image: apache/kafka:4.0.0
+    container_name: baahubali-kafka
+    restart: unless-stopped
+    ports:
+      # Development diagnostics only. Production uses managed Kafka over TLS
+      # and never publishes a broker listener to the host.
+      - "127.0.0.1:9092:9092"
+    environment:
+      KAFKA_NODE_ID: 1
+      KAFKA_PROCESS_ROLES: "broker,controller"
+      KAFKA_LISTENERS: "PLAINTEXT://0.0.0.0:9092,PLAINTEXT_INTERNAL://0.0.0.0:29092,CONTROLLER://0.0.0.0:9093"
+      KAFKA_ADVERTISED_LISTENERS: "PLAINTEXT://localhost:9092,PLAINTEXT_INTERNAL://baahubali-kafka:29092"
+      KAFKA_LISTENER_SECURITY_PROTOCOL_MAP: "CONTROLLER:PLAINTEXT,PLAINTEXT:PLAINTEXT,PLAINTEXT_INTERNAL:PLAINTEXT"
+      KAFKA_CONTROLLER_LISTENER_NAMES: "CONTROLLER"
+      KAFKA_LOG_DIRS: "/tmp/kraft-combined-logs"
+      KAFKA_CONTROLLER_QUORUM_VOTERS: "1@baahubali-kafka:9093"
+      KAFKA_OFFSETS_TOPIC_REPLICATION_FACTOR: 1
+      KAFKA_TRANSACTION_STATE_LOG_MIN_ISR: 1
+      KAFKA_TRANSACTION_STATE_LOG_REPLICATION_FACTOR: 1
+      CLUSTER_ID: "Mk3OEYBSD3TfxwNWRZM0A"
+      KAFKA_HEAP_OPTS: "-Xmx512m -Xms512m"
+    networks:
+      - backend-network
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
   api-gateway:
     build:
       context: .
       dockerfile: Dockerfile
       args:
         SERVICE: api-gateway
-    env_file:
-      - .env.production
+    container_name: api-gateway
+    volumes:
+      - ./secrets/jwt-public.pem:/run/secrets/jwt-public.pem:ro
+    restart: unless-stopped
     ports:
       - "8080:8080"
-    networks: [edge, services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt:
-      - no-new-privileges:true
+    env_file:
+      - .env
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   iam-service:
     build:
@@ -24,11 +71,23 @@ services:
       dockerfile: Dockerfile
       args:
         SERVICE: iam-service
-    env_file: [.env.production]
-    networks: [services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
+    volumes:
+      - ./secrets/jwt-private.pem:/run/secrets/jwt-private.pem:ro
+    container_name: iam-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   test-service:
     build:
@@ -36,11 +95,21 @@ services:
       dockerfile: Dockerfile
       args:
         SERVICE: test-service
-    env_file: [.env.production]
-    networks: [services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
+    container_name: test-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   attempt-service:
     build:
@@ -48,11 +117,21 @@ services:
       dockerfile: Dockerfile
       args:
         SERVICE: attempt-service
-    env_file: [.env.production]
-    networks: [services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
+    container_name: attempt-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   community-service:
     build:
@@ -60,11 +139,21 @@ services:
       dockerfile: Dockerfile
       args:
         SERVICE: community-service
-    env_file: [.env.production]
-    networks: [services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
+    container_name: community-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
 
   analytics-service:
     build:
@@ -72,15 +161,83 @@ services:
       dockerfile: Dockerfile
       args:
         SERVICE: analytics-service
-    env_file: [.env.production]
-    networks: [services, data]
-    read_only: true
-    tmpfs: [/tmp]
-    security_opt: [no-new-privileges:true]
+    container_name: analytics-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  notification-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: notification-service
+    container_name: notification-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+      TEST_SERVICE_URL: ${TEST_SERVICE_URL:-http://test-service:8080}
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  kafka-ui:
+    image: provectuslabs/kafka-ui:v0.7.2
+    container_name: kafka-ui
+    ports:
+      - "127.0.0.1:8090:8080"
+    environment:
+      KAFKA_CLUSTERS_0_NAME: baahubali-local
+      KAFKA_CLUSTERS_0_BOOTSTRAPSERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
+      - baahubali-kafka
+    profiles: ["debug"]
 
 networks:
-  edge: {}
-  services:
-    internal: true
-  data:
-    internal: true
+  backend-network:
+    driver: bridge
+
+volumes:
+  redis_prod_data:

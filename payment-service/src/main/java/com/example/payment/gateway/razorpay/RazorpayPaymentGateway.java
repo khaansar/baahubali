@@ -24,7 +24,6 @@ import java.util.HexFormat;
 import java.util.List;
 import java.util.Map;
 import java.util.function.Supplier;
-
 import javax.crypto.Mac;
 import javax.crypto.spec.SecretKeySpec;
 
@@ -37,12 +36,9 @@ public class RazorpayPaymentGateway implements PaymentGateway {
 
     public RazorpayPaymentGateway(RazorpayProperties props, RestClient.Builder builder) {
         this.props = props;
-
         var rf = new SimpleClientHttpRequestFactory();
-
         rf.setConnectTimeout(props.getConnectTimeoutMs());
         rf.setReadTimeout(props.getReadTimeoutMs());
-
         this.http = builder.baseUrl(props.getBaseUrl())
             .requestFactory(rf)
             .defaultHeaders(h -> h.setBasicAuth(props.getKeyId(), props.getKeySecret()))
@@ -56,21 +52,18 @@ public class RazorpayPaymentGateway implements PaymentGateway {
 
     @Override
     public ProviderOrder createOrder(String receipt, long amount, String currency, Map<String, String> notes) {
-        // Razorpay orders are keyed by `receipt`;
-        // we store our order number there for reconciliation.
         JsonNode n = call(() -> http.post()
             .uri("/orders")
             .contentType(MediaType.APPLICATION_JSON)
             .body(Map.of("amount", amount, "currency", currency, "receipt", receipt, "notes", notes))
             .retrieve()
             .body(JsonNode.class));
-
         return new ProviderOrder(n.path("id").asText(), n.path("amount").asLong(), n.path("currency").asText(), n.path("status").asText());
     }
 
     @Override
     public boolean verifyCheckoutSignature(String orderId, String paymentId, String sig) {
-        return constantTimeEquals(hmacHex(orderId + "|" + paymentId, props.getKeySecret()), sig);
+        return sig != null && constantTimeEquals(hmacHex(orderId + "|" + paymentId, props.getKeySecret()), sig);
     }
 
     @Override
@@ -80,30 +73,19 @@ public class RazorpayPaymentGateway implements PaymentGateway {
 
     @Override
     public ProviderPayment fetchPayment(String id) {
-        return toPayment(call(() -> http.get()
-            .uri("/payments/{id}", id)
-            .retrieve()
-            .body(JsonNode.class)));
+        return toPayment(call(() -> http.get().uri("/payments/{id}", id).retrieve().body(JsonNode.class)));
     }
 
     @Override
     public List<ProviderPayment> fetchPaymentsForOrder(String orderId) {
-        JsonNode n = call(() -> http.get()
-            .uri("/orders/{id}/payments", orderId)
-            .retrieve()
-            .body(JsonNode.class));
-
+        JsonNode n = call(() -> http.get().uri("/orders/{id}/payments", orderId).retrieve().body(JsonNode.class));
         List<ProviderPayment> out = new ArrayList<>();
-
         n.path("items").forEach(i -> out.add(toPayment(i)));
-
         return out;
     }
 
     @Override
     public ProviderRefund refundPayment(String paymentId, long amount, String idemKey, Map<String, String> notes) {
-        // X-Refund-Idempotency makes retries
-        // after a timeout safe where the provider supports it.
         JsonNode n = call(() -> http.post()
             .uri("/payments/{id}/refund", paymentId)
             .header("X-Refund-Idempotency", idemKey)
@@ -111,36 +93,27 @@ public class RazorpayPaymentGateway implements PaymentGateway {
             .body(Map.of("amount", amount, "notes", notes))
             .retrieve()
             .body(JsonNode.class));
-
         return toRefund(n);
     }
 
     @Override
     public ProviderRefund fetchRefund(String id) {
-        return toRefund(call(() -> http.get()
-            .uri("/refunds/{id}", id)
-            .retrieve()
-            .body(JsonNode.class)));
+        return toRefund(call(() -> http.get().uri("/refunds/{id}", id).retrieve().body(JsonNode.class)));
     }
 
     private <T> T call(Supplier<T> s) {
         try {
             T r = s.get();
-
-            if (r == null) {
-                throw new PaymentException(ErrorCode.PROVIDER_ERROR, "Empty provider response");
-            }
-
+            if (r == null) throw new PaymentException(ErrorCode.PROVIDER_ERROR, "Empty provider response");
             return r;
-
         } catch (ResourceAccessException e) {
             throw new PaymentException(ErrorCode.PROVIDER_UNAVAILABLE, "Payment provider timed out/unreachable");
-
         } catch (HttpClientErrorException e) {
+            if (e.getStatusCode().value() == 409) {
+                throw new PaymentException(ErrorCode.PROVIDER_UNAVAILABLE, "Payment provider request is still processing; outcome is uncertain");
+            }
             log.warn("Razorpay 4xx status={}", e.getStatusCode());
-
             throw new PaymentException(ErrorCode.PROVIDER_ERROR, "Payment provider rejected the request");
-
         } catch (HttpServerErrorException e) {
             throw new PaymentException(ErrorCode.PROVIDER_UNAVAILABLE, "Payment provider error");
         }
@@ -157,17 +130,14 @@ public class RazorpayPaymentGateway implements PaymentGateway {
     static String hmacHex(String data, String secret) {
         try {
             Mac m = Mac.getInstance("HmacSHA256");
-
             m.init(new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256"));
-
             return HexFormat.of().formatHex(m.doFinal(data.getBytes(StandardCharsets.UTF_8)));
-
         } catch (Exception e) {
             throw new IllegalStateException(e);
         }
     }
 
     static boolean constantTimeEquals(String a, String b) {
-        return MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
+        return a != null && b != null && MessageDigest.isEqual(a.getBytes(StandardCharsets.UTF_8), b.getBytes(StandardCharsets.UTF_8));
     }
 }

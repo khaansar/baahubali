@@ -54,10 +54,16 @@ internal:
   auth:
     my-secret: ${TEST_SERVICE_SECRET}
     allowed-clients:
+      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
+      payment-service: ${PAYMENT_SERVICE_SECRET}
+
   services:
     community-url: ${COMMUNITY_SERVICE_URL}
-
+    test-url: ${TEST_SERVICE_URL}
+    attempt-url: ${ATTEMPT_SERVICE_URL}
+    payment-url: ${PAYMENT_SERVICE_URL}
+    
 logging:
   level:
     com.example.testservice: INFO
@@ -66,7 +72,6 @@ logging:
 app:
   api:
     version: ${API_VERSION}
-
 
 management:
   endpoints:
