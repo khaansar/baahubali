@@ -26,15 +26,17 @@ public class InternalTestLookupController {
 
     @GetMapping("/{testId}/series")
     public TestSeriesRef series(@PathVariable UUID testId) {
+
         MockTest test = tests.findById(testId)
-                .orElseThrow(() -> new ResponseStatusException(
-                        HttpStatus.NOT_FOUND));
+                .orElseThrow(() ->
+                        new ResponseStatusException(
+                                HttpStatus.NOT_FOUND));
 
         return new TestSeriesRef(
                 testId,
-                test.getTestSeries() == null
+                test.getSeries() == null
                         ? null
-                        : test.getTestSeries().getId(),
+                        : test.getSeries().getId(),
                 test.isFree());
     }
 }

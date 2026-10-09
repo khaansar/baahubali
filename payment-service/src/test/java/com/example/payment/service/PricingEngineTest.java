@@ -3,7 +3,7 @@ package com.example.payment.service;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
 import com.example.payment.entity.Coupon;
-import com.example.payment.enums.DiscountType;
+import com.example.payment.entity.enums.DiscountType;
 import org.junit.jupiter.api.Test;
 
 class PricingEngineTest {

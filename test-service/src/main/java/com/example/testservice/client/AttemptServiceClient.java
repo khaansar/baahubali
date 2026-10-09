@@ -1,10 +1,10 @@
 package com.example.testservice.client;
 
 import com.example.testservice.config.TestServiceFeignConfig;
+import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import java.util.UUID;
 
 @FeignClient(
         name = "attempt-service",
