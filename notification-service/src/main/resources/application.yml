@@ -54,7 +54,7 @@ internal:
   auth:
     my-secret: ${NOTIFICATION_SERVICE_SECRET}
     allowed-clients:
-      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
+      api-gateway: ${API_GATEWAY_SECRET}
 
 notification:
   from: ${MAIL_FROM:${MAIL_USERNAME}}

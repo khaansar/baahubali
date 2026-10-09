@@ -7,7 +7,7 @@ import com.example.payment.gateway.PaymentGateway;
 import com.example.payment.gateway.ProviderOrder;
 import com.example.payment.gateway.ProviderPayment;
 import com.example.payment.gateway.ProviderRefund;
-import com.fasterxml.jackson.databind.JsonNode;
+import tools.jackson.databind.JsonNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.client.SimpleClientHttpRequestFactory;

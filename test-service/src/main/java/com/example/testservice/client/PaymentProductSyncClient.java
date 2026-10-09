@@ -58,7 +58,7 @@ public class PaymentProductSyncClient {
         body.put("amountMinor", amountMinor);
 
         http.put()
-                .uri("/payments-api/internal/products/sync")
+                .uri("/internal/products/sync")
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(body)
                 .retrieve()

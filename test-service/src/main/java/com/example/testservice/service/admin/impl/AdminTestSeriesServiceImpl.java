@@ -61,7 +61,15 @@ public class AdminTestSeriesServiceImpl {
         series.setUpdatedBy(adminId);
 
         TestSeries saved = testSeriesRepository.save(series);
-        paymentProductSyncOutboxService.enqueue(saved.getId(), saved.getTitle(), false, saved.getBasePrice());
+        boolean active = series.getStatus() == Status.PUBLISHED
+                && series.getDeletedAt() == null;
+
+        paymentProductSyncOutboxService.enqueue(
+                series.getId(),
+                series.getTitle(),
+                active,
+                series.getBasePrice()
+        );
 
         kafkaPublisherService.emitAuditEvent(new AuditEvent(
                 UUID.randomUUID(),

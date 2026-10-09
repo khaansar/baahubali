@@ -35,7 +35,7 @@ internal:
   auth:
     my-secret: ${COMMUNITY_SERVICE_SECRET}
     allowed-clients:
-      api-gateway: ${API_GATEWAY_SERVICE_SECRET}
+      api-gateway: ${API_GATEWAY_SECRET}
       test-service: ${TEST_SERVICE_SECRET}
 
   services:

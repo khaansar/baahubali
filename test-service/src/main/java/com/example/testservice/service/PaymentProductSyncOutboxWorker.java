@@ -20,6 +20,7 @@ public class PaymentProductSyncOutboxWorker {
 
     @Scheduled(fixedDelayString = "${payment.sync.fixed-delay-ms:10000}")
     public void processPending() {
+        log.info("Payment product sync worker triggered");
         for (PaymentProductSyncOutbox event : repository.findTop100ByStatusAndNextAttemptAtLessThanEqualOrderByCreatedAtAsc("PENDING", Instant.now())) {
             try {
                 client.syncSeries(event.getSeriesId(), event.getTitle(), event.isActive(), event.getBasePriceRupees());

@@ -158,7 +158,7 @@ springdoc:
 
 gateway:
   service-auth:
-    secret: ${API_GATEWAY_SERVICE_SECRET}
+    secret: ${API_GATEWAY_SECRET}
 
   security:
     public-paths:
