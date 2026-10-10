@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.PathVariable;
 )
 public interface CommunityServiceClient {
 
-    @GetMapping("/community-api/internal/reviews/{targetId}/average")
+    @GetMapping("/internal/reviews/{targetId}/average")
     ApiResponse<Map<String, Double>> getAverageRating(
             @PathVariable("targetId") String targetId);
 }

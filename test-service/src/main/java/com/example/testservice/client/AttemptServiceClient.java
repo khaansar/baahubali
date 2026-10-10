@@ -13,6 +13,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 )
 public interface AttemptServiceClient {
 
-    @GetMapping("/attempts-api/internal/attempts/active-exists/{testId}")
+    @GetMapping("/internal/attempts/active-exists/{testId}")
     boolean hasActiveAttempts(@PathVariable("testId") UUID testId);
 }

@@ -31,7 +31,7 @@ public class PaymentClient {
     public boolean hasAccess(UUID userId, UUID testId) {
         try {
             JsonNode response = http.post()
-                    .uri("/payments-api/internal/entitlements/check")
+                    .uri("/internal/entitlements/check")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("userId", userId, "testId", testId))
                     .retrieve()

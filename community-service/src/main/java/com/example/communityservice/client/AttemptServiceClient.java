@@ -14,7 +14,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 )
 public interface AttemptServiceClient {
 
-    @GetMapping("/attempts-api/internal/attempts/verify")
+    @GetMapping("/internal/attempts/verify")
     ApiResponse<Map<String, Boolean>> hasUserAttemptedTest(
             @RequestParam("userId") String userId,
             @RequestParam("testId") String testId);

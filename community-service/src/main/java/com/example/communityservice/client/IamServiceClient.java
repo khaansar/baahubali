@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 )
 public interface IamServiceClient {
 
-    @PostMapping("/auth-api/internal/users/batch")
+    @PostMapping("/internal/users/batch")
     ApiResponse<Map<String, UserProfileDto>> getUsersBatch(
             @RequestBody List<String> userIds);
 

@@ -18,11 +18,11 @@ import org.springframework.web.bind.annotation.RequestBody;
 )
 public interface TestServiceFeignClient {
 
-    @GetMapping("/tests-api/internal/mock-tests/{id}/blueprint")
+    @GetMapping("/internal/mock-tests/{id}/blueprint")
     TestServiceResponse<InternalTestBlueprintDto> getTestBlueprint(
             @PathVariable("id") String testId);
 
-    @PostMapping("/tests-api/internal/mock-tests/bulk-info")
+    @PostMapping("/internal/mock-tests/bulk-info")
     TestServiceResponse<List<InternalTestBulkInfoDto>> getBulkTestInfo(
             @RequestBody List<String> testIds);
 }
