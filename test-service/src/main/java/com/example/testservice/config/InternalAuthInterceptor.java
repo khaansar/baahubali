@@ -4,15 +4,17 @@ import com.example.testservice.dto.ApiErrorResponse;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.util.Collections;
+import java.util.HashMap;
+import java.util.Map;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
+import org.springframework.util.StringUtils;
 import org.springframework.web.servlet.HandlerInterceptor;
-
-import java.util.HashMap;
-import java.util.Collections;
-import java.util.Map;
 
 @Component
 @ConfigurationProperties(prefix = "internal.auth")
@@ -36,30 +38,27 @@ public class InternalAuthInterceptor implements HandlerInterceptor {
             Object handler) throws Exception {
 
         String caller = request.getHeader("X-Service-Caller");
-        String authHeader = request.getHeader("X-Service-Auth");
+        String supplied = request.getHeader("X-Service-Auth");
+        String expected = caller == null ? null : allowedClients.get(caller);
 
-        if (caller == null || authHeader == null) {
-            reject(response);
-            return false;
+        boolean valid = StringUtils.hasText(caller)
+                && StringUtils.hasText(supplied)
+                && expected != null
+                && MessageDigest.isEqual(
+                        expected.getBytes(StandardCharsets.UTF_8),
+                        supplied.getBytes(StandardCharsets.UTF_8));
+
+        if (valid) {
+            return true;
         }
 
-        String expectedSecret = allowedClients.get(caller);
-
-        if (expectedSecret == null || !expectedSecret.equals(authHeader)) {
-            reject(response);
-            return false;
-        }
-
-        return true;
-    }
-
-    private void reject(HttpServletResponse response) throws Exception {
         response.setStatus(HttpStatus.UNAUTHORIZED.value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         objectMapper.writeValue(response.getOutputStream(), new ApiErrorResponse(
                 HttpStatus.UNAUTHORIZED.value(),
-                "Internal service authentication failed",
+                "Service authentication failed",
                 "INTERNAL_AUTH_FAILED",
                 Collections.emptyList()));
+        return false;
     }
 }

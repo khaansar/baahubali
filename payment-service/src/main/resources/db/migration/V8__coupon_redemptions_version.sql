@@ -1,0 +1,1 @@
+ALTER TABLE coupon_redemptions ADD COLUMN version BIGINT NOT NULL DEFAULT 0;

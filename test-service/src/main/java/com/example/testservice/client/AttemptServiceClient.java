@@ -1,24 +1,18 @@
 package com.example.testservice.client;
 
+import com.example.testservice.config.TestServiceFeignConfig;
+import java.util.UUID;
 import org.springframework.cloud.openfeign.FeignClient;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.RequestHeader;
 
-import java.util.UUID;
-
-// Connects to the Attempt Service internally through the Gateway or Service Registry
-@FeignClient(name = "attempt-service", url = "${internal.attempt-service.url:http://attempt-service:8080}")
+@FeignClient(
+        name = "attempt-service",
+        url = "${internal.services.attempt-url}",
+        configuration = TestServiceFeignConfig.class
+)
 public interface AttemptServiceClient {
 
-    /**
-     * Synchronous check to see if any students are currently taking this test.
-     * Required by Option A to prevent admins from reverting a live test to DRAFT
-     * while a student is in the middle of it.
-     */
     @GetMapping("/internal/attempts/active-exists/{testId}")
-    boolean hasActiveAttempts(
-            @PathVariable("testId") UUID testId,
-            @RequestHeader("X-Service-Auth") String internalSecret
-    );
+    boolean hasActiveAttempts(@PathVariable("testId") UUID testId);
 }

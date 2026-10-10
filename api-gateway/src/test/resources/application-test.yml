@@ -58,20 +58,26 @@ spring:
               predicates:
                 - Path=/analytics-api/**
 
+            - id: payment-service
+              uri: http://localhost:8086
+              predicates:
+                - Path=/payments-api/**
+
 gateway:
+  service-auth:
+    secret: test-gateway-service-secret
+
   security:
     public-paths:
       - /auth-api/login
       - /auth-api/register
       - /auth-api/refresh
-
       - /tests-api/public/**
       - /community-api/public/**
+      - /payments-api/webhooks/razorpay
 
     jwt:
       algorithm: HS256
-      # Base64 encoded test-only secret.
-      # This is NOT used in production.
       secret: c2VjdXJlLXRlc3Qtc2VjcmV0LWtleS0zMi1ieXRlcy1sb25n
       public-key: ""
       cookie-name: ACCESS_TOKEN
@@ -95,3 +101,9 @@ springdoc:
         url: /tests-api/v3/api-docs
       - name: Attempts Service
         url: /attempts-api/v3/api-docs
+      - name: Community Service
+        url: /community-api/v3/api-docs
+      - name: Analytics Service
+        url: /analytics-api/v3/api-docs
+      - name: Payment Service
+        url: /payments-api/v3/api-docs

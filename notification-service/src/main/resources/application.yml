@@ -50,6 +50,12 @@ spring:
           timeout: ${MAIL_SMTP_TIMEOUT:10000}
           writetimeout: ${MAIL_SMTP_WRITE_TIMEOUT:10000}
 
+internal:
+  auth:
+    my-secret: ${NOTIFICATION_SERVICE_SECRET}
+    allowed-clients:
+      api-gateway: ${API_GATEWAY_SECRET}
+
 notification:
   from: ${MAIL_FROM:${MAIL_USERNAME}}
   from-name: ${APP_NAME:clearit}
@@ -65,10 +71,11 @@ management:
     health:
       probes:
         enabled: true
+
 app:
   api:
     version: ${API_VERSION}
-    
+
 logging:
   level:
     root: INFO

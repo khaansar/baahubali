@@ -373,7 +373,7 @@ public class AdminMockTestServiceImpl {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ValidationException("Test not found"));
 
-        boolean hasActiveAttempts = attemptServiceClient.hasActiveAttempts(testId, internalSecret);
+        boolean hasActiveAttempts = attemptServiceClient.hasActiveAttempts(testId);
         if (hasActiveAttempts) {
             throw new ResourceConflictException("Cannot revert: active attempts in progress. Wait for completion or force-submit attempts.");
         }

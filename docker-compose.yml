@@ -176,7 +176,7 @@ services:
       resources:
         limits:
           memory: 1G
-  
+
   notification-service:
     build:
       context: .
@@ -193,6 +193,27 @@ services:
       - backend-network
     depends_on:
       - baahubali-redis
+      - baahubali-kafka
+    deploy:
+      resources:
+        limits:
+          memory: 1G
+
+  payment-service:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      args:
+        SERVICE: payment-service
+    container_name: payment-service
+    restart: unless-stopped
+    env_file:
+      - .env
+    environment:
+      SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
+    networks:
+      - backend-network
+    depends_on:
       - baahubali-kafka
     deploy:
       resources:

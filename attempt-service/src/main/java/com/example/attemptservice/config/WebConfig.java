@@ -13,6 +13,8 @@ public class WebConfig implements WebMvcConfigurer {
 
     @Override
     public void addInterceptors(InterceptorRegistry registry) {
-        registry.addInterceptor(internalAuthInterceptor).addPathPatterns("/internal/**");
+        registry.addInterceptor(internalAuthInterceptor)
+                .addPathPatterns("/**")
+                .excludePathPatterns("/actuator", "/actuator/**");
     }
 }
