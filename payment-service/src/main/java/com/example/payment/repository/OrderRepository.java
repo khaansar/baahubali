@@ -7,7 +7,6 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
-import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import java.time.Instant;
@@ -26,8 +25,10 @@ public interface OrderRepository extends JpaRepository<Order, UUID>, JpaSpecific
             List.of(OrderStatus.PAID, OrderStatus.FULFILLED, OrderStatus.PARTIALLY_REFUNDED, OrderStatus.REFUNDED));
     }
 
-    @Lock(LockModeType.PESSIMISTIC_WRITE)
-    @Query("SELECT o FROM Order o WHERE o.id = :id")
+    @Query(
+        value = "SELECT * FROM orders WHERE id = :id FOR UPDATE",
+        nativeQuery = true
+    )
     Optional<Order> lockById(@Param("id") UUID id);
 
     @Query("SELECT o.id FROM Order o WHERE o.status IN :st AND o.expiresAt < :now")

@@ -4,34 +4,36 @@ import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
+
 import java.time.Instant;
 
 @Entity
 @Table(name = "reviews", uniqueConstraints = {
-    @UniqueConstraint(
-        name = "uk_user_target_review", 
-        columnNames = {"user_id", "target_id", "target_type"}
-    )
+    @UniqueConstraint(name = "uk_user_target_review", columnNames = {"user_id", "target_id", "target_type"})
 })
-@Getter @Setter @NoArgsConstructor @AllArgsConstructor @Builder
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
 public class Review {
-    
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(nullable = false)
-    private String userId; // Sourced from UserContextHolder
+    @Column(name = "user_id", nullable = false)
+    private String userId;
 
-    @Column(nullable = false)
-    private String targetId; // e.g., "test-123"
+    @Column(name = "target_id", nullable = false)
+    private String targetId;
 
     @Enumerated(EnumType.STRING)
-    @Column(nullable = false)
-    private TargetType targetType; // TEST or SERIES
+    @Column(name = "target_type", nullable = false)
+    private TargetType targetType;
 
     @Column(nullable = false)
-    private Integer rating; // 1 to 5
+    private Integer rating;
 
     @Column(columnDefinition = "TEXT")
     private String comment;
@@ -39,7 +41,16 @@ public class Review {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)
-    private ReviewStatus status = ReviewStatus.APPROVED;
+    private ReviewStatus status = ReviewStatus.PENDING;
+
+    @Column(name = "moderation_reason", columnDefinition = "TEXT")
+    private String moderationReason;
+
+    @Column(name = "moderated_by")
+    private String moderatedBy;
+
+    @Column(name = "moderated_at")
+    private Instant moderatedAt;
 
     @CreationTimestamp
     @Column(name = "created_at", updatable = false)
@@ -53,5 +64,6 @@ public class Review {
     private Instant deletedAt;
 
     public enum TargetType { TEST, SERIES, PLATFORM }
+
     public enum ReviewStatus { PENDING, APPROVED, REJECTED }
 }
