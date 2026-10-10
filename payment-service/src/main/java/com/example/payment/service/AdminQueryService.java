@@ -57,15 +57,29 @@ public class AdminQueryService {
     }
 
     public PageResponse<PaymentView> payments(UUID orderId, UUID userId, PaymentStatus status, String providerPaymentId, int page, int size) {
-        Specification<Payment> byUser = userId == null ? null : (root, q, cb) -> {
-            Subquery<UUID> sq = q.subquery(UUID.class);
-            Root<Order> o = sq.from(Order.class);
-            sq.select(o.get("id")).where(cb.equal(o.get("userId"), userId));
-            return root.get("orderId").in(sq);
-        };
-        Specification<Payment> spec = Specification.<Payment>where(Specs.eq("orderId", orderId)).and(byUser)
-            .and(Specs.eq("status", status)).and(Specs.eq("providerPaymentId", providerPaymentId));
-        return PageResponse.of(payments.findAll(spec, Paging.of(page, size)).map(PaymentView::of));
+        Specification<Payment> byUser = userId == null
+                ? Specification.unrestricted()
+                : (root, query, criteriaBuilder) -> {
+                    Subquery<UUID> subquery = query.subquery(UUID.class);
+                    Root<Order> order = subquery.from(Order.class);
+
+                    subquery.select(order.get("id"))
+                            .where(criteriaBuilder.equal(order.get("userId"), userId));
+
+                    return root.get("orderId").in(subquery);
+                };
+
+        Specification<Payment> spec = Specification
+                .<Payment>unrestricted()
+                .and(Specs.eq("orderId", orderId))
+                .and(byUser)
+                .and(Specs.eq("status", status))
+                .and(Specs.eq("providerPaymentId", providerPaymentId));
+
+        return PageResponse.of(
+                payments.findAll(spec, Paging.of(page, size))
+                        .map(PaymentView::of)
+        );
     }
 
     public PageResponse<RefundView> refunds(UUID orderId, RefundStatus status, int page, int size) {

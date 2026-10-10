@@ -29,6 +29,7 @@ public class GlobalExceptionHandler {
     @ExceptionHandler({MethodArgumentNotValidException.class, ConstraintViolationException.class,
         MethodArgumentTypeMismatchException.class, HttpMessageNotReadableException.class, IllegalArgumentException.class})
     ResponseEntity<ApiResponse<Void>> validation(Exception e) {
+        log.warn("Payment API request validation failed: {}", e.getMessage(), e);
         return ResponseEntity.badRequest().body(ApiResponse.error("VALIDATION_FAILED", "Invalid request"));
     }
     @ExceptionHandler(DataIntegrityViolationException.class)
