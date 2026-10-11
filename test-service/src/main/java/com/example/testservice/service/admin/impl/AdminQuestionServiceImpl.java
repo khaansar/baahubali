@@ -36,10 +36,13 @@ public class AdminQuestionServiceImpl {
     private final QuestionRepository questionRepository;
     private final KafkaPublisherService kafkaPublisherService;
     private final ObjectMapper objectMapper;
+    private final QuestionImageMetadataValidator questionImageMetadataValidator;
 
-    @Transactional
+   @Transactional
+    @CacheEvict(value = {"baahubali:test:test", "test_blueprints"}, allEntries = true)
     public UUID createQuestion(QuestionCreateDto dto, String adminId) {
         validateTranslations(dto.translations());
+        validateQuestionImages(dto.translations(), dto.explanationImages());
 
         Map<String, Object> validationOptions =
                 extractOptionsForValidation(dto.translations());
@@ -171,8 +174,8 @@ public class AdminQuestionServiceImpl {
     }
 
     @Transactional
-    public BulkImportResultDto bulkImportQuestions(
-            List<QuestionCreateDto> rows, String adminId) {
+    @CacheEvict(value = {"baahubali:test:test", "test_blueprints"}, allEntries = true)
+    public BulkImportResultDto bulkImportQuestions(List<QuestionCreateDto> rows, String adminId) {
 
         int imported = 0;
         int failed = 0;
@@ -185,6 +188,7 @@ public class AdminQuestionServiceImpl {
 
             try {
                 validateTranslations(row.translations());
+                validateQuestionImages(row.translations(), row.explanationImages());
 
                 Map<String, Object> validationOptions =
                         extractOptionsForValidation(row.translations());
@@ -256,9 +260,8 @@ public class AdminQuestionServiceImpl {
     }
 
     @Transactional
-    @CacheEvict(value = "baahubali:test:test", allEntries = true)
-    public QuestionDetailDto updateQuestion(
-            UUID id, QuestionUpdateDto dto, String adminId) {
+    @CacheEvict(value = {"baahubali:test:test", "test_blueprints"}, allEntries = true)
+    public QuestionDetailDto updateQuestion(UUID id, QuestionUpdateDto dto, String adminId) {
 
         Question question = questionRepository.findById(id)
                 .orElseThrow(() ->
@@ -271,6 +274,7 @@ public class AdminQuestionServiceImpl {
         }
 
         validateTranslations(dto.translations());
+        validateQuestionImages(row.translations(), row.explanationImages());
 
         Map<String, Object> validationOptions =
                 extractOptionsForValidation(dto.translations());
@@ -334,7 +338,7 @@ public class AdminQuestionServiceImpl {
     }
 
     @Transactional
-    @CacheEvict(value = "baahubali:test:test", allEntries = true)
+    @CacheEvict(value = {"baahubali:test:test", "test_blueprints"}, allEntries = true)
     public QuestionDetailDto deleteQuestion(UUID id) {
         Question question = questionRepository.findById(id)
                 .orElseThrow(() ->
@@ -469,5 +473,18 @@ public class AdminQuestionServiceImpl {
         }
 
         return null;
+    }
+
+    private void validateQuestionImages(List<QuestionTranslationDto> translations, List<QuestionImageDto> explanationImages) {
+        questionImageMetadataValidator.validateImages(explanationImages);
+        if (translations == null) return;
+        for (QuestionTranslationDto translation : translations) {
+            questionImageMetadataValidator.validateImages(translation.getQuestionImages());
+            if (translation.getOptionImages() != null) {
+                for (List<QuestionImageDto> images : translation.getOptionImages().values()) {
+                    questionImageMetadataValidator.validateImages(images);
+                }
+            }
+        }
     }
 }

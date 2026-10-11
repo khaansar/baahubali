@@ -56,6 +56,7 @@ public class RedisCacheConfig {
         cacheConfigurations.put("baahubali:test:series:list", defaultCacheConfig.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put("baahubali:test:series", defaultCacheConfig.entryTtl(Duration.ofMinutes(5)));
         cacheConfigurations.put("baahubali:test:test", defaultCacheConfig.entryTtl(Duration.ofMinutes(5)));
+        cacheConfigurations.put("test_blueprints", defaultCacheConfig.entryTtl(Duration.ofMinutes(10)));
 
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaultCacheConfig)

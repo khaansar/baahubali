@@ -28,10 +28,7 @@ public class InternalMockTestService {
     private final ObjectMapper objectMapper;
 
     @Transactional(readOnly = true)
-    @Cacheable(
-            value = "test_blueprints",
-            key = "#testId + '-' + #root.target.getTestLastUpdated(#testId)"
-    )
+    @Cacheable(value = "test_blueprints", key = "#testId")
     public TestBlueprintDto getPublishedBlueprint(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
@@ -140,12 +137,6 @@ public class InternalMockTestService {
                 test.getUpdatedAt(),
                 test.getDeletedAt()
         );
-    }
-
-    public String getTestLastUpdated(UUID testId) {
-        return mockTestRepository.findById(testId)
-                .map(test -> test.getUpdatedAt().toString())
-                .orElse("unknown");
     }
 
     @Transactional(readOnly = true)
