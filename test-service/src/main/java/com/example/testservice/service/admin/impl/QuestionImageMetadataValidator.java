@@ -77,7 +77,8 @@ public class QuestionImageMetadataValidator {
             if (!publicId.equals(actualPublicId)
                     || !"image".equalsIgnoreCase(actualResourceType)
                     || actualFormat.isBlank()
-                    || !"null".equals(actualAssetFolder) && !ASSET_FOLDER.equals(actualAssetFolder)
+                    || "null".equals(actualFormat)
+                    || !ASSET_FOLDER.equals(actualAssetFolder)
                     || !image.getUrl().trim().equals(actualSecureUrl)) {
                 throw invalidImage();
             }

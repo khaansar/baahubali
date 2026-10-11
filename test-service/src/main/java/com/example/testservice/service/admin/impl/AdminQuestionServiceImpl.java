@@ -274,7 +274,7 @@ public class AdminQuestionServiceImpl {
         }
 
         validateTranslations(dto.translations());
-        validateQuestionImages(row.translations(), row.explanationImages());
+        validateQuestionImages(dto.translations(), dto.explanationImages());
 
         Map<String, Object> validationOptions =
                 extractOptionsForValidation(dto.translations());

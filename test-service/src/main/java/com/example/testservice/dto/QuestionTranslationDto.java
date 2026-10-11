@@ -8,6 +8,7 @@ import java.util.Map;
 import com.example.testservice.dto.QuestionImageDto;
 
 import java.time.Instant;
+import jakarta.validation.Valid;
 
 @Data
 public class QuestionTranslationDto {
@@ -19,9 +20,9 @@ public class QuestionTranslationDto {
 
     private String optionsJson;
 
-    private List<QuestionImageDto> questionImages;
+    private List<@Valid QuestionImageDto> questionImages;
 
-    private Map<String, List<QuestionImageDto>> optionImages;
+    private Map<String, @Valid List<@Valid QuestionImageDto>> optionImages;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Instant createdAt;
