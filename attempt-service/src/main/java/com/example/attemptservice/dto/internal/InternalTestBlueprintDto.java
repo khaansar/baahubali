@@ -55,6 +55,7 @@ public class InternalTestBlueprintDto {
         private BigDecimal positiveMarks;
         private BigDecimal negativeMarks;
         private String explanation;
+        private List<Map<String, Object>> explanationImages;
         private Instant createdAt;
         private Instant updatedAt;
         private Instant deletedAt;
@@ -66,6 +67,8 @@ public class InternalTestBlueprintDto {
         private String language;
         private String questionText;
         private String optionsJson;
+        private List<Map<String, Object>> questionImages;
+        private Map<String, List<Map<String, Object>>> optionImages;
         private Instant createdAt;
         private Instant updatedAt;
         private Instant deletedAt;

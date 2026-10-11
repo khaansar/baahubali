@@ -471,20 +471,30 @@ public class AttemptService {
                             }
                         }
 
-                        String qText = (q.getTranslations() != null && !q.getTranslations().isEmpty())
-                                ? q.getTranslations().get(0).getQuestionText()
+                        
+                        InternalTestBlueprintDto.InternalTranslationDto translation =
+                                (q.getTranslations() != null && !q.getTranslations().isEmpty())
+                                        ? q.getTranslations().get(0)
+                                        : null;
+
+                        String qText = translation != null
+                                ? translation.getQuestionText()
                                 : "Question text unavailable";
 
                         reviewDtos.add(QuestionReviewDto.builder()
                                 .questionId(q.getQuestionId())
                                 .questionText(qText)
+                                .questionImages(translation != null ? translation.getQuestionImages() : null)
+                                .optionImages(translation != null ? translation.getOptionImages() : null)
                                 .selectedOption(selected)
                                 .correctOption(correctOpt)
                                 .explanation(q.getExplanation())
+                                .explanationImages(q.getExplanationImages())
                                 .createdAt(q.getCreatedAt())
                                 .updatedAt(q.getUpdatedAt())
                                 .deletedAt(q.getDeletedAt())
                                 .build());
+
                     }
                 }
             }

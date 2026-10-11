@@ -1,9 +1,12 @@
 package com.example.testservice.dto.publiccatalog;
 
+import com.example.testservice.dto.QuestionImageDto;
+
 import java.math.BigDecimal;
+import java.time.Instant;
+import java.util.List;
 import java.util.Map;
 import java.util.UUID;
-import java.time.Instant;
 
 public record PublicQuestionDto(
         UUID questionId,
@@ -11,6 +14,8 @@ public record PublicQuestionDto(
         String questionType,
         String questionText,
         Map<String, Object> optionsJson,
+        List<QuestionImageDto> questionImages,
+        Map<String, List<QuestionImageDto>> optionImages,
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         Instant createdAt,

@@ -1,5 +1,6 @@
 package com.example.testservice.dto.admin;
 
+import com.example.testservice.dto.QuestionImageDto;
 import com.example.testservice.dto.QuestionTranslationDto;
 import com.example.testservice.entity.Difficulty;
 import com.example.testservice.entity.QuestionType;
@@ -16,6 +17,7 @@ public record QuestionUpdateDto(
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         String explanation,
+        List<@Valid QuestionImageDto> explanationImages,
         String topic,
         Difficulty difficulty
 ) {}

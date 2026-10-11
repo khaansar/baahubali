@@ -3,8 +3,12 @@ package com.example.testservice.dto;
 import jakarta.validation.constraints.NotBlank;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.Data;
+import java.util.List;
+import java.util.Map;
+import com.example.testservice.dto.QuestionImageDto;
 
 import java.time.Instant;
+import jakarta.validation.Valid;
 
 @Data
 public class QuestionTranslationDto {
@@ -15,6 +19,10 @@ public class QuestionTranslationDto {
     private String questionText;
 
     private String optionsJson;
+
+    private List<@Valid QuestionImageDto> questionImages;
+
+    private Map<String, @Valid List<@Valid QuestionImageDto>> optionImages;
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Instant createdAt;

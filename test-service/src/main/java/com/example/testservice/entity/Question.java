@@ -5,6 +5,8 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.SQLRestriction;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
 
 import java.math.BigDecimal;
 import java.util.ArrayList;
@@ -43,6 +45,10 @@ public class Question extends BaseEntity {
 
     @Column(name = "is_locked", nullable = false)
     private boolean isLocked = false;
+
+    @JdbcTypeCode(SqlTypes.JSON)
+    @Column(name = "explanation_images", columnDefinition = "json")
+    private List<Map<String, Object>> explanationImages;
 
     @OneToMany(mappedBy = "question", cascade = CascadeType.ALL, orphanRemoval = true)
     private List<SectionQuestion> sectionQuestions = new ArrayList<>();
