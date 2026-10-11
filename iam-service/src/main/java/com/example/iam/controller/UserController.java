@@ -5,6 +5,7 @@ import com.example.iam.dto.UserResponse;
 import com.example.iam.entity.User;
 import com.example.iam.entity.Role;
 import com.example.iam.exception.InvalidCredentialsException;
+import com.example.iam.service.AvatarUploadService;
 import com.example.iam.repository.UserRepository;
 import com.example.iam.repository.specification.UserSpecifications;
 import lombok.RequiredArgsConstructor;
@@ -12,12 +13,18 @@ import org.springframework.http.HttpStatus;
 import org.springframework.security.core.Authentication;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+
+import com.example.iam.dto.UpdateAvatarRequest;
+import com.example.iam.service.AvatarProfileService;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.Instant;
 import java.util.UUID;
@@ -32,6 +39,8 @@ public class UserController {
 
     private final UserRepository userRepository;
     private final CalendarAnalyticsService calendarAnalyticsService;
+    private final AvatarUploadService avatarUploadService;
+    private final AvatarProfileService avatarProfileService;
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getCurrentUser(Authentication authentication) {
@@ -79,5 +88,22 @@ public class UserController {
         UUID userId = (UUID) authentication.getPrincipal();
         com.example.iam.dto.CalendarAnalyticsResponse data = calendarAnalyticsService.getCalendarAnalytics(userId.toString(), year, month);
         return ApiResponse.success(HttpStatus.OK.value(), "Calendar analytics retrieved successfully", data);
+    }
+
+    @PostMapping("/me/avatar/upload-intent")
+    public ApiResponse<com.example.iam.dto.AvatarUploadIntentResponse> createAvatarUploadIntent(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        var data = avatarUploadService.createUploadIntent(userId);
+        return ApiResponse.success(HttpStatus.OK.value(), "Avatar upload intent created successfully", data);
+    }
+
+    @PutMapping("/me/avatar")
+    public ApiResponse<UserResponse> updateAvatar(
+            @jakarta.validation.Valid @RequestBody UpdateAvatarRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        User user = avatarProfileService.updateAvatar(userId, request.avatarUrl());
+        UserResponse data = UserResponse.from(user);
+        return ApiResponse.success(HttpStatus.OK.value(), "Avatar updated successfully", data);
     }
 }
