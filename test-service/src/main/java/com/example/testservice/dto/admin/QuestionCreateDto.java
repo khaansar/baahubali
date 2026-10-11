@@ -1,9 +1,11 @@
 package com.example.testservice.dto.admin;
 
+import com.example.testservice.dto.QuestionImageDto;
 import com.example.testservice.dto.QuestionTranslationDto;
 import com.example.testservice.entity.Difficulty;
 import com.example.testservice.entity.QuestionType;
 import jakarta.validation.Valid;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Map;
@@ -15,6 +17,7 @@ public record QuestionCreateDto(
         BigDecimal positiveMarks,
         BigDecimal negativeMarks,
         String explanation,
+        List<@Valid QuestionImageDto> explanationImages,
         String topic,
         Difficulty difficulty
 ) {}

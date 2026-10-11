@@ -1,8 +1,10 @@
 package com.example.testservice.service.admin.impl;
 
+import com.example.common.audit.AuditEvent;
 import com.example.testservice.client.AttemptServiceClient;
-import com.example.testservice.dto.admin.MockTestCreateDto;
+import com.example.testservice.dto.QuestionImageDto;
 import com.example.testservice.dto.admin.AdminMockTestDetailDto;
+import com.example.testservice.dto.admin.MockTestCreateDto;
 import com.example.testservice.dto.event.TestPublishedEvent;
 import com.example.testservice.dto.internal.QuestionBlueprintDto;
 import com.example.testservice.dto.internal.QuestionTranslationBlueprintDto;
@@ -29,7 +31,6 @@ import org.springframework.cache.annotation.CacheEvict;
 import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.example.common.audit.AuditEvent;
 
 import java.math.BigDecimal;
 import java.time.Instant;
@@ -57,20 +58,23 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
-        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
-        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto publishTest(UUID testId, Instant expectedUpdatedAt) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ValidationException("Test not found"));
 
         if (!test.getUpdatedAt().equals(expectedUpdatedAt)) {
-            throw new ResourceConflictException("Test was modified by another user. Please refresh.");
+            throw new ResourceConflictException(
+                    "Test was modified by another user. Please refresh."
+            );
         }
 
         List<String> validationErrors = new ArrayList<>();
+
         if (test.getSections().isEmpty()) {
             validationErrors.add("Test must contain at least one section.");
         }
@@ -84,35 +88,48 @@ public class AdminMockTestServiceImpl {
 
         for (Section section : test.getSections()) {
             if (section.getSectionQuestions().isEmpty()) {
-                validationErrors.add(String.format("Section '%s' must contain at least one question.", section.getTitle()));
+                validationErrors.add(String.format(
+                        "Section '%s' must contain at least one question.",
+                        section.getTitle()
+                ));
                 continue;
             }
 
             for (SectionQuestion sq : section.getSectionQuestions()) {
-                Question q = sq.getQuestion();
+                Question question = sq.getQuestion();
 
-                Set<String> providedLangs = q.getTranslations().stream()
+                Set<String> providedLanguages = question.getTranslations().stream()
                         .map(QuestionTranslation::getLanguage)
                         .collect(Collectors.toSet());
 
                 try {
-                    LanguageValidationUtil.validateTranslationsSet(providedLangs, requiredLanguages);
+                    LanguageValidationUtil.validateTranslationsSet(
+                            providedLanguages,
+                            requiredLanguages
+                    );
                 } catch (ValidationException e) {
-                    validationErrors.add(String.format("Question '%s' in section '%s' is missing a required translation. %s",
-                            q.getId(), section.getTitle(), e.getMessage()));
+                    validationErrors.add(String.format(
+                            "Question '%s' in section '%s' is missing a required translation. %s",
+                            question.getId(),
+                            section.getTitle(),
+                            e.getMessage()
+                    ));
                 }
 
                 BigDecimal marksForQuestion = sq.getPositiveMarksOverride() != null
                         ? sq.getPositiveMarksOverride()
-                        : q.getPositiveMarks();
-                totalMarks = totalMarks.add(marksForQuestion);
+                        : question.getPositiveMarks();
 
-                questionIdsToLock.add(q.getId());
+                totalMarks = totalMarks.add(marksForQuestion);
+                questionIdsToLock.add(question.getId());
             }
         }
 
         if (!validationErrors.isEmpty()) {
-            throw new ValidationException("Publish validation failed", validationErrors);
+            throw new ValidationException(
+                    "Publish validation failed",
+                    validationErrors
+            );
         }
 
         TestSeries series = test.getSeries();
@@ -138,7 +155,9 @@ public class AdminMockTestServiceImpl {
                 test.getTitle(),
                 test.getPublishedAt()
         );
+
         kafkaPublisherService.emitTestPublished(event);
+
         return getAdminMockTestDetail(testId);
     }
 
@@ -155,7 +174,10 @@ public class AdminMockTestServiceImpl {
         MockTest test = new MockTest();
         test.setSeries(series);
         test.setTitle(dto.title());
-        test.setSlug(slugService.generateUniqueSlug(dto.title(), mockTestRepository::existsBySlug));
+        test.setSlug(slugService.generateUniqueSlug(
+                dto.title(),
+                mockTestRepository::existsBySlug
+        ));
         test.setDurationMinutes(dto.durationMinutes());
         test.setSectionOrderStrict(dto.isSectionOrderStrict());
         test.setShuffleSections(dto.shuffleSections());
@@ -164,7 +186,7 @@ public class AdminMockTestServiceImpl {
         test.setFree(dto.isFree());
 
         test.setStatus(Status.DRAFT);
-        test.setTotalMarks(java.math.BigDecimal.ZERO);
+        test.setTotalMarks(BigDecimal.ZERO);
         test.setCreatedBy(adminId);
         test.setUpdatedBy(adminId);
 
@@ -220,7 +242,9 @@ public class AdminMockTestServiceImpl {
                                 section.getDurationMinutes(),
                                 section.isShuffleQuestions(),
                                 section.getSectionQuestions().size(),
-                                section.getCreatedAt(), section.getUpdatedAt(), section.getDeletedAt()
+                                section.getCreatedAt(),
+                                section.getUpdatedAt(),
+                                section.getDeletedAt()
                         ))
                         .toList()
         );
@@ -228,27 +252,38 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
-        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
     })
     public AdminMockTestDetailDto updateMockTest(UUID testId, MockTestCreateDto dto) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
 
         if (test.getStatus() == Status.PUBLISHED) {
-            if (!test.getDurationMinutes().equals(dto.durationMinutes()) ||
-                    test.isSectionOrderStrict() != dto.isSectionOrderStrict()) {
-                throw new ResourceConflictException("Cannot change exam duration or section order rules while PUBLISHED. Revert to DRAFT first.");
+            if (!test.getDurationMinutes().equals(dto.durationMinutes())
+                    || test.isSectionOrderStrict() != dto.isSectionOrderStrict()) {
+                throw new ResourceConflictException(
+                        "Cannot change exam duration or section order rules while PUBLISHED. "
+                                + "Revert to DRAFT first."
+                );
             }
         }
 
         if (dto.durationMinutes() != null) {
             int currentTotalDuration = test.getSections().stream()
-                    .mapToInt(s -> s.getDurationMinutes() != null ? s.getDurationMinutes() : 0)
+                    .mapToInt(section -> section.getDurationMinutes() != null
+                            ? section.getDurationMinutes()
+                            : 0)
                     .sum();
+
             if (currentTotalDuration > dto.durationMinutes()) {
-                throw new ValidationException(String.format("Cannot reduce test duration to %d min. Current sections already total %d min.", dto.durationMinutes(), currentTotalDuration));
+                throw new ValidationException(String.format(
+                        "Cannot reduce test duration to %d min. "
+                                + "Current sections already total %d min.",
+                        dto.durationMinutes(),
+                        currentTotalDuration
+                ));
             }
         }
 
@@ -261,19 +296,21 @@ public class AdminMockTestServiceImpl {
         test.setFree(dto.isFree());
 
         mockTestRepository.save(test);
+
         return getAdminMockTestDetail(testId);
     }
 
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
-        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
-        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto archiveTest(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
+
         TestSeries series = test.getSeries();
 
         test.setStatus(Status.ARCHIVED);
@@ -282,28 +319,38 @@ public class AdminMockTestServiceImpl {
         boolean hasPublishedTests = series.getMockTests().stream()
                 .anyMatch(mockTest ->
                         !mockTest.getId().equals(testId)
-                                && mockTest.getStatus() == Status.PUBLISHED);
+                                && mockTest.getStatus() == Status.PUBLISHED
+                );
 
         if (!hasPublishedTests) {
             series.setStatus(Status.DRAFT);
             testSeriesRepository.save(series);
         }
+
         return getAdminMockTestDetail(testId);
     }
 
     @Transactional
     @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
-    public AdminMockTestDetailDto cloneTest(UUID sourceTestId, String newTitle, String adminId) {
+    public AdminMockTestDetailDto cloneTest(
+            UUID sourceTestId,
+            String newTitle,
+            String adminId
+    ) {
         MockTest source = mockTestRepository.findById(sourceTestId)
                 .orElseThrow(() -> new ResourceNotFoundException("Source test not found"));
 
         MockTest clone = new MockTest();
+
         String cloneTitle = newTitle != null && !newTitle.isBlank()
                 ? newTitle
                 : source.getTitle() + " (Copy)";
 
         clone.setTitle(cloneTitle);
-        clone.setSlug(slugService.generateUniqueSlug(cloneTitle, mockTestRepository::existsBySlug));
+        clone.setSlug(slugService.generateUniqueSlug(
+                cloneTitle,
+                mockTestRepository::existsBySlug
+        ));
         clone.setSeries(source.getSeries());
         clone.setDurationMinutes(source.getDurationMinutes());
         clone.setSectionOrderStrict(source.isSectionOrderStrict());
@@ -317,27 +364,31 @@ public class AdminMockTestServiceImpl {
         clone.setCreatedBy(adminId);
         clone.setUpdatedBy(adminId);
 
-        for (Section sourceSec : source.getSections()) {
-            Section clonedSec = new Section();
-            clonedSec.setMockTest(clone);
-            clonedSec.setTitle(sourceSec.getTitle());
-            clonedSec.setSequenceOrder(sourceSec.getSequenceOrder());
-            clonedSec.setDurationMinutes(sourceSec.getDurationMinutes());
-            clonedSec.setShuffleQuestions(sourceSec.isShuffleQuestions());
-            clonedSec.setCreatedBy(adminId);
-            clonedSec.setUpdatedBy(adminId);
+        for (Section sourceSection : source.getSections()) {
+            Section clonedSection = new Section();
+            clonedSection.setMockTest(clone);
+            clonedSection.setTitle(sourceSection.getTitle());
+            clonedSection.setSequenceOrder(sourceSection.getSequenceOrder());
+            clonedSection.setDurationMinutes(sourceSection.getDurationMinutes());
+            clonedSection.setShuffleQuestions(sourceSection.isShuffleQuestions());
+            clonedSection.setCreatedBy(adminId);
+            clonedSection.setUpdatedBy(adminId);
 
-            clone.getSections().add(clonedSec);
+            clone.getSections().add(clonedSection);
 
-            for (SectionQuestion sourceSq : sourceSec.getSectionQuestions()) {
-                SectionQuestion clonedSq = new SectionQuestion();
-                clonedSq.setSection(clonedSec);
-                clonedSq.setQuestion(sourceSq.getQuestion());
-                clonedSq.setSequenceOrder(sourceSq.getSequenceOrder());
-                clonedSq.setPositiveMarksOverride(sourceSq.getPositiveMarksOverride());
-                clonedSq.setNegativeMarksOverride(sourceSq.getNegativeMarksOverride());
+            for (SectionQuestion sourceQuestion : sourceSection.getSectionQuestions()) {
+                SectionQuestion clonedQuestion = new SectionQuestion();
+                clonedQuestion.setSection(clonedSection);
+                clonedQuestion.setQuestion(sourceQuestion.getQuestion());
+                clonedQuestion.setSequenceOrder(sourceQuestion.getSequenceOrder());
+                clonedQuestion.setPositiveMarksOverride(
+                        sourceQuestion.getPositiveMarksOverride()
+                );
+                clonedQuestion.setNegativeMarksOverride(
+                        sourceQuestion.getNegativeMarksOverride()
+                );
 
-                clonedSec.getSectionQuestions().add(clonedSq);
+                clonedSection.getSectionQuestions().add(clonedQuestion);
             }
         }
 
@@ -364,18 +415,22 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-        @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
-        @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-        @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
-        @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto revertToDraft(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
                 .orElseThrow(() -> new ValidationException("Test not found"));
 
         boolean hasActiveAttempts = attemptServiceClient.hasActiveAttempts(testId);
+
         if (hasActiveAttempts) {
-            throw new ResourceConflictException("Cannot revert: active attempts in progress. Wait for completion or force-submit attempts.");
+            throw new ResourceConflictException(
+                    "Cannot revert: active attempts in progress. "
+                            + "Wait for completion or force-submit attempts."
+            );
         }
 
         TestSeries series = test.getSeries();
@@ -383,12 +438,14 @@ public class AdminMockTestServiceImpl {
         boolean hasPublishedTests = series.getMockTests().stream()
                 .anyMatch(mockTest ->
                         !mockTest.getId().equals(testId)
-                                && mockTest.getStatus() == Status.PUBLISHED);
+                                && mockTest.getStatus() == Status.PUBLISHED
+                );
 
         if (!hasPublishedTests) {
             series.setStatus(Status.DRAFT);
             testSeriesRepository.save(series);
         }
+
         return getAdminMockTestDetail(testId);
     }
 
@@ -416,43 +473,89 @@ public class AdminMockTestServiceImpl {
                 test.getCreatedAt(),
                 test.getUpdatedAt(),
                 test.getDeletedAt(),
-                test.getSections().stream().map(section -> new PublicSectionDto(
-                        section.getId(),
-                        section.getTitle(),
-                        section.getSequenceOrder(),
-                        section.getDurationMinutes(),
-                        section.getCreatedAt(),
-                        section.getUpdatedAt(),
-                        section.getDeletedAt(),
-                        section.getSectionQuestions().stream().map(sq -> {
-                            Map<String, Object> options = null;
-                            if (!sq.getQuestion().getTranslations().isEmpty() && sq.getQuestion().getTranslations().get(0).getOptionsJson() != null) {
-                                try {
-                                    options = objectMapper.readValue(sq.getQuestion().getTranslations().get(0).getOptionsJson(), new TypeReference<>() {});
-                                } catch (Exception ignored) {}
-                            }
+                test.getSections().stream()
+                        .map(section -> new PublicSectionDto(
+                                section.getId(),
+                                section.getTitle(),
+                                section.getSequenceOrder(),
+                                section.getDurationMinutes(),
+                                section.getCreatedAt(),
+                                section.getUpdatedAt(),
+                                section.getDeletedAt(),
+                                section.getSectionQuestions().stream()
+                                        .map(sq -> {
+                                            Question question = sq.getQuestion();
 
-                            return new PublicQuestionDto(
-                                    sq.getQuestion().getId(),
-                                    sq.getSequenceOrder(),
-                                    sq.getQuestion().getQuestionType().name(),
-                                    sq.getQuestion().getTranslations().isEmpty() ? "" : sq.getQuestion().getTranslations().get(0).getQuestionText(),
-                                    options,
-                                    sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
-                                    sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                    sq.getQuestion().getCreatedAt(),
-                                    sq.getQuestion().getUpdatedAt(),
-                                    sq.getQuestion().getDeletedAt()
-                            );
-                        }).toList()
-                )).toList()
+                                            QuestionTranslation translation =
+                                                    question.getTranslations().isEmpty()
+                                                            ? null
+                                                            : question.getTranslations().get(0);
+
+                                            Map<String, Object> options = null;
+
+                                            if (translation != null
+                                                    && translation.getOptionsJson() != null) {
+                                                try {
+                                                    options = objectMapper.readValue(
+                                                            translation.getOptionsJson(),
+                                                            new TypeReference<Map<String, Object>>() {}
+                                                    );
+                                                } catch (Exception ignored) {
+                                                    // Malformed options must not break the response.
+                                                }
+                                            }
+
+                                            List<QuestionImageDto> questionImages =
+                                                    translation == null
+                                                            || translation.getQuestionImages() == null
+                                                            ? null
+                                                            : objectMapper.convertValue(
+                                                                    translation.getQuestionImages(),
+                                                                    new TypeReference<List<QuestionImageDto>>() {}
+                                                            );
+
+                                            Map<String, List<QuestionImageDto>> optionImages =
+                                                    translation == null
+                                                            || translation.getOptionImages() == null
+                                                            ? null
+                                                            : objectMapper.convertValue(
+                                                                    translation.getOptionImages(),
+                                                                    new TypeReference<Map<String, List<QuestionImageDto>>>() {}
+                                                            );
+
+                                            return new PublicQuestionDto(
+                                                    question.getId(),
+                                                    sq.getSequenceOrder(),
+                                                    question.getQuestionType().name(),
+                                                    translation == null
+                                                            ? ""
+                                                            : translation.getQuestionText(),
+                                                    options,
+                                                    questionImages,
+                                                    optionImages,
+                                                    sq.getPositiveMarksOverride() != null
+                                                            ? sq.getPositiveMarksOverride()
+                                                            : question.getPositiveMarks(),
+                                                    sq.getNegativeMarksOverride() != null
+                                                            ? sq.getNegativeMarksOverride()
+                                                            : question.getNegativeMarks(),
+                                                    question.getCreatedAt(),
+                                                    question.getUpdatedAt(),
+                                                    question.getDeletedAt()
+                                            );
+                                        })
+                                        .toList()
+                        ))
+                        .toList()
         );
     }
 
     private TestBlueprintDto mapToBlueprintDto(MockTest test) {
         return new TestBlueprintDto(
                 test.getId(),
-                test.getSeries().getCategory() != null ? test.getSeries().getCategory().getId() : null,
+                test.getSeries().getCategory() != null
+                        ? test.getSeries().getCategory().getId()
+                        : null,
                 test.getSeries().getId(),
                 test.getTitle(),
                 test.getDurationMinutes(),
@@ -465,37 +568,77 @@ public class AdminMockTestServiceImpl {
                 test.getCreatedAt(),
                 test.getUpdatedAt(),
                 test.getDeletedAt(),
-                test.getSections().stream().map(section -> new SectionBlueprintDto(
-                        section.getId(),
-                        section.getTitle(),
-                        section.getSequenceOrder(),
-                        section.getDurationMinutes(),
-                        section.isShuffleQuestions(),
-                        section.getCreatedAt(),
-                        section.getUpdatedAt(),
-                        section.getDeletedAt(),
-                        section.getSectionQuestions().stream().map(sq -> new QuestionBlueprintDto(
-                                sq.getQuestion().getId(),
-                                sq.getSequenceOrder(),
-                                sq.getQuestion().getQuestionType().name(),
-                                sq.getQuestion().getTopic(),
-                                sq.getQuestion().getTranslations().stream().map(t -> new QuestionTranslationBlueprintDto(
-                                        t.getLanguage(),
-                                        t.getQuestionText(),
-                                        t.getOptionsJson(),
-                                        t.getCreatedAt(),
-                                        t.getUpdatedAt(),
-                                        t.getDeletedAt()
-                                )).toList(),
-                                sq.getQuestion().getCorrectAnswerJson(),
-                                sq.getPositiveMarksOverride() != null ? sq.getPositiveMarksOverride() : sq.getQuestion().getPositiveMarks(),
-                                sq.getNegativeMarksOverride() != null ? sq.getNegativeMarksOverride() : sq.getQuestion().getNegativeMarks(),
-                                sq.getQuestion().getExplanation(),
-                                sq.getQuestion().getCreatedAt(),
-                                sq.getQuestion().getUpdatedAt(),
-                                sq.getQuestion().getDeletedAt()
-                        )).toList()
-                )).toList()
+                test.getSections().stream()
+                        .map(section -> new SectionBlueprintDto(
+                                section.getId(),
+                                section.getTitle(),
+                                section.getSequenceOrder(),
+                                section.getDurationMinutes(),
+                                section.isShuffleQuestions(),
+                                section.getCreatedAt(),
+                                section.getUpdatedAt(),
+                                section.getDeletedAt(),
+                                section.getSectionQuestions().stream()
+                                        .map(sq -> {
+                                            Question question = sq.getQuestion();
+
+                                            List<QuestionTranslationBlueprintDto> translations =
+                                                    question.getTranslations().stream()
+                                                            .map(translation ->
+                                                                    new QuestionTranslationBlueprintDto(
+                                                                            translation.getLanguage(),
+                                                                            translation.getQuestionText(),
+                                                                            translation.getOptionsJson(),
+                                                                            translation.getQuestionImages() == null
+                                                                                    ? null
+                                                                                    : objectMapper.convertValue(
+                                                                                            translation.getQuestionImages(),
+                                                                                            new TypeReference<List<QuestionImageDto>>() {}
+                                                                                    ),
+                                                                            translation.getOptionImages() == null
+                                                                                    ? null
+                                                                                    : objectMapper.convertValue(
+                                                                                            translation.getOptionImages(),
+                                                                                            new TypeReference<Map<String, List<QuestionImageDto>>>() {}
+                                                                                    ),
+                                                                            translation.getCreatedAt(),
+                                                                            translation.getUpdatedAt(),
+                                                                            translation.getDeletedAt()
+                                                                    )
+                                                            )
+                                                            .toList();
+
+                                            List<QuestionImageDto> explanationImages =
+                                                    question.getExplanationImages() == null
+                                                            ? null
+                                                            : objectMapper.convertValue(
+                                                                    question.getExplanationImages(),
+                                                                    new TypeReference<List<QuestionImageDto>>() {}
+                                                            );
+
+                                            return new QuestionBlueprintDto(
+                                                    question.getId(),
+                                                    sq.getSequenceOrder(),
+                                                    question.getQuestionType().name(),
+                                                    question.getTopic(),
+                                                    translations,
+                                                    question.getCorrectAnswerJson(),
+                                                    sq.getPositiveMarksOverride() != null
+                                                            ? sq.getPositiveMarksOverride()
+                                                            : question.getPositiveMarks(),
+                                                    sq.getNegativeMarksOverride() != null
+                                                            ? sq.getNegativeMarksOverride()
+                                                            : question.getNegativeMarks(),
+                                                    question.getExplanation(),
+                                                    explanationImages,
+                                                    question.getCreatedAt(),
+                                                    question.getUpdatedAt(),
+                                                    question.getDeletedAt()
+                                            );
+                                        })
+                                        .toList()
+                        ))
+                        .toList()
         );
     }
 }

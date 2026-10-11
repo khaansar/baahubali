@@ -102,6 +102,13 @@
             <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
+        
+        <!-- Cloudinary image storage and signed upload support -->
+        <dependency>
+            <groupId>com.cloudinary</groupId>
+            <artifactId>cloudinary-http5</artifactId>
+            <version>2.5.0</version>
+        </dependency>
     </dependencies>
 
     <build>
