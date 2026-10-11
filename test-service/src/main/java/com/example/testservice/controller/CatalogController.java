@@ -3,6 +3,7 @@ package com.example.testservice.controller;
 import com.example.testservice.dto.ApiResponse;
 import com.example.testservice.dto.publiccatalog.PublicMockTestStructureDto;
 import com.example.testservice.service.publiccatalog.impl.CatalogServiceImpl;
+import com.example.common.cache.annotation.CacheRefreshable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

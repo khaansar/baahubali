@@ -4,6 +4,7 @@ import com.example.testservice.dto.ApiResponse;
 import com.example.testservice.dto.common.PaginatedResponseDto;
 import com.example.testservice.dto.publiccatalog.PublicMockTestListDto;
 import com.example.testservice.service.publiccatalog.impl.PublicMockTestServiceImpl;
+import com.example.common.cache.annotation.CacheRefreshable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;

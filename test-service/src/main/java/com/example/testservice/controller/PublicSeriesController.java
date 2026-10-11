@@ -5,6 +5,7 @@ import com.example.testservice.dto.common.PaginatedResponseDto;
 import com.example.testservice.dto.publiccatalog.PublicTestSeriesDetailDto;
 import com.example.testservice.dto.publiccatalog.PublicTestSeriesListDto;
 import com.example.testservice.service.publiccatalog.impl.PublicSeriesServiceImpl;
+import com.example.common.cache.annotation.CacheRefreshable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
