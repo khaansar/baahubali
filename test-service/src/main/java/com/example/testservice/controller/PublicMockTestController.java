@@ -17,6 +17,10 @@ public class PublicMockTestController {
 
     private final PublicMockTestServiceImpl publicMockTestService;
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:mocktests:list",
+            keyExpression = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':q=' + (#query != null ? #query : 'none') + ':page=' + #page + ':limit=' + #limit"
+    )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicMockTestListDto>>> getPublishedMockTests(
             @RequestParam(required = false) UUID categoryId,

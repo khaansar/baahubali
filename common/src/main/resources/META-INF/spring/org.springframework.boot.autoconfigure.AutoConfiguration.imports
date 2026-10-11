@@ -1,1 +1,2 @@
 com.example.platformcommon.openapi.OpenApiAutoConfiguration
+com.example.common.cache.config.CacheRefreshAutoConfiguration

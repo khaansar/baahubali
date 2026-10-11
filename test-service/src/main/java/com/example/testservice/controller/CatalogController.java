@@ -16,12 +16,20 @@ public class CatalogController {
 
     private final CatalogServiceImpl catalogService;
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:test",
+            keyExpression = "#id + ':structure'"
+    )
     @GetMapping("/{id}/structure")
     public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructure(@PathVariable UUID id) {
         PublicMockTestStructureDto structure = catalogService.getTestStructure(id);
         return ResponseEntity.ok(ApiResponse.success(structure));
     }
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:test",
+            keyExpression = "'slug:' + #slug + ':structure'"
+    )
     @GetMapping("/slug/{slug}/structure")
     public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructureBySlug(
             @PathVariable String slug) {

@@ -29,7 +29,7 @@ public class AnalyticsController {
     public AnalyticsController(ReportCacheService reportCacheService,
                                ReportNotificationService reportNotificationService,
                                UserPerformanceService userPerformanceService,
-                               @Value("${app.api.version:1.2.0}") String apiVersion) {
+                               @Value("${app.api.version}") String apiVersion) {
         this.reportCacheService = reportCacheService;
         this.reportNotificationService = reportNotificationService;
         this.userPerformanceService = userPerformanceService;

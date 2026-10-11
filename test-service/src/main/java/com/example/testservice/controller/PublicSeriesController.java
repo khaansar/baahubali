@@ -18,6 +18,10 @@ public class PublicSeriesController {
 
     private final PublicSeriesServiceImpl publicSeriesService;
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series:list",
+            keyExpression = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':page=' + #page + ':limit=' + #limit"
+    )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicTestSeriesListDto>>> getPublishedSeries(
             @RequestParam(required = false) UUID categoryId,
@@ -30,11 +34,19 @@ public class PublicSeriesController {
         return ResponseEntity.ok(ApiResponse.paginated(response.data(), response.meta()));
     }
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series",
+            keyExpression = "#id"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PublicTestSeriesDetailDto>> getSeriesById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(publicSeriesService.getSeriesById(id)));
     }
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series",
+            keyExpression = "'slug:' + #slug"
+    )
     @GetMapping("/slug/{slug}")
     public ResponseEntity<ApiResponse<PublicTestSeriesDetailDto>> getSeriesBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(ApiResponse.success(publicSeriesService.getSeriesBySlug(slug)));
