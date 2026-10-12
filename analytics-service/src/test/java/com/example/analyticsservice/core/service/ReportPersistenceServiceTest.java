@@ -19,9 +19,10 @@ import java.util.List;
 import java.util.Optional;
 
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
 import org.mockito.ArgumentCaptor;
-import org.mockito.Mock;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -95,6 +96,13 @@ class ReportPersistenceServiceTest {
                 .thenReturn(Optional.empty());
     }
 
+    @AfterEach
+    void clearTransactionSynchronization() {
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.clearSynchronization();
+        }
+    }
+
     private TestReportEntity report(String status) {
         TestReportEntity report = new TestReportEntity();
         report.setId("rep-1");
@@ -147,6 +155,19 @@ class ReportPersistenceServiceTest {
 
         assertThat(failed.getStatus()).isEqualTo("PROCESSING");
         verify(reports, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void claimRetryEvictsTheCachedReportOnlyAfterCommit() {
+        when(reports.findByAttemptIdForUpdate("att-1"))
+                .thenReturn(Optional.of(report("FAILED")));
+        TransactionSynchronizationManager.initSynchronization();
+
+        assertThat(service.claim(event)).isTrue();
+
+        verify(reportCacheService, never()).evictReportData("att-1", "user-1");
+        runAfterCommit();
+        verify(reportCacheService).evictReportData("att-1", "user-1");
     }
 
     @Test
@@ -244,6 +265,19 @@ class ReportPersistenceServiceTest {
     }
 
     @Test
+    void completionEvictsTheCachedReportOnlyAfterCommit() {
+        when(reports.findByAttemptIdForUpdate("att-1"))
+                .thenReturn(Optional.of(report("PROCESSING")));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.complete(event, sectionResult, peer, "{}");
+
+        verify(reportCacheService, never()).evictReportData("att-1", "user-1");
+        runAfterCommit();
+        verify(reportCacheService).evictReportData("att-1", "user-1");
+    }
+
+    @Test
     void markFailedSetsFailedButNeverDowngradesCompleted() {
         TestReportEntity processing = report("PROCESSING");
 
@@ -262,5 +296,25 @@ class ReportPersistenceServiceTest {
         service.markFailed("att-1");
 
         assertThat(completed.getStatus()).isEqualTo("COMPLETED");
+    }
+
+    @Test
+    void failureEvictsTheCachedReportOnlyAfterCommit() {
+        TestReportEntity processing = report("PROCESSING");
+        processing.setUserId("user-1");
+        when(reports.findByAttemptIdForUpdate("att-1"))
+                .thenReturn(Optional.of(processing));
+        TransactionSynchronizationManager.initSynchronization();
+
+        service.markFailed("att-1");
+
+        verify(reportCacheService, never()).evictReportData("att-1", "user-1");
+        runAfterCommit();
+        verify(reportCacheService).evictReportData("att-1", "user-1");
+    }
+
+    private void runAfterCommit() {
+        TransactionSynchronizationManager.getSynchronizations()
+                .forEach(synchronization -> synchronization.afterCommit());
     }
 }

@@ -19,7 +19,7 @@ public class CatalogController {
 
     @CacheRefreshable(
             cacheNames = "baahubali:test:test",
-            keyExpression = "#id + ':structure'"
+            keyExpression = "#arg0 + ':structure'"
     )
     @GetMapping("/{id}/structure")
     public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructure(@PathVariable UUID id) {
@@ -29,7 +29,7 @@ public class CatalogController {
 
     @CacheRefreshable(
             cacheNames = "baahubali:test:test",
-            keyExpression = "'slug:' + #slug + ':structure'"
+            keyExpression = "'slug:' + #arg0 + ':structure'"
     )
     @GetMapping("/slug/{slug}/structure")
     public ResponseEntity<ApiResponse<PublicMockTestStructureDto>> getTestStructureBySlug(

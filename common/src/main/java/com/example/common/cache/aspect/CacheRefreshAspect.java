@@ -14,7 +14,6 @@ import org.springframework.expression.Expression;
 import org.springframework.expression.ExpressionParser;
 import org.springframework.expression.spel.standard.SpelExpressionParser;
 import org.springframework.expression.spel.support.StandardEvaluationContext;
-import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestAttributes;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
@@ -32,7 +31,6 @@ import java.util.Objects;
  * Normal requests retain their existing cache behavior.
  */
 @Aspect
-@Component
 public class CacheRefreshAspect {
 
     private static final String REFRESH_PARAMETER = "cache_refresh";

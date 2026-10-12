@@ -40,6 +40,7 @@ public class CacheProperties {
     }
 
     public void setDefaultTtl(Duration defaultTtl) {
+        validateTtl("app.cache.default-ttl", defaultTtl);
         this.defaultTtl = defaultTtl;
     }
 
@@ -48,6 +49,15 @@ public class CacheProperties {
     }
 
     public void setTtl(Map<String, Duration> ttl) {
-        this.ttl = ttl != null ? new HashMap<>(ttl) : new HashMap<>();
+        Map<String, Duration> configuredTtls = ttl != null ? new HashMap<>(ttl) : new HashMap<>();
+        configuredTtls.forEach((cacheName, duration) ->
+                validateTtl("app.cache.ttl." + cacheName, duration));
+        this.ttl = configuredTtls;
+    }
+
+    private static void validateTtl(String propertyName, Duration ttl) {
+        if (ttl != null && (ttl.isZero() || ttl.isNegative())) {
+            throw new IllegalArgumentException(propertyName + " must be greater than zero");
+        }
     }
 }

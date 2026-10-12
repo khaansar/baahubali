@@ -92,7 +92,7 @@ public class AdminTestSeriesServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:series", key = "#seriesId"),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
     })
@@ -199,9 +199,11 @@ public class AdminTestSeriesServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:series", key = "#id"),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
-            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
     })
     public TestSeriesDetailDto updateSeries(
             UUID id,

@@ -2,7 +2,7 @@ package com.example.common.cache.config;
 
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.fasterxml.jackson.databind.jsontype.impl.LaissezFaireSubTypeValidator;
+import com.fasterxml.jackson.databind.jsontype.BasicPolymorphicTypeValidator;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import org.springframework.boot.autoconfigure.AutoConfiguration;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
@@ -49,10 +49,16 @@ public class SharedCacheAutoConfiguration {
         Duration defaultTtl = properties.getDefaultTtl() != null
                 ? properties.getDefaultTtl()
                 : FALLBACK_TTL;
+        validateTtls(properties);
+
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.activateDefaultTyping(
-                LaissezFaireSubTypeValidator.instance,
+                BasicPolymorphicTypeValidator.builder()
+                        .allowIfSubType("com.example.")
+                        .allowIfSubType("java.time.")
+                        .allowIfSubType("java.util.")
+                        .build(),
                 ObjectMapper.DefaultTyping.EVERYTHING,
                 JsonTypeInfo.As.PROPERTY
         );
@@ -80,8 +86,7 @@ public class SharedCacheAutoConfiguration {
                             properties.getTtl().forEach((cacheName, ttl) -> {
                                 if (cacheName != null
                                         && !cacheName.isBlank()
-                                        && ttl != null
-                                        && !ttl.isNegative()) {
+                                        && ttl != null) {
                                     cacheConfigurations.put(
                                             cacheName,
                                             defaultConfiguration.entryTtl(ttl)
@@ -93,7 +98,22 @@ public class SharedCacheAutoConfiguration {
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaultConfiguration)
                 .withInitialCacheConfigurations(cacheConfigurations)
+                .transactionAware()
                 .enableStatistics()
                 .build();
+    }
+
+    private static void validateTtls(CacheProperties properties) {
+        validateTtl("app.cache.default-ttl", properties.getDefaultTtl());
+        if (properties.getTtl() != null) {
+            properties.getTtl().forEach((cacheName, ttl) ->
+                    validateTtl("app.cache.ttl." + cacheName, ttl));
+        }
+    }
+
+    private static void validateTtl(String propertyName, Duration ttl) {
+        if (ttl != null && (ttl.isZero() || ttl.isNegative())) {
+            throw new IllegalArgumentException(propertyName + " must be greater than zero");
+        }
     }
 }

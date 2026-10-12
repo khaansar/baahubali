@@ -61,7 +61,7 @@ public class AnalyticsController {
 
     @CacheRefreshable(
             cacheNames = "analytics:report",
-            keyExpression = "#attemptId + ':' + #userId"
+            keyExpression = "#arg1 + ':' + #arg0"
     )
     @GetMapping(value = "/{attemptId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ReportData>> getReport(

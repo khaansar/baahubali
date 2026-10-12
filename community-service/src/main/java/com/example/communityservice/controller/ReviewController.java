@@ -53,7 +53,7 @@ public class ReviewController {
 
     @CacheRefreshable(
             cacheNames = "community:reviews",
-            keyExpression = "#arg0"
+            keyExpression = "#arg0.trim()"
     )
     @Operation(summary = "Get approved reviews for a specific target")
     @GetMapping("/public/reviews/{targetId}")
@@ -64,7 +64,7 @@ public class ReviewController {
 
     @CacheRefreshable(
             cacheNames = "community:review-average",
-            keyExpression = "#arg0"
+            keyExpression = "#arg0.trim()"
     )
     @Operation(summary = "Get average approved rating for a target")
     @GetMapping("/internal/reviews/{targetId}/average")

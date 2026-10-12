@@ -3,7 +3,6 @@ package com.example.common.cache.service;
 import com.example.common.cache.exception.CacheRefreshException;
 import org.springframework.cache.Cache;
 import org.springframework.cache.CacheManager;
-import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Objects;
@@ -14,7 +13,6 @@ import java.util.Objects;
  * This intentionally does not clear every cache in the application. Each
  * refreshable endpoint explicitly declares the cache regions and key it owns.
  */
-@Service
 public class CacheRefreshService {
 
     private final CacheManager cacheManager;
