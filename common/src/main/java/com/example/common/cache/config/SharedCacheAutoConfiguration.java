@@ -38,13 +38,17 @@ import java.util.Map;
 @EnableConfigurationProperties(CacheProperties.class)
 public class SharedCacheAutoConfiguration {
 
-    private static final Duration DEFAULT_TTL = Duration.ofMinutes(10);
+    private static final Duration FALLBACK_TTL = Duration.ofMinutes(10);
 
     @Bean
     @ConditionalOnMissingBean(CacheManager.class)
     public RedisCacheManager cacheManager(
-            RedisConnectionFactory redisConnectionFactory
+            RedisConnectionFactory redisConnectionFactory,
+            CacheProperties properties
     ) {
+        Duration defaultTtl = properties.getDefaultTtl() != null
+                ? properties.getDefaultTtl()
+                : FALLBACK_TTL;
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.activateDefaultTyping(
@@ -67,50 +71,24 @@ public class SharedCacheAutoConfiguration {
                                         .fromSerializer(valueSerializer)
                         )
                         .computePrefixWith(cacheName -> cacheName + ":")
-                        .entryTtl(DEFAULT_TTL);
+                        .entryTtl(defaultTtl);
 
-        Map<String, RedisCacheConfiguration> cacheConfigurations =
-                new HashMap<>();
+                        Map<String, RedisCacheConfiguration> cacheConfigurations =
+                                new HashMap<>();
 
-        // Test-service cache policies: preserve existing TTLs.
-        cacheConfigurations.put(
-                "baahubali:test:categories",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(10))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:homepage:series:popular",
-                defaultConfiguration.entryTtl(Duration.ofSeconds(120))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:homepage:mock-tests:featured",
-                defaultConfiguration.entryTtl(Duration.ofSeconds(120))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:series:list",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(5))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:series",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(5))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:test",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(5))
-        );
-        cacheConfigurations.put(
-                "baahubali:test:mocktests:list",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(10))
-        );
-        cacheConfigurations.put(
-                "test_blueprints",
-                defaultConfiguration.entryTtl(Duration.ofMinutes(10))
-        );
-
-        // Analytics-service policy: preserve its existing 30-day TTL.
-        cacheConfigurations.put(
-                "analytics:report",
-                defaultConfiguration.entryTtl(Duration.ofDays(30))
-        );
+                        if (properties.getTtl() != null) {
+                            properties.getTtl().forEach((cacheName, ttl) -> {
+                                if (cacheName != null
+                                        && !cacheName.isBlank()
+                                        && ttl != null
+                                        && !ttl.isNegative()) {
+                                    cacheConfigurations.put(
+                                            cacheName,
+                                            defaultConfiguration.entryTtl(ttl)
+                                    );
+                                }
+                            });
+                        }
 
         return RedisCacheManager.builder(redisConnectionFactory)
                 .cacheDefaults(defaultConfiguration)

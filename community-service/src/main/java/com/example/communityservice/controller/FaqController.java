@@ -1,5 +1,6 @@
 package com.example.communityservice.controller;
 
+import com.example.common.cache.annotation.CacheRefreshable;
 import com.example.communityservice.dto.ApiResponse;
 import com.example.communityservice.dto.request.FaqRequestDto;
 import com.example.communityservice.dto.request.FaqUpdateRequestDto;
@@ -19,7 +20,7 @@ import java.util.Map;
 public class FaqController {
 
     private final FaqService faqService;
-
+    
     @GetMapping("/admins/faq")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getAllFaqs() {
         return ResponseEntity.ok(ApiResponse.success(
@@ -29,6 +30,10 @@ public class FaqController {
         ));
     }
 
+    @CacheRefreshable(
+            cacheNames = "community:faqs",
+            keyExpression = "'GLOBAL'"
+    )
     @GetMapping("/public/faq")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getGlobalFaqs() {
         return ResponseEntity.ok(ApiResponse.success(
@@ -38,6 +43,10 @@ public class FaqController {
         ));
     }
 
+    @CacheRefreshable(
+            cacheNames = "community:faqs",
+            keyExpression = "#arg0"
+    )
     @GetMapping("/public/faq/{targetId}")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getFaqs(
             @PathVariable String targetId) {

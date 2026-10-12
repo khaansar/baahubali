@@ -48,5 +48,12 @@ logging:
     org.springframework.web: INFO
 
 app:
+  cache:
+    enabled: true
+    default-ttl: 10m
+    ttl:
+      community:faqs: 10m
+      community:reviews: 2m
+      community:review-average: 2m
   api:
     version: ${API_VERSION}

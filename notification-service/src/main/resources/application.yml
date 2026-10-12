@@ -73,6 +73,11 @@ management:
         enabled: true
 
 app:
+  cache:
+    enabled: true
+    default-ttl: 10m
+    ttl:
+      notification:active-template: 10m
   api:
     version: ${API_VERSION}
 

@@ -12,6 +12,8 @@ import com.example.communityservice.dto.response.ReviewResponseDto;
 import com.example.communityservice.dto.response.ReviewStatsDto;
 import com.example.communityservice.entity.Review;
 import com.example.communityservice.repository.ReviewRepository;
+import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Cacheable;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -70,6 +72,11 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "community:reviews",
+            key = "#targetId.trim()",
+            unless = "#result == null"
+    )
     public List<ReviewResponseDto> getHydratedReviews(String targetId) {
         String normalizedTargetId = normalizeTargetId(targetId);
         List<Review> reviews = reviewRepository.findAll((root, query, criteriaBuilder) -> criteriaBuilder.and(
@@ -107,6 +114,11 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(
+            cacheNames = "community:review-average",
+            key = "#targetId.trim()",
+            unless = "#result == null"
+    )
     public Double getAverageRating(String targetId) {
         Double average = reviewRepository.getAverageRatingForTarget(normalizeTargetId(targetId), Review.ReviewStatus.APPROVED);
         return average != null ? average : 0.0;
@@ -184,6 +196,13 @@ public class ReviewService {
     }
 
     @Transactional
+    @CacheEvict(
+            cacheNames = {
+                    "community:reviews",
+                    "community:review-average"
+            },
+            allEntries = true
+    )
     public AdminReviewResponseDto moderateReview(Long reviewId, ReviewModerationRequestDto request) {
         if (request.status() != Review.ReviewStatus.APPROVED && request.status() != Review.ReviewStatus.REJECTED) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "A review can only be approved or rejected by moderation.");
