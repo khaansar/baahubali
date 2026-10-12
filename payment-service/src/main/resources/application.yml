@@ -83,3 +83,5 @@ app:
     enabled: true
     default-ttl: 10m
     ttl: {}
+  api:
+    version: ${API_VERSION}

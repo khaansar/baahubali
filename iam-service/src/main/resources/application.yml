@@ -101,6 +101,7 @@ internal:
     allowed-clients:
       api-gateway: ${API_GATEWAY_SECRET}
       community-service: ${COMMUNITY_SERVICE_SECRET}
+      analytics-service: ${ANALYTICS_SERVICE_SECRET}
 
 
 cloudinary:

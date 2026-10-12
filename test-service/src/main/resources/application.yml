@@ -57,6 +57,7 @@ internal:
       api-gateway: ${API_GATEWAY_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
       payment-service: ${PAYMENT_SERVICE_SECRET}
+      analytics-service: ${ANALYTICS_SERVICE_SECRET}
 
   services:
     community-url: ${COMMUNITY_SERVICE_URL}

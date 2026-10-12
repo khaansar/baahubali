@@ -1,10 +1,5 @@
 package com.example.analyticsservice.core.entity;
 
-import com.example.analyticsservice.core.exception.*;
-
-import com.example.analyticsservice.core.entity.*;
-import com.example.analyticsservice.core.repository.*;
-
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.Id;
@@ -40,6 +35,10 @@ public class TestReportEntity {
 
     @Column(name = "test_id", length = 36, nullable = false)
     private String testId;
+
+    /** Original attempt start time. Nullable only for reports created before the leaderboard migration. */
+    @Column(name = "started_at")
+    private LocalDateTime startedAt;
 
     @Column(name = "total_score", nullable = false, precision = 6, scale = 2)
     private BigDecimal totalScore;

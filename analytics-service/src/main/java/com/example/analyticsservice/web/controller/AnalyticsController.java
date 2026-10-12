@@ -1,11 +1,13 @@
 package com.example.analyticsservice.web.controller;
 
 import com.example.analyticsservice.contract.ReportData;
+import com.example.analyticsservice.contract.TestLeaderboardResponse;
 import com.example.analyticsservice.contract.UserPerformanceResponse;
 import com.example.analyticsservice.contract.UserTopicPerformanceResponse;
 import com.example.analyticsservice.web.service.ReportCacheService;
 import com.example.analyticsservice.web.service.ReportNotificationService;
 import com.example.analyticsservice.web.dto.ApiResponse;
+import com.example.analyticsservice.core.service.TestLeaderboardService;
 import com.example.analyticsservice.core.service.UserPerformanceService;
 import com.example.common.cache.annotation.CacheRefreshable;
 import org.springframework.beans.factory.annotation.Value;
@@ -15,6 +17,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
@@ -25,15 +28,18 @@ public class AnalyticsController {
     private final ReportCacheService reportCacheService;
     private final ReportNotificationService reportNotificationService;
     private final UserPerformanceService userPerformanceService;
+    private final TestLeaderboardService testLeaderboardService;
     private final String apiVersion;
 
     public AnalyticsController(ReportCacheService reportCacheService,
                                ReportNotificationService reportNotificationService,
                                UserPerformanceService userPerformanceService,
+                               TestLeaderboardService testLeaderboardService,
                                @Value("${app.api.version}") String apiVersion) {
         this.reportCacheService = reportCacheService;
         this.reportNotificationService = reportNotificationService;
         this.userPerformanceService = userPerformanceService;
+        this.testLeaderboardService = testLeaderboardService;
         this.apiVersion = apiVersion;
     }
 
@@ -41,8 +47,7 @@ public class AnalyticsController {
     public ResponseEntity<ApiResponse<UserPerformanceResponse>> getUserPerformance(
             @RequestHeader("X-User-Id") String userId) {
 
-        UserPerformanceResponse performance =
-                userPerformanceService.getPerformance(userId);
+        UserPerformanceResponse performance = userPerformanceService.getPerformance(userId);
 
         return ResponseEntity.ok(ApiResponse.success(200,
                 "Performance data retrieved successfully", performance, apiVersion));
@@ -52,24 +57,35 @@ public class AnalyticsController {
     public ResponseEntity<ApiResponse<UserTopicPerformanceResponse>> getUserTopicPerformance(
             @RequestHeader("X-User-Id") String userId) {
 
-        UserTopicPerformanceResponse topicPerformance =
-                userPerformanceService.getTopicPerformance(userId);
+        UserTopicPerformanceResponse topicPerformance = userPerformanceService.getTopicPerformance(userId);
 
         return ResponseEntity.ok(ApiResponse.success(200,
                 "Topic performance retrieved successfully", topicPerformance, apiVersion));
     }
 
+    @GetMapping(value = "/leaderboard/tests/{testSlug}", produces = MediaType.APPLICATION_JSON_VALUE)
+    public ResponseEntity<ApiResponse<TestLeaderboardResponse>> getTestLeaderboard(
+            @PathVariable String testSlug,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "25") int pageSize) {
+
+        TestLeaderboardResponse leaderboard = testLeaderboardService.getLeaderboard(
+                testSlug, Math.max(0, page - 1), pageSize);
+
+        return ResponseEntity.ok(ApiResponse.success(200,
+                "First-attempt leaderboard retrieved successfully", leaderboard, apiVersion));
+    }
+
     @CacheRefreshable(
             cacheNames = "analytics:report",
-            keyExpression = "#arg1 + ':' + #arg0"
+            keyExpression = "#attemptId + ':' + #userId"
     )
     @GetMapping(value = "/{attemptId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ReportData>> getReport(
             @RequestHeader("X-User-Id") String userId,
             @PathVariable String attemptId) {
 
-        ReportData reportData =
-                reportCacheService.getReportData(attemptId, userId);
+        ReportData reportData = reportCacheService.getReportData(attemptId, userId);
 
         return ResponseEntity.ok(ApiResponse.success(200,
                 "Report retrieved successfully", reportData, apiVersion));
@@ -83,8 +99,7 @@ public class AnalyticsController {
             @RequestHeader("X-User-Id") String userId,
             @PathVariable String attemptId) {
 
-        SseEmitter emitter =
-                reportNotificationService.subscribe(attemptId);
+        SseEmitter emitter = reportNotificationService.subscribe(attemptId);
 
         try {
             reportCacheService.getReportData(attemptId, userId);

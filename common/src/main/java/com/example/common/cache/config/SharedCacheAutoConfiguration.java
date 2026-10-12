@@ -54,14 +54,15 @@ public class SharedCacheAutoConfiguration {
         ObjectMapper objectMapper = new ObjectMapper();
         objectMapper.registerModule(new JavaTimeModule());
         objectMapper.activateDefaultTyping(
-                BasicPolymorphicTypeValidator.builder()
-                        .allowIfSubType("com.example.")
-                        .allowIfSubType("java.time.")
-                        .allowIfSubType("java.util.")
-                        .build(),
-                ObjectMapper.DefaultTyping.EVERYTHING,
-                JsonTypeInfo.As.PROPERTY
-        );
+            BasicPolymorphicTypeValidator.builder()
+                    .allowIfSubType("com.example.")
+                    .allowIfSubType("java.time.")
+                    .allowIfSubType("java.util.")
+                    .allowIfSubType("java.math.")
+                    .build(),
+            ObjectMapper.DefaultTyping.EVERYTHING,
+            JsonTypeInfo.As.PROPERTY
+    );
 
         GenericJackson2JsonRedisSerializer valueSerializer =
                 new GenericJackson2JsonRedisSerializer(objectMapper);

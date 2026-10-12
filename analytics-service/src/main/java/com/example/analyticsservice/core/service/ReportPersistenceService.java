@@ -1,10 +1,8 @@
 package com.example.analyticsservice.core.service;
 
 import com.example.analyticsservice.core.exception.*;
-
 import com.example.analyticsservice.core.entity.*;
 import com.example.analyticsservice.core.repository.*;
-
 import com.example.analyticsservice.contract.AttemptSubmittedEvent;
 import com.example.analyticsservice.contract.PeerComparisonResult;
 import com.example.analyticsservice.contract.SectionAnalysisResult;
@@ -20,6 +18,9 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
+import java.time.Instant;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
@@ -42,6 +43,7 @@ public class ReportPersistenceService {
     private final TestLeaderboardSnapshotRepository snapshots;
     private final ReportCacheService reportCacheService;
     private final UserTopicPerformanceRepository topicPerformanceRepository;
+    private final TestAttemptRegistryService testAttemptRegistryService;
 
     /**
      * Claims the attempt for processing.
@@ -53,6 +55,7 @@ public class ReportPersistenceService {
      */
     @Transactional
     public boolean claim(AttemptSubmittedEvent event) {
+        testAttemptRegistryService.register(event.attemptId(), event.testId(), event.userId(), event.startedAt() != null ? event.startedAt() : event.timestamp());
         Optional<TestReportEntity> existing = reports.findByAttemptIdForUpdate(event.attemptId());
 
         if (existing.isPresent()) {
@@ -70,6 +73,9 @@ public class ReportPersistenceService {
 
             if (ReportStatus.FAILED.name().equals(report.getStatus())) {
                 report.setStatus(ReportStatus.PROCESSING.name());
+                if (event.startedAt() != null) {
+                    report.setStartedAt(toLocalDateTime(event.startedAt()));
+                }
                 reports.save(report);
                 evictReportCacheAfterCommit(event.attemptId(), event.userId());
                 log.info("Retrying failed report, attemptId={}", event.attemptId());
@@ -86,6 +92,7 @@ public class ReportPersistenceService {
         report.setCategoryId(event.categoryId());
         report.setTestSeriesId(event.testSeriesId());
         report.setTestId(event.testId());
+        report.setStartedAt(toLocalDateTime(event.startedAt()));
         report.setTotalScore(scale2(0.0));
         report.setMaxScore(scale2(0.0));
         report.setAccuracyPercentage(scale2(0.0));
@@ -115,6 +122,9 @@ public class ReportPersistenceService {
         report.setMaxScore(scale2(sectionResult.maxScore()));
         report.setAccuracyPercentage(scale2(sectionResult.accuracyPercentage()));
         report.setTimeTakenSeconds(toInt(event.timeTakenSeconds()));
+        if (event.startedAt() != null) {
+            report.setStartedAt(toLocalDateTime(event.startedAt()));
+        }
         report.setRankPosition(peer.rank());
         report.setPercentile(scale2(peer.percentile()));
         report.setReportData(reportJson);
@@ -233,5 +243,9 @@ public class ReportPersistenceService {
 
     private static Integer toInt(Long value) {
         return value == null ? null : Math.toIntExact(value);
+    }
+
+    private static LocalDateTime toLocalDateTime(Instant value) {
+        return value == null ? null : LocalDateTime.ofInstant(value, ZoneOffset.UTC);
     }
 }
