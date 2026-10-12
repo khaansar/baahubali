@@ -56,6 +56,7 @@ public class SharedCacheAutoConfiguration {
         objectMapper.activateDefaultTyping(
             BasicPolymorphicTypeValidator.builder()
                     .allowIfSubType("com.example.")
+                    .allowIfSubType("java.lang.")
                     .allowIfSubType("java.time.")
                     .allowIfSubType("java.util.")
                     .allowIfSubType("java.math.")

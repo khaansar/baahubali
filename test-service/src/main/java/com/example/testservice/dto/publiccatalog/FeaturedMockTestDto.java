@@ -1,5 +1,6 @@
 package com.example.testservice.dto.publiccatalog;
 
+import com.fasterxml.jackson.annotation.JsonProperty;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
@@ -16,4 +17,7 @@ public class FeaturedMockTestDto {
     private String categoryName;
     private Integer durationMinutes;
     private BigDecimal totalMarks;
+
+    @JsonProperty("isFree")
+    private boolean isFree;
 }

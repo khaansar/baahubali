@@ -81,7 +81,8 @@ public class PublicHomepageService {
     @Cacheable(value = "baahubali:test:homepage:mock-tests:featured")
     @Transactional(readOnly = true)
     public List<FeaturedMockTestDto> getFeaturedMockTests() {
-        String jpql = "SELECT m.id, m.slug, m.title, c.name, m.durationMinutes, m.totalMarks " +
+        String jpql = "SELECT m.id, m.slug, m.title, c.name, " +
+                "m.durationMinutes, m.totalMarks, m.isFree " +
                 "FROM MockTest m " +
                 "JOIN m.series s " +
                 "JOIN s.category c " +
@@ -99,7 +100,17 @@ public class PublicHomepageService {
             String categoryName = (String) row[3];
             Integer durationMinutes = row[4] != null ? ((Number) row[4]).intValue() : 0;
             java.math.BigDecimal totalMarks = (java.math.BigDecimal) row[5];
-            return new FeaturedMockTestDto(id, slug, title, categoryName, durationMinutes, totalMarks);
+            boolean isFree = Boolean.TRUE.equals(row[6]);
+
+            return new FeaturedMockTestDto(
+                    id,
+                    slug,
+                    title,
+                    categoryName,
+                    durationMinutes,
+                    totalMarks,
+                    isFree
+            );
         }).collect(Collectors.toList());
     }
 }
