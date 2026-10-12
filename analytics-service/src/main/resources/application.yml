@@ -64,5 +64,9 @@ internal:
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
 
 app:
+  cache:
+    enabled: true
+    ttl:
+      "analytics:report": 30d
   api:
     version: ${API_VERSION}

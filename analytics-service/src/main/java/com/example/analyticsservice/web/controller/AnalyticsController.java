@@ -7,6 +7,7 @@ import com.example.analyticsservice.web.service.ReportCacheService;
 import com.example.analyticsservice.web.service.ReportNotificationService;
 import com.example.analyticsservice.web.dto.ApiResponse;
 import com.example.analyticsservice.core.service.UserPerformanceService;
+import com.example.common.cache.annotation.CacheRefreshable;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -58,6 +59,10 @@ public class AnalyticsController {
                 "Topic performance retrieved successfully", topicPerformance, apiVersion));
     }
 
+    @CacheRefreshable(
+            cacheNames = "analytics:report",
+            keyExpression = "#attemptId + ':' + #userId"
+    )
     @GetMapping(value = "/{attemptId}", produces = MediaType.APPLICATION_JSON_VALUE)
     public ResponseEntity<ApiResponse<ReportData>> getReport(
             @RequestHeader("X-User-Id") String userId,

@@ -15,6 +15,9 @@ import com.example.analyticsservice.core.entity.TestLeaderboardSnapshotEntity;
 import com.example.analyticsservice.core.repository.TestLeaderboardSnapshotRepository;
 import com.example.analyticsservice.core.entity.TestReportEntity;
 import com.example.analyticsservice.core.repository.TestReportRepository;
+import com.example.analyticsservice.web.service.ReportCacheService;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.util.List;
@@ -37,6 +40,7 @@ public class ReportPersistenceService {
     private final TestReportRepository reports;
     private final SectionPerformanceRepository sections;
     private final TestLeaderboardSnapshotRepository snapshots;
+    private final ReportCacheService reportCacheService;
     private final UserTopicPerformanceRepository topicPerformanceRepository;
 
     /**
@@ -67,6 +71,7 @@ public class ReportPersistenceService {
             if (ReportStatus.FAILED.name().equals(report.getStatus())) {
                 report.setStatus(ReportStatus.PROCESSING.name());
                 reports.save(report);
+                evictReportCacheAfterCommit(event.attemptId(), event.userId());
                 log.info("Retrying failed report, attemptId={}", event.attemptId());
                 return true;
             }
@@ -189,6 +194,8 @@ public class ReportPersistenceService {
                 topicPerformanceRepository.save(topicEntity);
             }
         }
+
+        evictReportCacheAfterCommit(event.attemptId(), event.userId());
     }
 
     /** Marks a non-completed report FAILED. Never downgrades a COMPLETED report. */
@@ -198,8 +205,26 @@ public class ReportPersistenceService {
             if (!ReportStatus.COMPLETED.name().equals(report.getStatus())) {
                 report.setStatus(ReportStatus.FAILED.name());
                 reports.save(report);
+                evictReportCacheAfterCommit(attemptId, report.getUserId());
             }
         });
+    }
+
+    private void evictReportCacheAfterCommit(String attemptId, String userId) {
+        Runnable eviction = () -> reportCacheService.evictReportData(attemptId, userId);
+
+        if (TransactionSynchronizationManager.isSynchronizationActive()) {
+            TransactionSynchronizationManager.registerSynchronization(
+                    new TransactionSynchronization() {
+                        @Override
+                        public void afterCommit() {
+                            eviction.run();
+                        }
+                    }
+            );
+        } else {
+            eviction.run();
+        }
     }
 
     private static BigDecimal scale2(Double value) {

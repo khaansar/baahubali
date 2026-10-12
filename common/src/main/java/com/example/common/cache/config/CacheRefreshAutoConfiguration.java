@@ -9,6 +9,7 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnClass;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnWebApplication;
 import org.springframework.cache.CacheManager;
 import org.springframework.context.annotation.Bean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.EnableAspectJAutoProxy;
 
 /**
@@ -21,6 +22,10 @@ import org.springframework.context.annotation.EnableAspectJAutoProxy;
 )
 @ConditionalOnClass(CacheManager.class)
 @ConditionalOnWebApplication(type = ConditionalOnWebApplication.Type.SERVLET)
+@ConditionalOnProperty(
+        name = "app.cache.enabled",
+        havingValue = "true"
+)
 @ConditionalOnBean(CacheManager.class)
 @EnableAspectJAutoProxy
 public class CacheRefreshAutoConfiguration {
