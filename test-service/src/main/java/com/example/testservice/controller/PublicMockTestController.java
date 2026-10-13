@@ -4,6 +4,7 @@ import com.example.testservice.dto.ApiResponse;
 import com.example.testservice.dto.common.PaginatedResponseDto;
 import com.example.testservice.dto.publiccatalog.PublicMockTestListDto;
 import com.example.testservice.service.publiccatalog.impl.PublicMockTestServiceImpl;
+import com.example.common.cache.annotation.CacheRefreshable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +18,10 @@ public class PublicMockTestController {
 
     private final PublicMockTestServiceImpl publicMockTestService;
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:mocktests:list",
+            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all') + ':q=' + (#arg1 != null ? #arg1 : 'none') + ':page=' + #arg2 + ':limit=' + #arg3"
+    )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicMockTestListDto>>> getPublishedMockTests(
             @RequestParam(required = false) UUID categoryId,

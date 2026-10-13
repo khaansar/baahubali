@@ -7,6 +7,7 @@ import com.example.testservice.exception.ResourceNotFoundException;
 import com.example.testservice.repository.CategoryRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
+import org.springframework.cache.annotation.Caching;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -25,7 +26,12 @@ public class CategoryService {
     private final KafkaPublisherService kafkaPublisherService;
 
     @Transactional
-    @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
+    })
     public CategoryDto createCategory(CategoryDto request, String adminId) {
         Category category = new Category();
         category.setName(request.getName());
@@ -57,7 +63,12 @@ public class CategoryService {
     }
 
     @Transactional
-    @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+    @Caching(evict = {
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
+    })
     public CategoryDto updateCategory(UUID id, CategoryDto request, String adminId) {
         Category category = categoryRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));

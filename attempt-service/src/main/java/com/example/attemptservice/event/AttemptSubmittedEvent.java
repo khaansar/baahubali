@@ -11,6 +11,7 @@ public record AttemptSubmittedEvent(
         String categoryId,
         String testSeriesId,
         String testId,
+        Instant startedAt,
         Long timeTakenSeconds,
         List<SectionAnswerPayload> sectionAnswers,
         List<TopicAnswerPayload> topicAnswers,
@@ -26,9 +27,24 @@ public record AttemptSubmittedEvent(
             String testId,
             Long timeTakenSeconds,
             List<SectionAnswerPayload> sectionAnswers,
+            List<TopicAnswerPayload> topicAnswers,
             Instant timestamp
     ) {
-        this(eventId, attemptId, userId, categoryId, testSeriesId, testId, timeTakenSeconds, sectionAnswers, List.of(), timestamp);
+        this(eventId, attemptId, userId, categoryId, testSeriesId, testId, null, timeTakenSeconds, sectionAnswers, topicAnswers, timestamp);
+    }
+
+    public AttemptSubmittedEvent(
+            String eventId,
+            String attemptId,
+            String userId,
+            String categoryId,
+            String testSeriesId,
+            String testId,
+            Long timeTakenSeconds,
+            List<SectionAnswerPayload> sectionAnswers,
+            Instant timestamp
+    ) {
+        this(eventId, attemptId, userId, categoryId, testSeriesId, testId, null, timeTakenSeconds, sectionAnswers, List.of(), timestamp);
     }
 
     public record SectionAnswerPayload(

@@ -57,6 +57,7 @@ internal:
       api-gateway: ${API_GATEWAY_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
       payment-service: ${PAYMENT_SERVICE_SECRET}
+      analytics-service: ${ANALYTICS_SERVICE_SECRET}
 
   services:
     community-url: ${COMMUNITY_SERVICE_URL}
@@ -76,6 +77,18 @@ logging:
     org.springframework.web: INFO
 
 app:
+  cache:
+    enabled: true
+    default-ttl: 10m
+    ttl:
+      "baahubali:test:categories": 10m
+      "baahubali:test:homepage:series:popular": 120s
+      "baahubali:test:homepage:mock-tests:featured": 120s
+      "baahubali:test:series:list": 5m
+      "baahubali:test:series": 5m
+      "baahubali:test:test": 5m
+      "baahubali:test:mocktests:list": 10m
+      "test_blueprints": 10m
   api:
     version: ${API_VERSION}
 

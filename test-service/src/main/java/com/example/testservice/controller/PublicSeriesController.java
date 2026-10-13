@@ -5,6 +5,7 @@ import com.example.testservice.dto.common.PaginatedResponseDto;
 import com.example.testservice.dto.publiccatalog.PublicTestSeriesDetailDto;
 import com.example.testservice.dto.publiccatalog.PublicTestSeriesListDto;
 import com.example.testservice.service.publiccatalog.impl.PublicSeriesServiceImpl;
+import com.example.common.cache.annotation.CacheRefreshable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -18,6 +19,10 @@ public class PublicSeriesController {
 
     private final PublicSeriesServiceImpl publicSeriesService;
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series:list",
+            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all') + ':page=' + #arg1 + ':limit=' + #arg2"
+    )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicTestSeriesListDto>>> getPublishedSeries(
             @RequestParam(required = false) UUID categoryId,
@@ -30,11 +35,19 @@ public class PublicSeriesController {
         return ResponseEntity.ok(ApiResponse.paginated(response.data(), response.meta()));
     }
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series",
+            keyExpression = "#arg0"
+    )
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<PublicTestSeriesDetailDto>> getSeriesById(@PathVariable UUID id) {
         return ResponseEntity.ok(ApiResponse.success(publicSeriesService.getSeriesById(id)));
     }
 
+    @CacheRefreshable(
+            cacheNames = "baahubali:test:series",
+            keyExpression = "'slug:' + #arg0"
+    )
     @GetMapping("/slug/{slug}")
     public ResponseEntity<ApiResponse<PublicTestSeriesDetailDto>> getSeriesBySlug(@PathVariable String slug) {
         return ResponseEntity.ok(ApiResponse.success(publicSeriesService.getSeriesBySlug(slug)));

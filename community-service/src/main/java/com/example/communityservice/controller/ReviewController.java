@@ -1,5 +1,6 @@
 package com.example.communityservice.controller;
 
+import com.example.common.cache.annotation.CacheRefreshable;
 import com.example.communityservice.config.UserContextHolder;
 import com.example.communityservice.dto.ApiResponse;
 import com.example.communityservice.dto.request.ReviewModerationRequestDto;
@@ -50,6 +51,10 @@ public class ReviewController {
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(HttpStatus.CREATED.value(), "Review submitted successfully and is awaiting moderation.", Map.of()));
     }
 
+    @CacheRefreshable(
+            cacheNames = "community:reviews",
+            keyExpression = "#arg0.trim()"
+    )
     @Operation(summary = "Get approved reviews for a specific target")
     @GetMapping("/public/reviews/{targetId}")
     public ResponseEntity<ApiResponse<List<ReviewResponseDto>>> getReviewsByTarget(@PathVariable String targetId) {
@@ -57,6 +62,10 @@ public class ReviewController {
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Reviews retrieved successfully", reviews));
     }
 
+    @CacheRefreshable(
+            cacheNames = "community:review-average",
+            keyExpression = "#arg0.trim()"
+    )
     @Operation(summary = "Get average approved rating for a target")
     @GetMapping("/internal/reviews/{targetId}/average")
     public ResponseEntity<ApiResponse<Map<String, Double>>> getAverageRating(@PathVariable String targetId) {

@@ -32,7 +32,10 @@ public class FaqService {
     }
 
     @Transactional(readOnly = true)
-    @Cacheable(value = "faqs", key = "#targetId ?: 'GLOBAL'")
+    @Cacheable(
+            cacheNames = "community:faqs",
+            key = "#targetId ?: 'GLOBAL'"
+    )
     public List<FaqResponseDto> getFaqsByTarget(String targetId) {
 
         return faqRepository
@@ -44,7 +47,7 @@ public class FaqService {
 
     @Transactional
     @CacheEvict(
-            value = "faqs",
+            cacheNames = "community:faqs",
             key = "#request.targetId() ?: 'GLOBAL'"
     )
     public FaqResponseDto createFaq(FaqRequestDto request) {
@@ -63,7 +66,7 @@ public class FaqService {
 
     @Transactional
     @CacheEvict(
-            value = "faqs",
+            cacheNames = "community:faqs",
             key = "#targetId ?: 'GLOBAL'"
     )
     public FaqResponseDto updateFaq(
@@ -95,7 +98,7 @@ public class FaqService {
 
     @Transactional
     @CacheEvict(
-            value = "faqs",
+            cacheNames = "community:faqs",
             key = "#targetId ?: 'GLOBAL'"
     )
     public void deleteFaq(String targetId, Long faqId) {

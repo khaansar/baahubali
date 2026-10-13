@@ -56,11 +56,11 @@ public class PublicHomepageService {
     @Transactional(readOnly = true)
     public List<PopularSeriesDto> getPopularSeries() {
         String jpql = "SELECT ts.id, ts.slug, ts.title, " +
-                "(SELECT COUNT(m.id) FROM MockTest m WHERE m.series.id = ts.id), " +
-                "(SELECT SUM(m.durationMinutes) FROM MockTest m WHERE m.series.id = ts.id) " +
+                "(SELECT COUNT(m.id) FROM MockTest m WHERE m.series.id = ts.id AND m.status = 'PUBLISHED'), " +
+                "(SELECT SUM(m.durationMinutes) FROM MockTest m WHERE m.series.id = ts.id AND m.status = 'PUBLISHED') " +
                 "FROM TestSeries ts " +
                 "WHERE ts.status = 'PUBLISHED' " +
-                "ORDER BY (SELECT COUNT(m2.id) FROM MockTest m2 WHERE m2.series.id = ts.id) DESC";
+                "ORDER BY (SELECT COUNT(m2.id) FROM MockTest m2 WHERE m2.series.id = ts.id AND m2.status = 'PUBLISHED') DESC";
 
         List<Object[]> results = entityManager.createQuery(jpql, Object[].class)
                 .setMaxResults(4)
@@ -81,7 +81,8 @@ public class PublicHomepageService {
     @Cacheable(value = "baahubali:test:homepage:mock-tests:featured")
     @Transactional(readOnly = true)
     public List<FeaturedMockTestDto> getFeaturedMockTests() {
-        String jpql = "SELECT m.id, m.slug, m.title, c.name, m.durationMinutes, m.totalMarks " +
+        String jpql = "SELECT m.id, m.slug, m.title, c.name, " +
+                "m.durationMinutes, m.totalMarks, m.isFree " +
                 "FROM MockTest m " +
                 "JOIN m.series s " +
                 "JOIN s.category c " +
@@ -99,7 +100,17 @@ public class PublicHomepageService {
             String categoryName = (String) row[3];
             Integer durationMinutes = row[4] != null ? ((Number) row[4]).intValue() : 0;
             java.math.BigDecimal totalMarks = (java.math.BigDecimal) row[5];
-            return new FeaturedMockTestDto(id, slug, title, categoryName, durationMinutes, totalMarks);
+            boolean isFree = Boolean.TRUE.equals(row[6]);
+
+            return new FeaturedMockTestDto(
+                    id,
+                    slug,
+                    title,
+                    categoryName,
+                    durationMinutes,
+                    totalMarks,
+                    isFree
+            );
         }).collect(Collectors.toList());
     }
 }

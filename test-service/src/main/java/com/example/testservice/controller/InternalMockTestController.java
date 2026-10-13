@@ -29,6 +29,13 @@ public class InternalMockTestController {
         return ResponseEntity.ok(ApiResponse.success(status));
     }
 
+    @GetMapping("/slug/{slug}/leaderboard-status")
+    public ResponseEntity<ApiResponse<TestStatusDto>> getPublishedTestStatusBySlug(
+            @PathVariable String slug) {
+        TestStatusDto status = internalService.getPublishedTestStatusBySlug(slug);
+        return ResponseEntity.ok(ApiResponse.success(status));
+    }
+
     @PostMapping("/bulk-info")
     public ResponseEntity<ApiResponse<java.util.List<com.example.testservice.dto.internal.TestBulkInfoDto>>> getBulkTestInfo(@RequestBody java.util.List<UUID> testIds) {
         java.util.List<com.example.testservice.dto.internal.TestBulkInfoDto> info = internalService.getBulkTestInfo(testIds);

@@ -77,3 +77,11 @@ management:
 springdoc:
   api-docs:
     path: /v3/api-docs
+
+app:
+  cache:
+    enabled: true
+    default-ttl: 10m
+    ttl: {}
+  api:
+    version: ${API_VERSION}

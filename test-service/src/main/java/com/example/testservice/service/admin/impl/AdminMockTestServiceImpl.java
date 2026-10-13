@@ -58,9 +58,13 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "test_blueprints", key = "#testId"),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto publishTest(UUID testId, Instant expectedUpdatedAt) {
@@ -252,9 +256,14 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "test_blueprints", key = "#testId"),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId")
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto updateMockTest(UUID testId, MockTestCreateDto dto) {
         MockTest test = mockTestRepository.findById(testId)
@@ -302,9 +311,13 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "test_blueprints", key = "#testId"),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto archiveTest(UUID testId) {
@@ -415,9 +428,13 @@ public class AdminMockTestServiceImpl {
 
     @Transactional
     @Caching(evict = {
-            @CacheEvict(value = "baahubali:test:test", key = "#testId + ':structure'"),
+            @CacheEvict(value = "test_blueprints", key = "#testId"),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
-            @CacheEvict(value = "baahubali:test:series", key = "#result.seriesId"),
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:categories", allEntries = true)
     })
     public AdminMockTestDetailDto revertToDraft(UUID testId) {
@@ -434,6 +451,9 @@ public class AdminMockTestServiceImpl {
         }
 
         TestSeries series = test.getSeries();
+
+        test.setStatus(Status.DRAFT);
+        mockTestRepository.save(test);
 
         boolean hasPublishedTests = series.getMockTests().stream()
                 .anyMatch(mockTest ->

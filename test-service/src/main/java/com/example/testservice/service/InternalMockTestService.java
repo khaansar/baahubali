@@ -140,6 +140,26 @@ public class InternalMockTestService {
     }
 
     @Transactional(readOnly = true)
+    public TestStatusDto getPublishedTestStatusBySlug(String slug) {
+        MockTest test = mockTestRepository.findBySlug(slug.trim())
+                .orElseThrow(() -> new ResourceNotFoundException("Test not found"));
+
+        if (test.getStatus() != Status.PUBLISHED || test.getDeletedAt() != null) {
+            throw new ResourceNotFoundException("Test is not available in the public catalog.");
+        }
+
+        return new TestStatusDto(
+                test.getId(),
+                test.getStatus(),
+                test.getTotalMarks(),
+                test.getDurationMinutes(),
+                test.getCreatedAt(),
+                test.getUpdatedAt(),
+                test.getDeletedAt()
+        );
+    }
+
+    @Transactional(readOnly = true)
     public List<TestBulkInfoDto> getBulkTestInfo(List<UUID> testIds) {
         return mockTestRepository.findAllById(testIds).stream()
                 .map(test -> TestBulkInfoDto.builder()

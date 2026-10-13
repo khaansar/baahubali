@@ -63,6 +63,14 @@ internal:
       api-gateway: ${API_GATEWAY_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
 
+  services:
+    test-url: ${TEST_SERVICE_URL}
+    iam-url: ${IAM_SERVICE_URL}
+
 app:
+  cache:
+    enabled: true
+    ttl:
+      "analytics:report": 30d
   api:
     version: ${API_VERSION}

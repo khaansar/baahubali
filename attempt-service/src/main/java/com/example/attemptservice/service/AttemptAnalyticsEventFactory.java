@@ -23,6 +23,19 @@ public final class AttemptAnalyticsEventFactory {
             Long timeTakenSeconds,
             Instant timestamp
     ) {
+        return create(eventId, attemptId, userId, blueprint, answers, null, timeTakenSeconds, timestamp);
+    }
+
+    public static AttemptSubmittedEvent create(
+            String eventId,
+            String attemptId,
+            String userId,
+            InternalTestBlueprintDto blueprint,
+            List<AttemptAnswer> answers,
+            Instant startedAt,
+            Long timeTakenSeconds,
+            Instant timestamp
+    ) {
         Map<String, String> answerMap = new HashMap<>();
 
         for (AttemptAnswer answer : answers) {
@@ -36,6 +49,7 @@ public final class AttemptAnalyticsEventFactory {
                 blueprint.getCategoryId(),
                 blueprint.getTestSeriesId(),
                 blueprint.getTestId(),
+                startedAt,
                 timeTakenSeconds,
                 buildSectionAnswers(blueprint, answerMap),
                 buildTopicAnswers(blueprint, answerMap),
