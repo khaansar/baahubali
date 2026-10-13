@@ -49,6 +49,7 @@ internal:
   services:
     iam-url: ${IAM_SERVICE_URL}
     attempt-url: ${ATTEMPT_SERVICE_URL}
+    test-url: ${TEST_SERVICE_URL}
 
 logging:
   level:

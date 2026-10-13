@@ -9,6 +9,7 @@ public record AdminReviewResponseDto(
         String userId,
         String targetId,
         Review.TargetType targetType,
+        String seriesName,
         Integer rating,
         String comment,
         Review.ReviewStatus status,
@@ -19,11 +20,19 @@ public record AdminReviewResponseDto(
         Instant updatedAt
 ) {
     public static AdminReviewResponseDto from(Review review) {
+        return from(review, null);
+    }
+
+    public static AdminReviewResponseDto from(
+            Review review,
+            String seriesName
+    ) {
         return new AdminReviewResponseDto(
                 review.getId(),
                 review.getUserId(),
                 review.getTargetId(),
                 review.getTargetType(),
+                seriesName,
                 review.getRating(),
                 review.getComment(),
                 review.getStatus(),

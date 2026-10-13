@@ -2,6 +2,7 @@ package com.example.communityservice.service;
 
 import com.example.communityservice.client.AttemptServiceClient;
 import com.example.communityservice.client.IamServiceClient;
+import com.example.communityservice.client.TestSeriesClient;
 import com.example.communityservice.config.UserContextHolder;
 import com.example.communityservice.dto.ApiResponse;
 import com.example.communityservice.dto.request.ReviewModerationRequestDto;
@@ -30,6 +31,8 @@ import java.time.Instant;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.UUID;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
@@ -38,6 +41,7 @@ public class ReviewService {
     private final ReviewRepository reviewRepository;
     private final AttemptServiceClient attemptServiceClient;
     private final IamServiceClient iamServiceClient;
+    private final TestSeriesClient testSeriesClient;
 
     @Transactional
     public void createReview(ReviewRequestDto request, String userId) {
@@ -61,7 +65,7 @@ public class ReviewService {
                 .targetType(request.targetType())
                 .rating(request.rating())
                 .comment(request.comment() == null ? null : request.comment().trim())
-                .status(Review.ReviewStatus.PENDING)
+                .status(Review.ReviewStatus.APPROVED)
                 .build();
 
         try {
@@ -183,7 +187,51 @@ public class ReviewService {
 
         Page<Review> page = reviewRepository.findAll(specification, pageable);
 
-        return new AdminReviewPageDto(page.getContent().stream().map(AdminReviewResponseDto::from).toList(), page.getTotalElements(), page.getTotalPages(), page.getNumber(), page.getSize());
+        List<UUID> seriesIds = page.getContent().stream()
+                .filter(review -> review.getTargetType() == Review.TargetType.SERIES)
+                .map(Review::getTargetId)
+                .filter(StringUtils::hasText)
+                .map(UUID::fromString)
+                .distinct()
+                .toList();
+
+        Map<String, String> seriesNames = Map.of();
+
+        if (!seriesIds.isEmpty()) {
+            ApiResponse<List<TestSeriesClient.SeriesNameDto>> response =
+                    testSeriesClient.getSeriesNames(seriesIds);
+
+            if (response == null || !response.isSuccess() || response.getData() == null) {
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "Test service could not return series names."
+                );
+            }
+
+            seriesNames = response.getData().stream()
+                    .collect(Collectors.toMap(
+                            item -> item.seriesId().toString(),
+                            TestSeriesClient.SeriesNameDto::name,
+                            (first, ignored) -> first
+                    ));
+        }
+
+        Map<String, String> resolvedSeriesNames = seriesNames;
+
+        return new AdminReviewPageDto(
+                page.getContent().stream()
+                        .map(review -> AdminReviewResponseDto.from(
+                                review,
+                                review.getTargetType() == Review.TargetType.SERIES
+                                        ? resolvedSeriesNames.get(review.getTargetId())
+                                        : null
+                        ))
+                        .toList(),
+                page.getTotalElements(),
+                page.getTotalPages(),
+                page.getNumber(),
+                page.getSize()
+        );
     }
 
     @Transactional(readOnly = true)
