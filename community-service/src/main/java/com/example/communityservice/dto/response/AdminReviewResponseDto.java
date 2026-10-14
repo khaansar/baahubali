@@ -1,3 +1,4 @@
+
 package com.example.communityservice.dto.response;
 
 import com.example.communityservice.entity.Review;
@@ -7,6 +8,7 @@ import java.time.Instant;
 public record AdminReviewResponseDto(
         Long reviewId,
         String userId,
+        String userName,
         String targetId,
         Review.TargetType targetType,
         String seriesName,
@@ -20,16 +22,18 @@ public record AdminReviewResponseDto(
         Instant updatedAt
 ) {
     public static AdminReviewResponseDto from(Review review) {
-        return from(review, null);
+        return from(review, null, null);
     }
 
     public static AdminReviewResponseDto from(
             Review review,
+            String userName,
             String seriesName
     ) {
         return new AdminReviewResponseDto(
                 review.getId(),
                 review.getUserId(),
+                userName,
                 review.getTargetId(),
                 review.getTargetType(),
                 seriesName,

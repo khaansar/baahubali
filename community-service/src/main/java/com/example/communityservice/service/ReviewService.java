@@ -65,7 +65,7 @@ public class ReviewService {
                 .targetType(request.targetType())
                 .rating(request.rating())
                 .comment(request.comment() == null ? null : request.comment().trim())
-                .status(Review.ReviewStatus.APPROVED)
+                .status(Review.ReviewStatus.PENDING)
                 .build();
 
         try {
@@ -83,9 +83,10 @@ public class ReviewService {
     )
     public List<ReviewResponseDto> getHydratedReviews(String targetId) {
         String normalizedTargetId = normalizeTargetId(targetId);
-        List<Review> reviews = reviewRepository.findAll((root, query, criteriaBuilder) -> criteriaBuilder.and(
+        List<Review> reviews = reviewRepository.findAll((root, query, criteriaBuilder) ->
+        criteriaBuilder.and(
                 criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
-                criteriaBuilder.equal(root.get("status"), Review.ReviewStatus.APPROVED),
+                criteriaBuilder.notEqual(root.get("status"), Review.ReviewStatus.REJECTED),
                 criteriaBuilder.isNull(root.get("deletedAt"))
         ), org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt"));
 
@@ -187,43 +188,19 @@ public class ReviewService {
 
         Page<Review> page = reviewRepository.findAll(specification, pageable);
 
-        List<UUID> seriesIds = page.getContent().stream()
-                .filter(review -> review.getTargetType() == Review.TargetType.SERIES)
-                .map(Review::getTargetId)
-                .filter(StringUtils::hasText)
-                .map(UUID::fromString)
-                .distinct()
-                .toList();
+        
+        List<Review> reviews = page.getContent();
 
-        Map<String, String> seriesNames = Map.of();
-
-        if (!seriesIds.isEmpty()) {
-            ApiResponse<List<TestSeriesClient.SeriesNameDto>> response =
-                    testSeriesClient.getSeriesNames(seriesIds);
-
-            if (response == null || !response.isSuccess() || response.getData() == null) {
-                throw new ResponseStatusException(
-                        HttpStatus.BAD_GATEWAY,
-                        "Test service could not return series names."
-                );
-            }
-
-            seriesNames = response.getData().stream()
-                    .collect(Collectors.toMap(
-                            item -> item.seriesId().toString(),
-                            TestSeriesClient.SeriesNameDto::name,
-                            (first, ignored) -> first
-                    ));
-        }
-
-        Map<String, String> resolvedSeriesNames = seriesNames;
+        Map<String, String> userNames = resolveUserNames(reviews);
+        Map<String, String> seriesNames = resolveSeriesNames(reviews);
 
         return new AdminReviewPageDto(
-                page.getContent().stream()
+                reviews.stream()
                         .map(review -> AdminReviewResponseDto.from(
                                 review,
+                                userNames.get(review.getUserId()),
                                 review.getTargetType() == Review.TargetType.SERIES
-                                        ? resolvedSeriesNames.get(review.getTargetId())
+                                        ? seriesNames.get(review.getTargetId())
                                         : null
                         ))
                         .toList(),
@@ -240,7 +217,7 @@ public class ReviewService {
                 .filter(existing -> existing.getDeletedAt() == null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
 
-        return AdminReviewResponseDto.from(review);
+        return toAdminReviewResponse(review);
     }
 
     @Transactional
@@ -271,7 +248,7 @@ public class ReviewService {
         review.setModeratedBy(UserContextHolder.getUserId());
         review.setModeratedAt(Instant.now());
 
-        return AdminReviewResponseDto.from(reviewRepository.saveAndFlush(review));
+        return toAdminReviewResponse(reviewRepository.saveAndFlush(review));
     }
 
     private String normalizeTargetId(String targetId) {
@@ -280,5 +257,95 @@ public class ReviewService {
         }
 
         return targetId.trim();
+    }
+
+        
+    private Map<String, String> resolveUserNames(List<Review> reviews) {
+        List<String> userIds = reviews.stream()
+                .map(Review::getUserId)
+                .filter(StringUtils::hasText)
+                .distinct()
+                .toList();
+
+        if (userIds.isEmpty()) {
+            return Map.of();
+        }
+
+        ApiResponse<Map<String, IamServiceClient.UserProfileDto>> response =
+                iamServiceClient.getUsersBatch(userIds);
+
+        if (response == null
+                || !response.isSuccess()
+                || response.getData() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "IAM service could not return user profiles."
+            );
+        }
+
+        return response.getData().entrySet().stream()
+                .collect(Collectors.toMap(
+                        Map.Entry::getKey,
+                        entry -> {
+                            IamServiceClient.UserProfileDto profile =
+                                    entry.getValue();
+
+                            return profile != null
+                                    && StringUtils.hasText(profile.displayName())
+                                    ? profile.displayName()
+                                    : "Anonymous User";
+                        },
+                        (first, ignored) -> first
+                ));
+    }
+
+    private Map<String, String> resolveSeriesNames(List<Review> reviews) {
+        List<UUID> seriesIds = reviews.stream()
+                .filter(review ->
+                        review.getTargetType() == Review.TargetType.SERIES)
+                .map(Review::getTargetId)
+                .filter(StringUtils::hasText)
+                .map(UUID::fromString)
+                .distinct()
+                .toList();
+
+        if (seriesIds.isEmpty()) {
+            return Map.of();
+        }
+
+        ApiResponse<List<TestSeriesClient.SeriesNameDto>> response =
+                testSeriesClient.getSeriesNames(seriesIds);
+
+        if (response == null
+                || !response.isSuccess()
+                || response.getData() == null) {
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Test service could not return series names."
+            );
+        }
+
+        return response.getData().stream()
+                .collect(Collectors.toMap(
+                        item -> item.seriesId().toString(),
+                        TestSeriesClient.SeriesNameDto::name,
+                        (first, ignored) -> first
+                ));
+    }
+
+    private AdminReviewResponseDto toAdminReviewResponse(Review review) {
+        Map<String, String> userNames = resolveUserNames(List.of(review));
+        Map<String, String> seriesNames = resolveSeriesNames(List.of(review));
+
+        String seriesName =
+                review.getTargetType() == Review.TargetType.SERIES
+                        ? seriesNames.get(review.getTargetId())
+                        : null;
+
+        return AdminReviewResponseDto.from(
+                review,
+                userNames.get(review.getUserId()),
+                seriesName
+        );
     }
 }
