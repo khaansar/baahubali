@@ -43,6 +43,7 @@ internal:
       api-gateway: ${API_GATEWAY_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
       test-service: ${TEST_SERVICE_SECRET}
+      community-service: ${COMMUNITY_SERVICE_SECRET}
 
 payment:
   currency-default: INR

@@ -1,6 +1,7 @@
 package com.example.payment.controller;
 
 import com.example.payment.dto.ApiResponse;
+import com.example.payment.entity.enums.ProductType;
 import com.example.payment.service.EntitlementService;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.NotEmpty;
@@ -23,23 +24,63 @@ public class InternalEntitlementController {
 
     private final EntitlementService service;
 
-    public record CheckRequest(@NotNull UUID userId, @NotNull UUID testId) {}
+    public record CheckRequest(
+            @NotNull UUID userId,
+            @NotNull UUID testId
+    ) {}
+
+    public record SeriesCheckRequest(
+            @NotNull UUID userId,
+            @NotNull UUID seriesId
+    ) {}
 
     public record CheckResponse(boolean allowed) {}
 
-    public record BatchRequest(@NotNull UUID userId, @NotEmpty @Size(max = 200) List<UUID> testIds) {}
+    public record BatchRequest(
+            @NotNull UUID userId,
+            @NotEmpty @Size(max = 200) List<UUID> testIds
+    ) {}
 
     @PostMapping("/check")
-    public ApiResponse<CheckResponse> check(@Valid @RequestBody CheckRequest r) {
-        return ApiResponse.ok(new CheckResponse(service.canAccessTest(r.userId(), r.testId())));
+    public ApiResponse<CheckResponse> check(
+            @Valid @RequestBody CheckRequest request
+    ) {
+        return ApiResponse.ok(
+                new CheckResponse(
+                        service.canAccessTest(
+                                request.userId(),
+                                request.testId()
+                        )
+                )
+        );
     }
 
     @PostMapping("/check-batch")
-    public ApiResponse<Map<UUID, Boolean>> batch(@Valid @RequestBody BatchRequest r) {
-        Map<UUID, Boolean> out = new LinkedHashMap<>();
+    public ApiResponse<Map<UUID, Boolean>> batch(
+            @Valid @RequestBody BatchRequest request
+    ) {
+        Map<UUID, Boolean> result = new LinkedHashMap<>();
 
-        r.testIds().forEach(id -> out.put(id, service.canAccessTest(r.userId(), id)));
+        request.testIds().forEach(id ->
+                result.put(
+                        id,
+                        service.canAccessTest(request.userId(), id)
+                )
+        );
 
-        return ApiResponse.ok(out);
+        return ApiResponse.ok(result);
+    }
+
+    @PostMapping("/check-series")
+    public ApiResponse<CheckResponse> checkSeries(
+            @Valid @RequestBody SeriesCheckRequest request
+    ) {
+        boolean allowed = service.hasActive(
+                request.userId(),
+                ProductType.TEST_SERIES,
+                request.seriesId()
+        );
+
+        return ApiResponse.ok(new CheckResponse(allowed));
     }
 }
