@@ -21,12 +21,18 @@ import org.springframework.validation.annotation.Validated;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
+import com.example.iam.dto.ChangePasswordRequest;
 import com.example.iam.dto.UpdateAvatarRequest;
+import com.example.iam.dto.UpdateUserProfileRequest;
 import com.example.iam.service.AvatarProfileService;
+import com.example.iam.service.UserService;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 
 import java.time.Instant;
+import java.util.Map;
 import java.util.UUID;
 
 import com.example.iam.service.CalendarAnalyticsService;
@@ -41,6 +47,7 @@ public class UserController {
     private final CalendarAnalyticsService calendarAnalyticsService;
     private final AvatarUploadService avatarUploadService;
     private final AvatarProfileService avatarProfileService;
+    private final UserService userService;
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getCurrentUser(Authentication authentication) {
@@ -105,5 +112,37 @@ public class UserController {
         User user = avatarProfileService.updateAvatar(userId, request.avatarUrl());
         UserResponse data = UserResponse.from(user);
         return ApiResponse.success(HttpStatus.OK.value(), "Avatar updated successfully", data);
+    }
+
+    @DeleteMapping("/me/avatar")
+    public ApiResponse<UserResponse> removeAvatar(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse data = userService.removeAvatar(userId);
+        return ApiResponse.success(HttpStatus.OK.value(), "Avatar removed successfully", data);
+    }
+
+    @PutMapping("/me")
+    public ApiResponse<UserResponse> updateProfile(
+            @jakarta.validation.Valid @RequestBody UpdateUserProfileRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        UserResponse data = userService.updateProfile(userId, request);
+        return ApiResponse.success(HttpStatus.OK.value(), "Profile updated successfully", data);
+    }
+
+    @PatchMapping("/me")
+    public ApiResponse<UserResponse> patchProfile(
+            @jakarta.validation.Valid @RequestBody UpdateUserProfileRequest request,
+            Authentication authentication) {
+        return updateProfile(request, authentication);
+    }
+
+    @PostMapping("/me/change-password")
+    public ApiResponse<Map<String, Object>> changePassword(
+            @jakarta.validation.Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        userService.changePassword(userId, request);
+        return ApiResponse.success(HttpStatus.OK.value(), "Password changed successfully", Map.of());
     }
 }
