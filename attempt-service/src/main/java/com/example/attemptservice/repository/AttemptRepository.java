@@ -17,6 +17,10 @@ public interface AttemptRepository extends JpaRepository<Attempt, String> {
 
     List<Attempt> findByUserIdOrderByStartedAtDesc(String userId);
 
+    List<Attempt> findByUserIdAndStatusOrderByStartedAtDesc(String userId, AttemptStatus status);
+
+    Optional<Attempt> findFirstByUserIdAndStatusOrderByStartedAtDesc(String userId, AttemptStatus status);
+
     Page<Attempt> findByUserId(String userId, Pageable pageable);
 
     List<Attempt> findByStatus(AttemptStatus status);
@@ -33,9 +37,6 @@ public interface AttemptRepository extends JpaRepository<Attempt, String> {
             AttemptStatus status
     );
 
-    @Query(
-            value = "SELECT * FROM attempts WHERE id = :attemptId FOR UPDATE",
-            nativeQuery = true
-    )
+    @Query(value = "SELECT * FROM attempts WHERE id = :attemptId FOR UPDATE", nativeQuery = true)
     Optional<Attempt> findByIdForUpdate(@Param("attemptId") String attemptId);
 }

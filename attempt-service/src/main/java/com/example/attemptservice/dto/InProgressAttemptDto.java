@@ -3,6 +3,7 @@ package com.example.attemptservice.dto;
 import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.NoArgsConstructor;
+
 import java.time.Instant;
 
 @Data
@@ -14,4 +15,5 @@ public class InProgressAttemptDto {
     private String testTitle;
     private Instant startedAt;
     private Integer progressPercentage;
+    private Long remainingSeconds;
 }

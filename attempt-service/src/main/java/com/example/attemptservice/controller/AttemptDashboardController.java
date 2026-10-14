@@ -11,6 +11,8 @@ import org.springframework.web.bind.annotation.RequestHeader;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
+
 @RestController
 @RequiredArgsConstructor
 public class AttemptDashboardController {
@@ -22,6 +24,13 @@ public class AttemptDashboardController {
             @RequestHeader("X-User-Id") String userId) {
         InProgressAttemptDto response = dashboardService.getInProgressAttempt(userId);
         return ResponseEntity.ok(ApiResponse.success(200, "Success", response));
+    }
+
+    @GetMapping("/attempts/in-progress/all")
+    public ResponseEntity<ApiResponse<List<InProgressAttemptDto>>> getInProgressAttempts(
+            @RequestHeader("X-User-Id") String userId) {
+        List<InProgressAttemptDto> response = dashboardService.getInProgressAttempts(userId);
+        return ResponseEntity.ok(ApiResponse.success(200, "In-progress attempts retrieved successfully", response));
     }
 
     @GetMapping("/streak/yearly")
