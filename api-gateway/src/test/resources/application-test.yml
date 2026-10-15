@@ -73,6 +73,7 @@ gateway:
       - /auth-api/register
       - /auth-api/refresh
       - /tests-api/public/**
+      - /tests-api/catalog/**
       - /community-api/public/**
       - /payments-api/webhooks/razorpay
 
