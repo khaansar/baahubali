@@ -38,82 +38,121 @@ public class AttemptDashboardService {
     private final AttemptRedisRepository attemptRedisRepository;
     private final TestServiceFeignClient testServiceFeignClient;
     private final EntityManager entityManager;
+
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     public InProgressAttemptDto getInProgressAttempt(String userId) {
-        List<Attempt> attempts = attemptRepository.findByUserIdOrderByStartedAtDesc(userId);
-        Optional<Attempt> inProgress = attempts.stream()
-                .filter(a -> a.getStatus() == AttemptStatus.IN_PROGRESS)
-                .findFirst();
+        return attemptRepository.findFirstByUserIdAndStatusOrderByStartedAtDesc(userId, AttemptStatus.IN_PROGRESS)
+                .map(this::toInProgressAttemptDto)
+                .orElse(null);
+    }
 
-        if (inProgress.isEmpty()) {
-            return null; // Return empty or handle gracefully
-        }
+    public List<InProgressAttemptDto> getInProgressAttempts(String userId) {
+        return attemptRepository.findByUserIdAndStatusOrderByStartedAtDesc(userId, AttemptStatus.IN_PROGRESS)
+                .stream()
+                .map(this::toInProgressAttemptDto)
+                .toList();
+    }
 
-        Attempt attempt = inProgress.get();
+    private InProgressAttemptDto toInProgressAttemptDto(Attempt attempt) {
         InternalTestBlueprintDto blueprint = null;
+
         try {
-            blueprint = testServiceFeignClient.getTestBlueprint(attempt.getTestId()).data();
+            var response = testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+
+            if (response != null && response.success()) {
+                blueprint = response.data();
+            }
         } catch (Exception e) {
-            log.error("Failed to fetch blueprint for test: " + attempt.getTestId(), e);
+            log.error("Failed to fetch blueprint for test: {}", attempt.getTestId(), e);
         }
 
-        String testTitle = blueprint != null ? blueprint.getTitle() : "Unknown Test";
+        String testTitle = blueprint != null && blueprint.getTitle() != null
+                ? blueprint.getTitle()
+                : "Unknown Test";
+
         int totalQuestions = 0;
+
         if (blueprint != null && blueprint.getSections() != null) {
-            totalQuestions = blueprint.getSections().stream()
-                    .mapToInt(s -> s.getQuestions() != null ? s.getQuestions().size() : 0)
+            totalQuestions = blueprint.getSections()
+                    .stream()
+                    .mapToInt(section -> section.getQuestions() != null ? section.getQuestions().size() : 0)
                     .sum();
         }
 
-        int answeredCount = 0;
-        Optional<AttemptRedisHash> hashOpt = attemptRedisRepository.findById(attempt.getId());
-        if (hashOpt.isPresent() && hashOpt.get().getAnswersJson() != null) {
-            try {
-                Map<String, String> answers = objectMapper.readValue(hashOpt.get().getAnswersJson(), new TypeReference<Map<String, String>>() {});
-                answeredCount = answers.size();
-            } catch (Exception e) {
-                log.error("Failed to parse redis answers for attempt: " + attempt.getId(), e);
-                answeredCount = attemptAnswerRepository.findByAttemptId(attempt.getId()).size();
-            }
-        } else {
-            answeredCount = attemptAnswerRepository.findByAttemptId(attempt.getId()).size();
-        }
+        int answeredCount = getAnsweredCount(attempt.getId());
 
-        int progressPercentage = totalQuestions > 0 ? (int) ((answeredCount * 100.0) / totalQuestions) : 0;
+        int progressPercentage = totalQuestions > 0
+                ? Math.min(100, (int) ((answeredCount * 100.0) / totalQuestions))
+                : 0;
+
+        long remainingSeconds = calculateRemainingSeconds(attempt);
 
         return new InProgressAttemptDto(
                 attempt.getId(),
                 attempt.getTestId(),
                 testTitle,
                 attempt.getStartedAt(),
-                progressPercentage
+                progressPercentage,
+                remainingSeconds
         );
+    }
+
+    private int getAnsweredCount(String attemptId) {
+        Optional<AttemptRedisHash> hashOpt = attemptRedisRepository.findById(attemptId);
+
+        if (hashOpt.isPresent() && hashOpt.get().getAnswersJson() != null) {
+            try {
+                Map<String, String> answers = objectMapper.readValue(
+                        hashOpt.get().getAnswersJson(),
+                        new TypeReference<Map<String, String>>() {}
+                );
+
+                return answers.size();
+            } catch (Exception e) {
+                log.error("Failed to parse Redis answers for attempt: {}", attemptId, e);
+            }
+        }
+
+        return attemptAnswerRepository.findByAttemptId(attemptId).size();
+    }
+
+    private long calculateRemainingSeconds(Attempt attempt) {
+        if (attempt.getStartedAt() == null || attempt.getDurationMinutes() == null || attempt.getDurationMinutes() <= 0) {
+            log.warn("Cannot calculate remaining time for attempt {}: startedAt or durationMinutes is invalid", attempt.getId());
+            return 0L;
+        }
+
+        Instant deadline = attempt.getStartedAt().plusSeconds(attempt.getDurationMinutes() * 60L);
+
+        return Math.max(0L, ChronoUnit.SECONDS.between(Instant.now(), deadline));
     }
 
     public StreakResponseDto getYearlyStreak(String userId) {
         Instant oneYearAgo = Instant.now().minus(365, ChronoUnit.DAYS);
-        
+
         String sql = "SELECT DATE(started_at) as d, COUNT(id) as c " +
-                     "FROM attempts " +
-                     "WHERE user_id = :userId AND started_at >= :oneYearAgo " +
-                     "GROUP BY DATE(started_at) " +
-                     "ORDER BY DATE(started_at)";
-                     
+                "FROM attempts " +
+                "WHERE user_id = :userId AND started_at >= :oneYearAgo " +
+                "GROUP BY DATE(started_at) " +
+                "ORDER BY DATE(started_at)";
+
         Query query = entityManager.createNativeQuery(sql);
         query.setParameter("userId", userId);
         query.setParameter("oneYearAgo", oneYearAgo);
-        
+
+        @SuppressWarnings("unchecked")
         List<Object[]> results = query.getResultList();
-        
+
         List<StreakResponseDto.StreakActivity> activityList = new ArrayList<>();
+
         int currentStreak = 0;
         int maxStreak = 0;
         int totalActiveDays = results.size();
-        
+
         LocalDate today = LocalDate.now(ZoneId.of("UTC"));
         LocalDate lastActiveDate = null;
-        
+
         for (Object[] row : results) {
             LocalDate date = (LocalDate) row[0];
             int count = ((Number) row[1]).intValue();
@@ -133,18 +172,19 @@ public class AttemptDashboardService {
                 currentStreak = 1;
             }
 
-            if (currentStreak > maxStreak) {
-                maxStreak = currentStreak;
-            }
-
+            maxStreak = Math.max(maxStreak, currentStreak);
             lastActiveDate = date;
         }
-        
-        // Reset current streak if last active date is more than 1 day ago
+
         if (lastActiveDate != null && lastActiveDate.isBefore(today.minusDays(1))) {
             currentStreak = 0;
         }
-        
-        return new StreakResponseDto(currentStreak, maxStreak, totalActiveDays, activityList);
+
+        return new StreakResponseDto(
+                currentStreak,
+                maxStreak,
+                totalActiveDays,
+                activityList
+        );
     }
 }
