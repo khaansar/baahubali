@@ -40,6 +40,7 @@ public class AttemptRedisHash implements Serializable {
     private String sectionTimeSpentJson;
     private Long currentSectionStartedAt;
     private String sectionDurationsJson;
+    private String questionOrderJson;
 
     /** JSON-serialized map of questionId -> selectedOption, e.g. {"q1":"B"} */
     private String answersJson;

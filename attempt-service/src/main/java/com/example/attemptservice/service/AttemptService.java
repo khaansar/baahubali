@@ -173,12 +173,25 @@ public class AttemptService {
         }
 
         Map<String, Integer> sectionDurations = new java.util.HashMap<>();
+        Map<String, List<String>> questionOrderMap = new java.util.LinkedHashMap<>();
         String firstSectionId = null;
         if (blueprint.getSections() != null && !blueprint.getSections().isEmpty()) {
             for (InternalTestBlueprintDto.InternalSectionDto sec : blueprint.getSections()) {
                 if (firstSectionId == null) firstSectionId = sec.getSectionId();
                 if (sec.getDurationMinutes() != null) {
                     sectionDurations.put(sec.getSectionId(), sec.getDurationMinutes() * 60);
+                }
+                if (sec.getQuestions() != null && !sec.getQuestions().isEmpty()) {
+                    List<String> qIds = new java.util.ArrayList<>();
+                    for (InternalTestBlueprintDto.InternalQuestionDto q : sec.getQuestions()) {
+                        if (q.getQuestionId() != null) {
+                            qIds.add(q.getQuestionId());
+                        }
+                    }
+                    if (Boolean.TRUE.equals(sec.getShuffleQuestions()) && qIds.size() > 1) {
+                        java.util.Collections.shuffle(qIds);
+                    }
+                    questionOrderMap.put(sec.getSectionId(), qIds);
                 }
             }
         }
@@ -187,8 +200,18 @@ public class AttemptService {
             sectionDurationsStr = objectMapper.writeValueAsString(sectionDurations);
         } catch (Exception e) {}
 
+        String questionOrderJson = null;
+        if (!questionOrderMap.isEmpty()) {
+            try {
+                questionOrderJson = objectMapper.writeValueAsString(questionOrderMap);
+            } catch (Exception e) {
+                log.warn("Failed to serialize questionOrderMap for attempt {}", attemptId, e);
+            }
+        }
+
         String finalFirstSectionId = firstSectionId;
         String finalSectionDurationsStr = sectionDurationsStr;
+        String finalQuestionOrderJson = questionOrderJson;
 
         Attempt attempt = Attempt.builder()
                 .id(attemptId)
@@ -200,6 +223,7 @@ public class AttemptService {
                 .durationMinutes(blueprint.getDurationMinutes())
                 .status(AttemptStatus.IN_PROGRESS)
                 .sectionTimeSpentJson("{}")
+                .questionOrderJson(questionOrderJson)
                 .build();
 
         Attempt saved = attemptRepository.save(attempt);
@@ -227,6 +251,7 @@ public class AttemptService {
                                 .currentSectionStartedAt(saved.getStartedAt().getEpochSecond())
                                 .sectionTimeSpentJson("{}")
                                 .sectionDurationsJson(finalSectionDurationsStr)
+                                .questionOrderJson(finalQuestionOrderJson)
                                 .build());
                     }
                 });
@@ -450,10 +475,38 @@ public class AttemptService {
         InternalTestBlueprintDto blueprint = response.data();
         List<QuestionReviewDto> reviewDtos = new ArrayList<>();
 
+        Map<String, List<String>> questionOrderMap = null;
+        if (attempt.getQuestionOrderJson() != null && !attempt.getQuestionOrderJson().isBlank()) {
+            try {
+                questionOrderMap = objectMapper.readValue(attempt.getQuestionOrderJson(), new TypeReference<>() {});
+            } catch (Exception e) {}
+        }
+
         if (blueprint.getSections() != null) {
             for (InternalTestBlueprintDto.InternalSectionDto section : blueprint.getSections()) {
                 if (section.getQuestions() != null) {
-                    for (InternalTestBlueprintDto.InternalQuestionDto q : section.getQuestions()) {
+                    List<InternalTestBlueprintDto.InternalQuestionDto> sectionQuestions = section.getQuestions();
+                    if (questionOrderMap != null && questionOrderMap.containsKey(section.getSectionId())) {
+                        List<String> order = questionOrderMap.get(section.getSectionId());
+                        Map<String, InternalTestBlueprintDto.InternalQuestionDto> qMap = new java.util.HashMap<>();
+                        for (InternalTestBlueprintDto.InternalQuestionDto q : sectionQuestions) {
+                            if (q.getQuestionId() != null) {
+                                qMap.put(q.getQuestionId(), q);
+                            }
+                        }
+                        List<InternalTestBlueprintDto.InternalQuestionDto> orderedList = new ArrayList<>();
+                        for (String qId : order) {
+                            InternalTestBlueprintDto.InternalQuestionDto q = qMap.get(qId);
+                            if (q != null) orderedList.add(q);
+                        }
+                        for (InternalTestBlueprintDto.InternalQuestionDto q : sectionQuestions) {
+                            if (!order.contains(q.getQuestionId())) {
+                                orderedList.add(q);
+                            }
+                        }
+                        sectionQuestions = orderedList;
+                    }
+                    for (InternalTestBlueprintDto.InternalQuestionDto q : sectionQuestions) {
                         String selected = answerMap.get(q.getQuestionId());
 
                         String correctOpt = null;
@@ -733,6 +786,7 @@ public class AttemptService {
                 .sectionTimeSpentJson(attempt.getSectionTimeSpentJson() != null ? attempt.getSectionTimeSpentJson() : "{}")
                 .currentSectionStartedAt(Instant.now().getEpochSecond())
                 .sectionDurationsJson("{}")
+                .questionOrderJson(attempt.getQuestionOrderJson())
                 .version(0L)
                 .ttlSeconds(Math.max(
                         60L,
@@ -761,6 +815,17 @@ public class AttemptService {
             }
         } catch (Exception e) {}
 
+        Map<String, List<String>> questionOrderMap = null;
+        try {
+            String qOrderJson = hash.getQuestionOrderJson();
+            if (qOrderJson == null || qOrderJson.isBlank()) {
+                qOrderJson = attempt.getQuestionOrderJson();
+            }
+            if (qOrderJson != null && !qOrderJson.isBlank()) {
+                questionOrderMap = objectMapper.readValue(qOrderJson, new TypeReference<>() {});
+            }
+        } catch (Exception e) {}
+
         return AttemptStateResponse.builder()
                 .attemptId(hash.getAttemptId())
                 .userId(hash.getUserId())
@@ -771,6 +836,7 @@ public class AttemptService {
                 .sectionTimeSpentSec(timeSpentMap)
                 .currentSectionStartedAt(hash.getCurrentSectionStartedAt() != null ? Instant.ofEpochSecond(hash.getCurrentSectionStartedAt()) : null)
                 .answers(readAnswers(hash.getAnswersJson()))
+                .questionOrder(questionOrderMap)
                 .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
