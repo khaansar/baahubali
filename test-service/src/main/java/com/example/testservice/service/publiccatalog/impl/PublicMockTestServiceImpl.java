@@ -3,6 +3,8 @@ package com.example.testservice.service.publiccatalog.impl;
 import com.example.testservice.dto.common.PageMetaDto;
 import com.example.testservice.dto.common.PaginatedResponseDto;
 import com.example.testservice.dto.publiccatalog.PublicMockTestListDto;
+import com.example.testservice.dto.publiccatalog.PublicMockTestDetailDto;
+import com.example.testservice.exception.ResourceNotFoundException;
 import com.example.testservice.entity.MockTest;
 import com.example.testservice.entity.Status;
 import com.example.testservice.repository.MockTestRepository;
@@ -32,7 +34,10 @@ public class PublicMockTestServiceImpl {
 
     @Cacheable(
             value = "baahubali:test:mocktests:list",
-            key = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':q=' + (#query != null ? #query : 'none') + ':page=' + #page + ':limit=' + #limit"
+            key = "'cat=' + (#categoryId != null ? #categoryId : 'all')"
+                    + " + ':q=' + (#query != null ? #query.trim().toLowerCase() : '')"
+                    + " + ':page=' + T(java.lang.Math).max(#page, 1)"
+                    + " + ':limit=' + T(java.lang.Math).max(1, T(java.lang.Math).min(#limit, 100))"
     )
     @Transactional(readOnly = true)
     public PaginatedResponseDto<PublicMockTestListDto> getPublishedMockTests(
@@ -41,25 +46,48 @@ public class PublicMockTestServiceImpl {
             int page,
             int limit) {
 
+        int effectivePage = Math.max(page, 1);
+        int effectiveLimit = Math.max(1, Math.min(limit, 100));
+        String normalizedQuery = StringUtils.hasText(query)
+                ? query.trim().toLowerCase()
+                : null;
+
         Specification<MockTest> spec = (root, cq, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            // Must be PUBLISHED
             predicates.add(cb.equal(root.get("status"), Status.PUBLISHED));
-            
-            // Join TestSeries and Category to filter by category
-            Join<Object, Object> seriesJoin = root.join("series", JoinType.INNER);
-            Join<Object, Object> categoryJoin = seriesJoin.join("category", JoinType.INNER);
+            predicates.add(cb.isNull(root.get("deletedAt")));
+
+            Join<Object, Object> seriesJoin =
+                    root.join("series", JoinType.INNER);
+            Join<Object, Object> categoryJoin =
+                    seriesJoin.join("category", JoinType.INNER);
+
+            predicates.add(
+                    cb.equal(seriesJoin.get("status"), Status.PUBLISHED)
+            );
+            predicates.add(cb.isNull(seriesJoin.get("deletedAt")));
+            predicates.add(cb.isNull(categoryJoin.get("deletedAt")));
 
             if (categoryId != null) {
-                predicates.add(cb.equal(categoryJoin.get("id"), categoryId));
+                predicates.add(
+                        cb.equal(categoryJoin.get("id"), categoryId)
+                );
             }
-            
-            // Search query
-            if (StringUtils.hasText(query)) {
-                String likePattern = "%" + query.trim().toLowerCase() + "%";
-                Predicate titleMatch = cb.like(cb.lower(root.get("title")), likePattern);
-                Predicate seriesMatch = cb.like(cb.lower(seriesJoin.get("title")), likePattern);
+
+            if (normalizedQuery != null) {
+                String likePattern = "%" + normalizedQuery + "%";
+
+                Predicate titleMatch = cb.like(
+                        cb.lower(root.get("title")),
+                        likePattern
+                );
+
+                Predicate seriesMatch = cb.like(
+                        cb.lower(seriesJoin.get("title")),
+                        likePattern
+                );
+
                 predicates.add(cb.or(titleMatch, seriesMatch));
             }
 
@@ -67,20 +95,23 @@ public class PublicMockTestServiceImpl {
         };
 
         PageRequest pageRequest = PageRequest.of(
-                Math.max(page - 1, 0),
-                Math.min(limit, 100),
+                effectivePage - 1,
+                effectiveLimit,
                 Sort.by(Sort.Direction.DESC, "publishedAt")
         );
 
-        Page<MockTest> mockTestPage = mockTestRepository.findAll(spec, pageRequest);
+        Page<MockTest> mockTestPage =
+                mockTestRepository.findAll(spec, pageRequest);
 
-        List<PublicMockTestListDto> dtoList = mockTestPage.getContent().stream()
-                .map(this::mapToListDto)
-                .collect(Collectors.toList());
+        List<PublicMockTestListDto> dtoList =
+                mockTestPage.getContent()
+                        .stream()
+                        .map(this::mapToListDto)
+                        .collect(Collectors.toList());
 
         PageMetaDto meta = new PageMetaDto(
-                page,
-                limit,
+                effectivePage,
+                effectiveLimit,
                 mockTestPage.getTotalElements(),
                 mockTestPage.getTotalPages()
         );
@@ -109,5 +140,34 @@ public class PublicMockTestServiceImpl {
                 .totalMarks(mockTest.getTotalMarks())
                 .isFree(mockTest.isFree())
                 .build();
+    }
+
+    
+    @Transactional(readOnly = true)
+    @Cacheable(value = "baahubali:test:mocktests:detail", key = "'slug:' + #slug")
+    public PublicMockTestDetailDto getPublishedMockTestBySlug(String slug) {
+        MockTest test = mockTestRepository.findBySlug(slug)
+                .filter(mockTest -> mockTest.getStatus() == Status.PUBLISHED)
+                .filter(mockTest -> mockTest.getDeletedAt() == null)
+                .filter(mockTest -> mockTest.getSeries() != null)
+                .filter(mockTest -> mockTest.getSeries().getStatus() == Status.PUBLISHED)
+                .filter(mockTest -> mockTest.getSeries().getDeletedAt() == null)
+                .filter(mockTest -> mockTest.getSeries().getCategory() != null)
+                .filter(mockTest -> mockTest.getSeries().getCategory().getDeletedAt() == null)
+                .orElseThrow(() ->
+                        new ResourceNotFoundException("Mock test not found"));
+
+        return new PublicMockTestDetailDto(
+                test.getId(),
+                test.getSlug(),
+                test.getTitle(),
+                test.getSeries().getSlug(),
+                test.getSeries().getTitle(),
+                test.getSeries().getCategory().getSlug(),
+                test.getSeries().getCategory().getName(),
+                test.getDurationMinutes(),
+                test.getTotalMarks(),
+                test.isFree()
+        );
     }
 }

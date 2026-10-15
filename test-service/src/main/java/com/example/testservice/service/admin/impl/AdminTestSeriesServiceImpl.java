@@ -94,7 +94,11 @@ public class AdminTestSeriesServiceImpl {
     @Caching(evict = {
             @CacheEvict(value = "baahubali:test:series", allEntries = true),
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
-            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
     })
     public TestSeriesDetailDto deleteSeries(UUID seriesId) {
         TestSeries series = testSeriesRepository.findById(seriesId)
@@ -203,7 +207,10 @@ public class AdminTestSeriesServiceImpl {
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
             @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
-            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true)
     })
     public TestSeriesDetailDto updateSeries(
             UUID id,
