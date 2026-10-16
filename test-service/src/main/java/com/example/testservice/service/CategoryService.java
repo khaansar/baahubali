@@ -30,7 +30,11 @@ public class CategoryService {
             @CacheEvict(value = "baahubali:test:categories", allEntries = true),
             @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
-            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
     })
     public CategoryDto createCategory(CategoryDto request, String adminId) {
         Category category = new Category();
@@ -67,7 +71,11 @@ public class CategoryService {
             @CacheEvict(value = "baahubali:test:categories", allEntries = true),
             @CacheEvict(value = "baahubali:test:mocktests:list", allEntries = true),
             @CacheEvict(value = "baahubali:test:series:list", allEntries = true),
-            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true)
+            @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
+            @CacheEvict(value = "baahubali:test:series", allEntries = true),
+            @CacheEvict(value = "baahubali:test:test", allEntries = true),
+            @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true)
     })
     public CategoryDto updateCategory(UUID id, CategoryDto request, String adminId) {
         Category category = categoryRepository.findById(id)
@@ -90,7 +98,7 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public CategoryDto getCategoryBySlug(String slug) {
-        return categoryRepository.findBySlug(slug)
+        return categoryRepository.findBySlugAndDeletedAtIsNull(slug)
                 .map(this::mapToDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
     }

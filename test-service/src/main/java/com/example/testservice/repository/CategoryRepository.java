@@ -7,8 +7,9 @@ import java.util.Optional;
 import java.util.UUID;
 
 public interface CategoryRepository extends JpaRepository<Category, UUID> {
-
     Optional<Category> findBySlug(String slug);
+
+    Optional<Category> findBySlugAndDeletedAtIsNull(String slug);
 
     boolean existsBySlug(String slug);
 }

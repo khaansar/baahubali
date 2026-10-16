@@ -17,50 +17,82 @@ import java.util.stream.Collectors;
 public class PublicHomepageService {
 
     private final EntityManager entityManager;
-
+    
     @Cacheable(value = "baahubali:test:categories")
     @Transactional(readOnly = true)
     public List<PublicCategoryDto> getCategories() {
         String jpql =
-            "SELECT c.id, c.name, " +
-            "(SELECT COUNT(m.id) " +
-            " FROM MockTest m JOIN m.series s " +
-            " WHERE s.category.id = c.id " +
-            " AND s.status = 'PUBLISHED' " +
-            " AND m.status = 'PUBLISHED') " +
+            "SELECT c.id, c.name, c.slug, c.description, " +
+            "       (SELECT COUNT(m.id) " +
+            "        FROM MockTest m " +
+            "        JOIN m.series s " +
+            "        WHERE s.category.id = c.id " +
+            "          AND s.status = 'PUBLISHED' " +
+            "          AND s.deletedAt IS NULL " +
+            "          AND m.status = 'PUBLISHED' " +
+            "          AND m.deletedAt IS NULL) " +
             "FROM Category c " +
-            "WHERE EXISTS (" +
-            " SELECT m2.id " +
-            " FROM MockTest m2 JOIN m2.series s2 " +
-            " WHERE s2.category.id = c.id " +
-            " AND s2.status = 'PUBLISHED' " +
-            " AND m2.status = 'PUBLISHED'" +
-            ")";
+            "WHERE c.deletedAt IS NULL " +
+            "  AND EXISTS (" +
+            "      SELECT m2.id " +
+            "      FROM MockTest m2 " +
+            "      JOIN m2.series s2 " +
+            "      WHERE s2.category.id = c.id " +
+            "        AND s2.status = 'PUBLISHED' " +
+            "        AND s2.deletedAt IS NULL " +
+            "        AND m2.status = 'PUBLISHED' " +
+            "        AND m2.deletedAt IS NULL" +
+            "  )";
 
-        List<Object[]> results = entityManager.createQuery(jpql, Object[].class).getResultList();
+        List<Object[]> results =
+            entityManager.createQuery(jpql, Object[].class)
+                .getResultList();
 
         return results.stream().map(row -> {
             String id = row[0] != null ? row[0].toString() : null;
             String name = (String) row[1];
-            Long testCount = ((Number) row[2]).longValue();
+            String slug = (String) row[2];
+            String description = (String) row[3];
+            Long testCount = ((Number) row[4]).longValue();
 
-            String slug = name != null
-                    ? name.toLowerCase().replace(" ", "-")
-                    : null;
-
-            return new PublicCategoryDto(id, name, slug, testCount);
+            return new PublicCategoryDto(
+                id,
+                name,
+                slug,
+                description,
+                testCount
+            );
         }).collect(Collectors.toList());
     }
 
     @Cacheable(value = "baahubali:test:homepage:series:popular")
     @Transactional(readOnly = true)
     public List<PopularSeriesDto> getPopularSeries() {
-        String jpql = "SELECT ts.id, ts.slug, ts.title, " +
-                "(SELECT COUNT(m.id) FROM MockTest m WHERE m.series.id = ts.id AND m.status = 'PUBLISHED'), " +
-                "(SELECT SUM(m.durationMinutes) FROM MockTest m WHERE m.series.id = ts.id AND m.status = 'PUBLISHED') " +
+        String jpql =
+                "SELECT ts.id, ts.slug, ts.title, " +
+                "(SELECT COUNT(m.id) FROM MockTest m " +
+                " WHERE m.series.id = ts.id " +
+                " AND m.status = 'PUBLISHED' " +
+                " AND m.deletedAt IS NULL), " +
+                "(SELECT SUM(m.durationMinutes) FROM MockTest m " +
+                " WHERE m.series.id = ts.id " +
+                " AND m.status = 'PUBLISHED' " +
+                " AND m.deletedAt IS NULL) " +
                 "FROM TestSeries ts " +
+                "JOIN ts.category c " +
                 "WHERE ts.status = 'PUBLISHED' " +
-                "ORDER BY (SELECT COUNT(m2.id) FROM MockTest m2 WHERE m2.series.id = ts.id AND m2.status = 'PUBLISHED') DESC";
+                "AND ts.deletedAt IS NULL " +
+                "AND c.deletedAt IS NULL " +
+                "AND EXISTS (" +
+                " SELECT m2.id FROM MockTest m2 " +
+                " WHERE m2.series.id = ts.id " +
+                " AND m2.status = 'PUBLISHED' " +
+                " AND m2.deletedAt IS NULL" +
+                ") " +
+                "ORDER BY (SELECT COUNT(m3.id) FROM MockTest m3 " +
+                " WHERE m3.series.id = ts.id " +
+                " AND m3.status = 'PUBLISHED' " +
+                " AND m3.deletedAt IS NULL) DESC";
 
         List<Object[]> results = entityManager.createQuery(jpql, Object[].class)
                 .setMaxResults(4)
@@ -82,12 +114,16 @@ public class PublicHomepageService {
     @Transactional(readOnly = true)
     public List<FeaturedMockTestDto> getFeaturedMockTests() {
         String jpql = "SELECT m.id, m.slug, m.title, c.name, " +
-                "m.durationMinutes, m.totalMarks, m.isFree " +
-                "FROM MockTest m " +
-                "JOIN m.series s " +
-                "JOIN s.category c " +
-                "WHERE m.status = 'PUBLISHED' " +
-                "ORDER BY m.createdAt DESC";
+            "m.durationMinutes, m.totalMarks, m.isFree " +
+            "FROM MockTest m " +
+            "JOIN m.series s " +
+            "JOIN s.category c " +
+            "WHERE m.status = 'PUBLISHED' " +
+            "AND m.deletedAt IS NULL " +
+            "AND s.status = 'PUBLISHED' " +
+            "AND s.deletedAt IS NULL " +
+            "AND c.deletedAt IS NULL " +
+            "ORDER BY m.createdAt DESC";
 
         List<Object[]> results = entityManager.createQuery(jpql, Object[].class)
                 .setMaxResults(4)

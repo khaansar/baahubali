@@ -20,7 +20,10 @@ public class PublicMockTestController {
 
     @CacheRefreshable(
             cacheNames = "baahubali:test:mocktests:list",
-            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all') + ':q=' + (#arg1 != null ? #arg1 : 'none') + ':page=' + #arg2 + ':limit=' + #arg3"
+            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all')"
+                            + " + ':q=' + (#arg1 != null ? #arg1.trim().toLowerCase() : '')"
+                            + " + ':page=' + T(java.lang.Math).max(#arg2, 1)"
+                            + " + ':limit=' + T(java.lang.Math).max(1, T(java.lang.Math).min(#arg3, 100))"
     )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicMockTestListDto>>> getPublishedMockTests(

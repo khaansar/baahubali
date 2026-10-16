@@ -46,7 +46,23 @@ public class CatalogServiceImpl {
     }
 
     private PublicMockTestStructureDto mapPublishedTest(MockTest test) {
-        if (test.getStatus() != Status.PUBLISHED) {
+        if (test.getStatus() != Status.PUBLISHED
+                || test.getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Test is not available in the public catalog."
+            );
+        }
+
+        if (test.getSeries() == null
+                || test.getSeries().getStatus() != Status.PUBLISHED
+                || test.getSeries().getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Test is not available in the public catalog."
+            );
+        }
+
+        if (test.getSeries().getCategory() == null
+                || test.getSeries().getCategory().getDeletedAt() != null) {
             throw new ResourceNotFoundException(
                     "Test is not available in the public catalog."
             );
@@ -76,10 +92,11 @@ public class CatalogServiceImpl {
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
 
-                                            QuestionTranslation translation =
-                                                    question.getTranslations().isEmpty()
-                                                            ? null
-                                                            : question.getTranslations().get(0);
+                                            QuestionTranslation translation = question.getTranslations()
+                                                            .stream()
+                                                            .filter(t -> t.getDeletedAt() == null)
+                                                            .findFirst()
+                                                            .orElse(null);
 
                                             Map<String, Object> options = null;
 

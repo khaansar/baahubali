@@ -10,6 +10,7 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
+import org.hibernate.annotations.SQLRestriction;
 
 import java.util.List;
 import java.util.Map;
@@ -18,6 +19,7 @@ import java.util.Map;
 @Table(name = "question_translations")
 @Getter
 @Setter
+@SQLRestriction("deleted_at IS NULL")
 public class QuestionTranslation extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

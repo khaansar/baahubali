@@ -21,7 +21,9 @@ public class PublicSeriesController {
 
     @CacheRefreshable(
             cacheNames = "baahubali:test:series:list",
-            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all') + ':page=' + #arg1 + ':limit=' + #arg2"
+            keyExpression = "'cat=' + (#arg0 != null ? #arg0 : 'all')"
+        + " + ':page=' + T(java.lang.Math).max(#arg1, 1)"
+        + " + ':limit=' + T(java.lang.Math).max(1, T(java.lang.Math).min(#arg2, 100))"
     )
     @GetMapping
     public ResponseEntity<ApiResponse<java.util.List<PublicTestSeriesListDto>>> getPublishedSeries(

@@ -65,7 +65,8 @@ public class AdminMockTestServiceImpl {
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
             @CacheEvict(value = "baahubali:test:series", allEntries = true),
-            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
     })
     public AdminMockTestDetailDto publishTest(UUID testId, Instant expectedUpdatedAt) {
         MockTest test = mockTestRepository.findById(testId)
@@ -263,7 +264,8 @@ public class AdminMockTestServiceImpl {
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
             @CacheEvict(value = "baahubali:test:series", allEntries = true),
-            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
     })
     public AdminMockTestDetailDto updateMockTest(UUID testId, MockTestCreateDto dto) {
         MockTest test = mockTestRepository.findById(testId)
@@ -318,7 +320,8 @@ public class AdminMockTestServiceImpl {
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
             @CacheEvict(value = "baahubali:test:series", allEntries = true),
-            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
     })
     public AdminMockTestDetailDto archiveTest(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)
@@ -435,7 +438,8 @@ public class AdminMockTestServiceImpl {
             @CacheEvict(value = "baahubali:test:homepage:mock-tests:featured", allEntries = true),
             @CacheEvict(value = "baahubali:test:homepage:series:popular", allEntries = true),
             @CacheEvict(value = "baahubali:test:series", allEntries = true),
-            @CacheEvict(value = "baahubali:test:categories", allEntries = true)
+            @CacheEvict(value = "baahubali:test:categories", allEntries = true),
+            @CacheEvict(value = "baahubali:test:mocktests:detail", allEntries = true),
     })
     public AdminMockTestDetailDto revertToDraft(UUID testId) {
         MockTest test = mockTestRepository.findById(testId)

@@ -14,6 +14,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.data.jpa.domain.Specification;
+import com.example.testservice.entity.MockTest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -31,7 +32,9 @@ public class PublicSeriesServiceImpl {
 
     @Cacheable(
             value = "baahubali:test:series:list",
-            key = "'cat=' + (#categoryId != null ? #categoryId : 'all') + ':page=' + #page + ':limit=' + #limit"
+            key = "'cat=' + (#categoryId != null ? #categoryId : 'all')"
+                    + " + ':page=' + T(java.lang.Math).max(#page, 1)"
+                    + " + ':limit=' + T(java.lang.Math).max(1, T(java.lang.Math).min(#limit, 100))"
     )
     @Transactional(readOnly = true)
     public PaginatedResponseDto<PublicTestSeriesListDto> getPublishedSeries(
@@ -39,51 +42,85 @@ public class PublicSeriesServiceImpl {
             int page,
             int limit) {
 
+        int effectivePage = Math.max(page, 1);
+        int effectiveLimit = Math.max(1, Math.min(limit, 100));
+
         Specification<TestSeries> spec = (root, query, cb) -> {
             List<Predicate> predicates = new ArrayList<>();
 
-            predicates.add(cb.equal(root.get("status"), Status.PUBLISHED));
+            predicates.add(
+                    cb.equal(root.get("status"), Status.PUBLISHED)
+            );
+            predicates.add(cb.isNull(root.get("deletedAt")));
+
+            predicates.add(cb.isNotNull(root.get("category")));
+            predicates.add(
+                    cb.isNull(root.get("category").get("deletedAt"))
+            );
 
             if (categoryId != null) {
-                predicates.add(cb.equal(root.get("category").get("id"), categoryId));
+                predicates.add(
+                        cb.equal(root.get("category").get("id"), categoryId)
+                );
             }
+
+            jakarta.persistence.criteria.Subquery<Integer> subquery =
+                    query.subquery(Integer.class);
+
+            jakarta.persistence.criteria.Root<MockTest> mockTestRoot =
+                    subquery.from(MockTest.class);
+
+            subquery.select(cb.literal(1))
+                    .where(
+                            cb.equal(
+                                    mockTestRoot.get("series").get("id"),
+                                    root.get("id")
+                            ),
+                            cb.equal(
+                                    mockTestRoot.get("status"),
+                                    Status.PUBLISHED
+                            ),
+                            cb.isNull(mockTestRoot.get("deletedAt"))
+                    );
+
+            predicates.add(cb.exists(subquery));
 
             return cb.and(predicates.toArray(new Predicate[0]));
         };
 
         PageRequest pageable = PageRequest.of(
-                page - 1,
-                limit,
+                effectivePage - 1,
+                effectiveLimit,
                 Sort.by("createdAt").descending()
         );
 
-        Page<TestSeries> seriesPage = testSeriesRepository.findAll(spec, pageable);
+        Page<TestSeries> seriesPage =
+                testSeriesRepository.findAll(spec, pageable);
 
         List<PublicTestSeriesListDto> data = seriesPage.getContent()
                 .stream()
-                .map(s -> new PublicTestSeriesListDto(
-                        s.getId(),
-                        s.getSlug(),
-                        s.getTitle(),
-                        s.getBasePrice(),
-                        s.getCategory() != null ? s.getCategory().getName() : null,
-                        s.getCreatedAt(),
-                        s.getUpdatedAt(),
-                        s.getDeletedAt()
+                .map(series -> new PublicTestSeriesListDto(
+                        series.getId(),
+                        series.getSlug(),
+                        series.getTitle(),
+                        series.getBasePrice(),
+                        series.getCategory().getName(),
+                        series.getCreatedAt(),
+                        series.getUpdatedAt(),
+                        series.getDeletedAt()
                 ))
                 .collect(Collectors.toList());
 
         return new PaginatedResponseDto<>(
                 data,
                 new PageMetaDto(
-                        page,
-                        limit,
+                        effectivePage,
+                        effectiveLimit,
                         seriesPage.getTotalElements(),
                         seriesPage.getTotalPages()
                 )
         );
     }
-
     @Transactional(readOnly = true)
     @Cacheable(value = "baahubali:test:series", key = "#id")
     public PublicTestSeriesDetailDto getSeriesById(UUID id) {
@@ -97,10 +134,7 @@ public class PublicSeriesServiceImpl {
         TestSeries series = testSeriesRepository.findBySlug(slug)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
 
-        if (series.getStatus() != Status.PUBLISHED) {
-            throw new ResourceNotFoundException("Test Series is not available in the public catalog.");
-        }
-
+        validatePublicVisibility(series);
         return mapSeries(series);
     }
 
@@ -108,18 +142,45 @@ public class PublicSeriesServiceImpl {
         TestSeries series = testSeriesRepository.findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Test Series not found"));
 
-        if (series.getStatus() != Status.PUBLISHED) {
-            throw new ResourceNotFoundException("Test Series is not available in the public catalog.");
+        validatePublicVisibility(series);
+        return series;
+    }
+
+    private void validatePublicVisibility(TestSeries series) {
+        if (series.getStatus() != Status.PUBLISHED
+                || series.getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Test Series is not available in the public catalog."
+            );
         }
 
-        return series;
+        if (series.getCategory() == null
+                || series.getCategory().getDeletedAt() != null) {
+            throw new ResourceNotFoundException(
+                    "Test Series is not available in the public catalog."
+            );
+        }
+
+        boolean hasPublishedTests = series.getMockTests()
+                .stream()
+                .anyMatch(test ->
+                        test.getStatus() == Status.PUBLISHED
+                                && test.getDeletedAt() == null
+                );
+
+        if (!hasPublishedTests) {
+            throw new ResourceNotFoundException(
+                    "Test Series is not available in the public catalog."
+            );
+        }
     }
 
     private PublicTestSeriesDetailDto mapSeries(TestSeries series) {
         List<PublicTestSeriesDetailDto.PublicMockTestSummaryDto> mockTests =
                 series.getMockTests()
-                        .stream()
-                        .filter(test -> test.getStatus() == Status.PUBLISHED)
+                    .stream()
+                    .filter(test -> test.getStatus() == Status.PUBLISHED)
+                    .filter(test -> test.getDeletedAt() == null)
                         .map(test -> new PublicTestSeriesDetailDto.PublicMockTestSummaryDto(
                                 test.getId(),
                                 test.getSlug(),
