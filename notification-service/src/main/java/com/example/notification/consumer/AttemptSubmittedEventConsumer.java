@@ -30,52 +30,67 @@ public class AttemptSubmittedEventConsumer {
         try {
             JsonNode event = objectMapper.readTree(message);
 
+            String status = text(event, "status");
+
+            if (!"SUBMITTED".equalsIgnoreCase(status)) {
+                log.debug("Ignoring non-submitted attempt event: attemptId={}, status={}", text(event, "attemptId"), status);
+                return;
+            }
+
             String eventId = text(event, "eventId");
             String attemptId = text(event, "attemptId");
             String userId = text(event, "userId");
             String testId = text(event, "testId");
-            String recipient = text(event, "recipient");
             String timestamp = text(event, "timestamp");
 
-            if (recipient == null || recipient.isBlank()) {
-                log.warn(
-                        "Skipping attempt notification because event has no recipient eventId={}, userId={}, attemptId={}",
-                        eventId,
-                        userId,
-                        attemptId
-                );
+            if (isBlank(eventId) || isBlank(attemptId) || isBlank(userId)) {
+                log.warn("Ignoring incomplete submitted-attempt event");
                 return;
             }
 
             Map<String, Object> payload = new HashMap<>();
             payload.put("attemptId", attemptId);
             payload.put("testId", testId);
-            payload.put("channel", "EMAIL");
+            payload.put("channel", "IN_APP");
 
             notificationOrchestrator.process(
                     new DomainEvent(
                             eventId,
                             "ATTEMPT_SUBMITTED",
                             1,
-                            timestamp == null ? Instant.now() : Instant.parse(timestamp),
+                            parseInstant(timestamp),
                             "attempt-service",
                             userId,
                             null,
-                            recipient,
+                            null,
                             payload
                     )
             );
+
         } catch (Exception e) {
             log.error("Failed to process attempt submitted event", e);
-            throw new IllegalStateException(
-                    "Attempt notification processing failed",
-                    e
-            );
+            throw new IllegalStateException("Attempt notification processing failed", e);
+        }
+    }
+
+    private Instant parseInstant(String value) {
+        if (isBlank(value)) {
+            return Instant.now();
+        }
+
+        try {
+            return Instant.parse(value);
+        } catch (Exception e) {
+            return Instant.now();
         }
     }
 
     private String text(JsonNode node, String field) {
         JsonNode value = node.get(field);
         return value == null || value.isNull() ? null : value.asText();
+    }
+
+    private boolean isBlank(String value) {
+        return value == null || value.isBlank();
     }
 }
