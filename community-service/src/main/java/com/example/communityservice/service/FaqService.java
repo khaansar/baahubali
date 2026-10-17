@@ -1,5 +1,6 @@
 package com.example.communityservice.service;
 
+import com.example.communityservice.config.UserContextHolder;
 import com.example.communityservice.dto.request.FaqRequestDto;
 import com.example.communityservice.dto.request.FaqUpdateRequestDto;
 import com.example.communityservice.dto.response.FaqResponseDto;
@@ -22,6 +23,7 @@ import java.util.Comparator;
 public class FaqService {
 
     private final FaqRepository faqRepository;
+    private final AuditEventPublisher auditEventPublisher;
 
     @Transactional(readOnly = true)
     public List<FaqResponseDto> getAllFaqs() {
@@ -61,6 +63,15 @@ public class FaqService {
 
         Faq saved = faqRepository.save(faq);
         normalizeDisplayOrder(request.targetId());
+        auditEventPublisher.publishAfterCommit(
+                UserContextHolder.getUserId(),
+                "FAQ_CREATED",
+                "FAQ",
+                saved.getId().toString(),
+                "/admin/faq",
+                "POST",
+                HttpStatus.CREATED.value(),
+                auditMetadata(request.targetId()));
         return FaqResponseDto.from(saved);
     }
 
@@ -93,6 +104,15 @@ public class FaqService {
 
         Faq saved = faqRepository.save(faq);
         normalizeDisplayOrder(targetId);
+        auditEventPublisher.publishAfterCommit(
+                UserContextHolder.getUserId(),
+                "FAQ_UPDATED",
+                "FAQ",
+                saved.getId().toString(),
+                endpointFor(targetId, saved.getId()),
+                "PUT",
+                HttpStatus.OK.value(),
+                auditMetadata(targetId));
         return FaqResponseDto.from(saved);
     }
 
@@ -118,6 +138,15 @@ public class FaqService {
 
         faqRepository.delete(faq);
         normalizeDisplayOrder(targetId);
+        auditEventPublisher.publishAfterCommit(
+                UserContextHolder.getUserId(),
+                "FAQ_DELETED",
+                "FAQ",
+                faqId.toString(),
+                endpointFor(targetId, faqId),
+                "DELETE",
+                HttpStatus.OK.value(),
+                auditMetadata(targetId));
     }
 
     private int nextDisplayOrder(String targetId) {
@@ -137,5 +166,15 @@ public class FaqService {
             targetFaqs.get(index).setDisplayOrder(index + 1);
         }
         faqRepository.saveAll(targetFaqs);
+    }
+
+    private String endpointFor(String targetId, Long faqId) {
+        return targetId == null
+                ? "/admin/faq/" + faqId
+                : "/admin/faq/" + targetId + "/" + faqId;
+    }
+
+    private java.util.Map<String, String> auditMetadata(String targetId) {
+        return java.util.Map.of("scope", targetId == null ? "GLOBAL" : targetId);
     }
 }

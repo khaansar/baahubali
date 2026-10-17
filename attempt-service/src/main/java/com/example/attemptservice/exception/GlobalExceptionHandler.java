@@ -1,7 +1,6 @@
 package com.example.attemptservice.exception;
 
 import com.example.attemptservice.dto.ApiResponse;
-import feign.FeignException;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatusCode;
 import org.springframework.http.HttpStatus;
@@ -15,6 +14,8 @@ import org.springframework.web.HttpRequestMethodNotSupportedException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.util.List;
 import java.util.Map;
@@ -74,15 +75,15 @@ public class GlobalExceptionHandler {
         return failure(HttpStatus.NOT_FOUND, "NOT_FOUND", "Endpoint not found", null);
     }
 
-    @ExceptionHandler(FeignException.NotFound.class)
-    public ResponseEntity<ApiResponse<Void>> handleTestNotFound(FeignException.NotFound ex) {
+    @ExceptionHandler(HttpClientErrorException.NotFound.class)
+    public ResponseEntity<ApiResponse<Void>> handleTestNotFound(HttpClientErrorException.NotFound ex) {
         return failure(HttpStatus.NOT_FOUND, "TEST_NOT_FOUND",
                 "The requested test does not exist or is not published", null);
     }
 
-    @ExceptionHandler(FeignException.class)
-    public ResponseEntity<ApiResponse<Void>> handleTestServiceFailure(FeignException ex) {
-        log.error("Test service request failed with HTTP status {}", ex.status(), ex);
+    @ExceptionHandler(RestClientException.class)
+    public ResponseEntity<ApiResponse<Void>> handleTestServiceFailure(RestClientException ex) {
+        log.error("Test service request failed", ex);
         return failure(HttpStatus.BAD_GATEWAY, "TEST_SERVICE_ERROR",
                 "Test service could not complete the request", null);
     }

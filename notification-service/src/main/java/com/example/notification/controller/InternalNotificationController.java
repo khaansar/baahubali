@@ -1,7 +1,10 @@
+
 package com.example.notification.controller;
 
 import com.example.notification.entity.Notification;
+import com.example.notification.provider.EmailProvider;
 import com.example.notification.provider.NotificationProvider;
+
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
@@ -14,7 +17,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 public class InternalNotificationController {
 
-    private final NotificationProvider emailProvider;
+    private final EmailProvider emailProvider;
 
     @PostMapping("/email/test")
     public ResponseEntity<Void> sendTestEmail(
@@ -32,11 +35,12 @@ public class InternalNotificationController {
                 .attemptCount(1)
                 .build();
 
-        NotificationProvider.DeliveryResult result = emailProvider.send(
-                notification,
-                request.subject(),
-                request.body()
-        );
+        NotificationProvider.DeliveryResult result =
+                emailProvider.send(
+                        notification,
+                        request.subject(),
+                        request.body()
+                );
 
         if (!result.successful()) {
             return ResponseEntity.internalServerError().build();

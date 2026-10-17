@@ -1,6 +1,6 @@
 package com.example.attemptservice.service;
 
-import com.example.attemptservice.client.TestServiceFeignClient;
+import com.example.attemptservice.client.TestServiceClient;
 import com.example.attemptservice.dto.InProgressAttemptDto;
 import com.example.attemptservice.dto.StreakResponseDto;
 import com.example.attemptservice.dto.internal.InternalTestBlueprintDto;
@@ -36,7 +36,7 @@ public class AttemptDashboardService {
     private final AttemptRepository attemptRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
     private final AttemptRedisRepository attemptRedisRepository;
-    private final TestServiceFeignClient testServiceFeignClient;
+    private final TestServiceClient testServiceClient;
     private final EntityManager entityManager;
 
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -58,7 +58,7 @@ public class AttemptDashboardService {
         InternalTestBlueprintDto blueprint = null;
 
         try {
-            var response = testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+            var response = testServiceClient.getTestBlueprint(attempt.getTestId());
 
             if (response != null && response.success()) {
                 blueprint = response.data();

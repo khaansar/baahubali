@@ -53,10 +53,9 @@
             <artifactId>spring-boot-starter-validation</artifactId>
         </dependency>
         
-        <!-- OpenFeign for Cross-Service Communication -->
         <dependency>
-            <groupId>org.springframework.cloud</groupId>
-            <artifactId>spring-cloud-starter-openfeign</artifactId>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-restclient</artifactId>
         </dependency>
 
         <dependency>

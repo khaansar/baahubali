@@ -78,6 +78,21 @@ public class AdminSectionServiceImpl {
         
         // Touch the parent test's updated_at timestamp to invalidate caches and increment version
         section.getMockTest().setUpdatedAt(java.time.Instant.now());
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "QUESTIONS_ATTACHED_TO_SECTION",
+                "SECTION",
+                sectionId.toString(),
+                "test-service",
+                "/admin/sections/" + sectionId + "/questions",
+                "POST",
+                200,
+                null,
+                Map.of("questionCount", Integer.toString(request.questionIds().size())),
+                Instant.now()
+        ));
         return getSectionDetail(sectionId);
     }
 

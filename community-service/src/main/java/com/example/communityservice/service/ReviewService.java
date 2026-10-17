@@ -14,7 +14,6 @@ import com.example.communityservice.dto.response.ReviewResponseDto;
 import com.example.communityservice.dto.response.ReviewStatsDto;
 import com.example.communityservice.entity.Review;
 import com.example.communityservice.repository.ReviewRepository;
-import feign.FeignException;
 import jakarta.persistence.criteria.Predicate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.cache.annotation.CacheEvict;
@@ -28,6 +27,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 import java.time.Instant;
 import java.util.ArrayList;
@@ -45,6 +46,7 @@ public class ReviewService {
     private final IamServiceClient iamServiceClient;
     private final TestSeriesClient testSeriesClient;
     private final PaymentEntitlementClient paymentEntitlementClient;
+    private final AuditEventPublisher auditEventPublisher;
 
     @Transactional
     public void createReview(ReviewRequestDto request, String userId) {
@@ -104,7 +106,7 @@ public class ReviewService {
             if (!Boolean.TRUE.equals(attemptCheck.getData().get("hasAttempted"))) {
                 throw new ResponseStatusException(HttpStatus.FORBIDDEN, "You must attempt this test before reviewing it.");
             }
-        } catch (FeignException ex) {
+        } catch (RestClientException ex) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Could not verify your test attempt. Please try again.");
         }
     }
@@ -126,9 +128,9 @@ public class ReviewService {
 
         try {
             accessResponse = testSeriesClient.getSeriesReviewAccess(seriesId);
-        } catch (FeignException.NotFound ex) {
+        } catch (HttpClientErrorException.NotFound ex) {
             throw new ResponseStatusException(HttpStatus.NOT_FOUND, "Test series not found.");
-        } catch (FeignException ex) {
+        } catch (RestClientException ex) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Could not verify test-series details. Please try again.");
         }
 
@@ -171,7 +173,7 @@ public class ReviewService {
             entitlementResponse = paymentEntitlementClient.checkSeriesEntitlement(
                     new PaymentEntitlementClient.SeriesEntitlementCheckRequest(userUuid, seriesId)
             );
-        } catch (FeignException ex) {
+        } catch (RestClientException ex) {
             throw new ResponseStatusException(HttpStatus.SERVICE_UNAVAILABLE, "Could not verify your test-series entitlement. Please try again.");
         }
 
@@ -461,6 +463,15 @@ public class ReviewService {
         }
 
         Review saved = reviewRepository.saveAndFlush(review);
+        auditEventPublisher.publishAfterCommit(
+                UserContextHolder.getUserId(),
+                "REVIEW_MODERATED",
+                "REVIEW",
+                saved.getId().toString(),
+                "/admin/reviews/" + saved.getId() + "/status",
+                "PATCH",
+                HttpStatus.OK.value(),
+                Map.of("status", saved.getStatus().name()));
 
         return toAdminReviewResponse(saved);
     }
@@ -480,6 +491,15 @@ public class ReviewService {
 
         review.setShowOnHomepage(enabled);
         Review saved = reviewRepository.saveAndFlush(review);
+        auditEventPublisher.publishAfterCommit(
+                UserContextHolder.getUserId(),
+                "REVIEW_HOMEPAGE_VISIBILITY_CHANGED",
+                "REVIEW",
+                saved.getId().toString(),
+                "/admin/reviews/" + saved.getId() + "/homepage",
+                "PATCH",
+                HttpStatus.OK.value(),
+                Map.of("showOnHomepage", Boolean.toString(saved.isShowOnHomepage())));
 
         return toAdminReviewResponse(saved);
     }

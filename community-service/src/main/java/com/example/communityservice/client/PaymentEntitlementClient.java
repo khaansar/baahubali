@@ -1,32 +1,43 @@
 package com.example.communityservice.client;
 
-import com.example.communityservice.config.CommunityFeignConfig;
-import feign.FeignException;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
 import java.time.Instant;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
-@FeignClient(
-        name = "payment-service",
-        url = "${internal.services.payment-url}",
-        configuration = CommunityFeignConfig.class
-)
-public interface PaymentEntitlementClient {
+@Component
+public class PaymentEntitlementClient {
 
-    @PostMapping("/internal/entitlements/check-series")
-    PaymentApiResponse<SeriesEntitlementCheckResponse> checkSeriesEntitlement(
-            @RequestBody SeriesEntitlementCheckRequest request
-    );
+    private final RestClient http;
 
-    record SeriesEntitlementCheckRequest(
+    public PaymentEntitlementClient(
+            @Value("${internal.services.payment-url}") String url,
+            @Value("${internal.auth.my-secret}") String secret,
+            RestClient.Builder builder) {
+        this.http = builder
+                .baseUrl(url)
+                .defaultHeader("X-Service-Caller", "community-service")
+                .defaultHeader("X-Service-Auth", secret)
+                .build();
+    }
+
+    public PaymentApiResponse<SeriesEntitlementCheckResponse> checkSeriesEntitlement(
+            SeriesEntitlementCheckRequest request) {
+        return http.post()
+                .uri("/internal/entitlements/check-series")
+                .body(request)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public record SeriesEntitlementCheckRequest(
             UUID userId,
             UUID seriesId
     ) {}
 
-    record SeriesEntitlementCheckResponse(
+    public record SeriesEntitlementCheckResponse(
             boolean allowed
     ) {}
 
@@ -36,7 +47,7 @@ public interface PaymentEntitlementClient {
      *
      * Keep this DTO local to avoid assuming both services use identical wrappers.
      */
-    record PaymentApiResponse<T>(
+    public record PaymentApiResponse<T>(
             boolean success,
             T data,
             ErrorBody error,

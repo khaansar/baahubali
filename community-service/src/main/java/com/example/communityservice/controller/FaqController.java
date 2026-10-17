@@ -21,7 +21,7 @@ public class FaqController {
 
     private final FaqService faqService;
     
-    @GetMapping("/admins/faq")
+    @GetMapping("/admin/faq")
     public ResponseEntity<ApiResponse<List<FaqResponseDto>>> getAllFaqs() {
         return ResponseEntity.ok(ApiResponse.success(
                 HttpStatus.OK.value(),
@@ -62,7 +62,7 @@ public class FaqController {
         );
     }
 
-    @PostMapping("/admins/faq")
+    @PostMapping("/admin/faq")
     public ResponseEntity<ApiResponse<FaqResponseDto>> createFaq(
             @Valid @RequestBody FaqRequestDto request) {
 
@@ -77,7 +77,7 @@ public class FaqController {
         );
     }
 
-    @PutMapping("/admins/faq/{targetId}/{faqId}")
+    @PutMapping("/admin/faq/{targetId}/{faqId}")
     public ResponseEntity<ApiResponse<FaqResponseDto>> updateFaq(
             @PathVariable String targetId,
             @PathVariable Long faqId,
@@ -95,7 +95,7 @@ public class FaqController {
         );
     }
 
-    @PutMapping("/admins/faq/{faqId}")
+    @PutMapping("/admin/faq/{faqId}")
     public ResponseEntity<ApiResponse<FaqResponseDto>> updateGlobalFaq(
             @PathVariable Long faqId,
             @Valid @RequestBody FaqUpdateRequestDto request) {
@@ -105,7 +105,7 @@ public class FaqController {
         ));
     }
 
-    @DeleteMapping("/admins/faq/{targetId}/{faqId}")
+    @DeleteMapping("/admin/faq/{targetId}/{faqId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deleteFaq(
             @PathVariable String targetId,
             @PathVariable Long faqId) {
@@ -121,7 +121,7 @@ public class FaqController {
         );
     }
 
-    @DeleteMapping("/admins/faq/{faqId}")
+    @DeleteMapping("/admin/faq/{faqId}")
     public ResponseEntity<ApiResponse<Map<String, Object>>> deleteGlobalFaq(
             @PathVariable Long faqId) {
         faqService.deleteFaq(null, faqId);

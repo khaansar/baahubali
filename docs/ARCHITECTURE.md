@@ -60,4 +60,4 @@ Serves downstream services (such as the `attempt-service`):
 ### 5. Event-Driven & Inter-Service Flow
 1. **Creation & Authoring:** Admins build categories, question banks, sections, and test structures via REST endpoints[cite: 1].
 2. **Publishing:** Upon publishing, `AdminMockTestServiceImpl` locks mapped questions and triggers `KafkaPublisherService` to broadcast a `TestPublishedEvent`[cite: 1].
-3. **Attempt Orchestration:** The `attempt-service` listens to test lifecycle events and fetches cached test blueprints securely via OpenFeign using internal cluster authentication[cite: 1].
+3. **Attempt Orchestration:** The `attempt-service` listens to test lifecycle events and fetches cached test blueprints securely via Spring `RestClient` using internal cluster authentication[cite: 1].
