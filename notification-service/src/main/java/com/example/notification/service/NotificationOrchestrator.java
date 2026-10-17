@@ -11,11 +11,13 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 
@@ -56,16 +58,23 @@ public class NotificationOrchestrator {
         }
 
         String recipient = event.recipient();
+        String firstName = null;
 
+        /*
+         * Resolve a verified email only when the event did not provide
+         * an explicit recipient. Keep the contact's first name available
+         * for email-template rendering.
+         */
         if (channel == Notification.Channel.EMAIL && isBlank(recipient)) {
             NotificationRecipientResolver.Contact contact = recipientResolver.resolve(event.userId());
 
-            if (contact == null) {
+            if (contact == null || isBlank(contact.email())) {
                 log.warn("Skipping EMAIL notification because no verified email was resolved: eventId={}, userId={}", event.eventId(), event.userId());
                 return;
             }
 
             recipient = contact.email();
+            firstName = contact.firstName();
         }
 
         if (channel == Notification.Channel.EMAIL && isBlank(recipient)) {
@@ -73,6 +82,17 @@ public class NotificationOrchestrator {
         }
 
         Map<String, Object> payload = mutablePayload(event.payload());
+        enrichPayload(payload, event.eventType());
+
+        if (channel == Notification.Channel.EMAIL) {
+            /*
+             * Do not overwrite a firstName explicitly supplied by the
+             * producer. Use the resolved contact name when available.
+             */
+            if (isBlank(stringValue(payload.get("firstName")))) {
+                payload.put("firstName", isBlank(firstName) ? "there" : firstName);
+            }
+        }
 
         Notification notification = Notification.builder()
                 .eventId(event.eventId())
@@ -98,12 +118,45 @@ public class NotificationOrchestrator {
          */
         try {
             notificationRepository.saveAndFlush(notification);
-        } catch (org.springframework.dao.DataIntegrityViolationException duplicate) {
+        } catch (DataIntegrityViolationException duplicate) {
             log.debug("Duplicate notification suppressed: eventId={}, channel={}", event.eventId(), channel);
             return;
         }
 
         deliver(notification);
+    }
+
+    /**
+     * Adds absolute frontend links for email templates while keeping
+     * the in-app action URL relative for same-origin frontend navigation.
+     *
+     * Expected event payload fields:
+     * - ATTEMPT_SUBMITTED: attemptId
+     * - PAYMENT_CAPTURED: slug
+     *
+     * STREAK_AT_RISK uses the frontend /tests route.
+     */
+    private void enrichPayload(Map<String, Object> payload, String eventType) {
+        String baseUrl = frontendBaseUrl();
+
+        switch (eventType) {
+            case "ATTEMPT_SUBMITTED" -> {
+                String attemptId = stringValue(payload.get("attemptId"));
+                if (!isBlank(attemptId)) {
+                    payload.putIfAbsent("resultUrl", baseUrl + "/attempt/" + attemptId + "/result");
+                }
+            }
+            case "PAYMENT_CAPTURED" -> {
+                String slug = stringValue(payload.get("slug"));
+                if (!isBlank(slug)) {
+                    payload.putIfAbsent("seriesUrl", baseUrl + "/test-series/" + slug);
+                }
+            }
+            case "STREAK_AT_RISK" -> payload.putIfAbsent("testsUrl", baseUrl + "/tests");
+            default -> {
+                // Other event types do not need generated frontend links.
+            }
+        }
     }
 
     @Transactional
@@ -181,11 +234,9 @@ public class NotificationOrchestrator {
             case "STREAK_AT_RISK" -> List.of(Notification.Channel.EMAIL);
             default -> {
                 Object configured = event.payload() == null ? null : event.payload().get("channel");
-
                 if (configured == null) {
                     yield List.of(Notification.Channel.EMAIL);
                 }
-
                 yield List.of(Notification.Channel.valueOf(configured.toString().toUpperCase()));
             }
         };
@@ -228,13 +279,25 @@ public class NotificationOrchestrator {
         };
     }
 
+    private String frontendBaseUrl() {
+        String baseUrl = notificationProperties.getFrontendBaseUrl();
+
+        if (baseUrl == null || baseUrl.isBlank()) {
+            throw new IllegalStateException(
+                    "FRONTEND_BASE_URL must be configured"
+            );
+        }
+
+        return baseUrl.replaceAll("/+$", "");
+    }
+
     private Map<String, Object> mutablePayload(Object value) {
         if (value == null) {
-            return new java.util.HashMap<>();
+            return new HashMap<>();
         }
 
         if (value instanceof Map<?, ?> map) {
-            Map<String, Object> result = new java.util.HashMap<>();
+            Map<String, Object> result = new HashMap<>();
             map.forEach((key, item) -> {
                 if (key != null) {
                     result.put(key.toString(), item);

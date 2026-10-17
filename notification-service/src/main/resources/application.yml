@@ -63,6 +63,7 @@ notification:
   from-name: ${APP_NAME:clearit}
   max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:5}
   retry-delay-seconds: ${NOTIFICATION_RETRY_DELAY_SECONDS:30}
+  frontend-base-url: ${FRONTEND_BASE_URL}
 
 management:
   endpoints:

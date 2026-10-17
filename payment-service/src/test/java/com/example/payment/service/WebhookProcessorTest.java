@@ -19,6 +19,7 @@ import com.example.payment.repository.PaymentRepository;
 import com.example.payment.repository.RefundRepository;
 import com.example.payment.repository.WebhookEventRepository;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.example.payment.client.TestServiceClient;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.util.List;
 import java.util.Optional;
@@ -53,6 +54,7 @@ class WebhookProcessorTest {
     @Mock CouponService coupons;
     @Mock RefundEntitlementPolicy refundPolicy;
     @Mock DomainEventPublisher events;
+    @Mock TestServiceClient testServiceClient;
     @Mock AuditService audit;
     WebhookProcessor processor;
 
@@ -65,7 +67,7 @@ class WebhookProcessorTest {
         when(gateway.verifyWebhookSignature(any(), any())).thenReturn(true);
         when(inbox.saveAndFlush(any())).thenAnswer(i -> i.getArgument(0));
         processor = new WebhookProcessor(gateway, inbox, payments, orders, orderItems, refunds, entitlements, coupons,
-            refundPolicy, events, audit, new ObjectMapper(), TestTx.template(), new SimpleMeterRegistry());
+            refundPolicy, events, audit, new ObjectMapper(), TestTx.template(), new SimpleMeterRegistry(), testServiceClient);
     }
 
     Payment payment(PaymentStatus status) {
@@ -112,6 +114,7 @@ class WebhookProcessorTest {
         when(payments.lockByProviderOrderId("RAZORPAY", "order_1")).thenReturn(Optional.of(pay));
         when(orders.lockById(pay.getOrderId())).thenReturn(Optional.of(o));
         when(orderItems.findByOrderId(o.getId())).thenReturn(List.of(it));
+        when(testServiceClient.seriesSlugOf(it.getProductReferenceId())).thenReturn("ssc-cgl-test-series");
 
         processor.receive(CAPTURED, "sig", "e1");
 

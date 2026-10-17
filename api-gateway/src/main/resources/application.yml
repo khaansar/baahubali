@@ -131,6 +131,17 @@ spring:
                     redis-rate-limiter.replenishRate: 10
                     redis-rate-limiter.burstCapacity: 20
                     redis-rate-limiter.requestedTokens: 1
+            - id: notification-service
+              uri: ${NOTIFICATION_SERVICE_URL}
+              predicates:
+                - Path=/notifications-api/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 20
+                    redis-rate-limiter.burstCapacity: 40
+                    redis-rate-limiter.requestedTokens: 1
 
 logging:
   level:
@@ -155,6 +166,8 @@ springdoc:
         url: /analytics-api/v3/api-docs
       - name: Payment Service
         url: /payments-api/v3/api-docs
+      - name: Notification Service
+        url: /notifications-api/v3/api-docs
 
 gateway:
   service-auth:
