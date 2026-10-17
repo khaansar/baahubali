@@ -4,6 +4,9 @@ import com.example.iam.dto.ApiResponse;
 import com.example.iam.dto.UserProfileDto;
 import com.example.iam.entity.User;
 import com.example.iam.repository.UserRepository;
+import com.example.iam.dto.NotificationContactResponse;
+import org.springframework.http.HttpStatus;
+import org.springframework.web.server.ResponseStatusException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.HttpStatus;
@@ -55,5 +58,29 @@ public class InternalUserController {
 
         return ResponseEntity.ok(ApiResponse.success(
                 HttpStatus.OK.value(), "User profiles retrieved successfully", profiles));
+    }
+
+    
+    @GetMapping("/{userId}/notification-contact")
+    public ResponseEntity<ApiResponse<NotificationContactResponse>> getNotificationContact(@PathVariable String userId) {
+        UUID id;
+
+        try {
+            id = UUID.fromString(userId);
+        } catch (IllegalArgumentException e) {
+            throw new ResponseStatusException (HttpStatus.BAD_REQUEST, "Invalid user ID");
+        }
+
+        User user = userRepository.findById(id).orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND, "User not found"));
+
+        NotificationContactResponse contact = new NotificationContactResponse(
+                user.getId().toString(),
+                user.getEmail(),
+                user.getFirstName(),
+                Boolean.TRUE.equals(user.getEmailVerified())
+        );
+
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Notification contact retrieved", contact));
     }
 }

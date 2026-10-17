@@ -9,6 +9,7 @@ public class NotificationProperties {
 
     private String from;
     private String fromName;
+    private String frontendBaseUrl;
     private int maxAttempts = 5;
     private long retryDelaySeconds = 30;
 }

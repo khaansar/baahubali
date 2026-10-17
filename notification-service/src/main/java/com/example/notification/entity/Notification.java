@@ -44,7 +44,7 @@ public class Notification {
     @Enumerated(EnumType.STRING)
     private Channel channel;
 
-    @Column(name = "recipient", nullable = false, length = 320)
+    @Column(name = "recipient", length = 320)
     private String recipient;
 
     @Column(name = "template_code", nullable = false, length = 150)
@@ -64,6 +64,18 @@ public class Notification {
     @Column(name = "last_error", columnDefinition = "TEXT")
     private String lastError;
 
+    @Column(name = "title", length = 200)
+    private String title;
+
+    @Column(name = "message", columnDefinition = "TEXT")
+    private String message;
+
+    @Column(name = "action_url", length = 1000)
+    private String actionUrl;
+
+    @Column(name = "read_at")
+    private Instant readAt;
+
     @Column(name = "created_at", nullable = false)
     private Instant createdAt;
 
@@ -76,7 +88,8 @@ public class Notification {
     public enum Channel {
         EMAIL,
         SMS,
-        PUSH
+        PUSH,
+        IN_APP
     }
 
     public enum Status {

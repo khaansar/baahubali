@@ -51,4 +51,33 @@ public class TestServiceClient {
                     "Test service unavailable");
         }
     }
+
+    public String seriesSlugOf(UUID seriesId) {
+        if (seriesId == null) {
+            return null;
+        }
+
+        try {
+            JsonNode response = http.get()
+                    .uri("/tests-api/internal/series/{seriesId}", seriesId)
+                    .retrieve()
+                    .body(JsonNode.class);
+
+            String slug = response == null
+                    ? null
+                    : response.path("slug").asText(null);
+
+            return slug == null || slug.isBlank()
+                    ? null
+                    : slug;
+
+        } catch (HttpClientErrorException.NotFound e) {
+            return null;
+        } catch (RestClientException e) {
+            throw new PaymentException(
+                    ErrorCode.UPSTREAM_UNAVAILABLE,
+                    "Test service unavailable while resolving test-series slug"
+            );
+        }
+    }
 }

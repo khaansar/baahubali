@@ -16,4 +16,20 @@ public interface NotificationRepository extends JpaRepository<Notification, Stri
     List<Notification> findTop100ByStatusOrderByCreatedAtAsc(
             Notification.Status status
     );
+
+    List<Notification> findTop50ByUserIdAndChannelOrderByCreatedAtDesc(
+            String userId,
+            Notification.Channel channel
+    );
+
+    long countByUserIdAndChannelAndReadAtIsNull(
+            String userId,
+            Notification.Channel channel
+    );
+
+    Optional<Notification> findByIdAndUserIdAndChannel(
+            String id,
+            String userId,
+            Notification.Channel channel
+    );
 }

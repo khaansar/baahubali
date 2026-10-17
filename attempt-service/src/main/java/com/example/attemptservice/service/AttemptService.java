@@ -27,6 +27,7 @@ import com.example.attemptservice.repository.OutboxEventRepository;
 import com.example.attemptservice.worker.AttemptFlushWorker;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -354,11 +355,19 @@ public class AttemptService {
                     finalizedAt
             );
 
+            /*
+             * Keep the analytics event fields unchanged, but add the final attempt
+             * status to the outbox payload. Notification consumers can then
+             * distinguish a genuinely submitted attempt from an expired attempt.
+             */
+            ObjectNode eventPayload = objectMapper.valueToTree(event);
+            eventPayload.put("status", effectiveStatus.name());
+
             OutboxEvent outboxEvent = OutboxEvent.builder()
                     .id(event.eventId())
                     .eventType("ATTEMPT_FINALIZED")
                     .aggregateId(lockedAttempt.getId())
-                    .payload(objectMapper.writeValueAsString(event))
+                    .payload(objectMapper.writeValueAsString(eventPayload))
                     .createdAt(finalizedAt)
                     .build();
 
