@@ -53,6 +53,17 @@ public class ReviewController {
 
     @CacheRefreshable(
             cacheNames = "community:reviews",
+            keyExpression = "'homepage'"
+    )
+    @Operation(summary = "Get approved reviews designated for homepage display")
+    @GetMapping("/public/reviews/homepage")
+    public ResponseEntity<ApiResponse<List<ReviewResponseDto>>> getHomepageReviews() {
+        List<ReviewResponseDto> reviews = reviewService.getApprovedHomepageReviews();
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Reviews retrieved successfully", reviews));
+    }
+
+    @CacheRefreshable(
+            cacheNames = "community:reviews",
             keyExpression = "#arg0.trim()"
     )
     @Operation(summary = "Get approved reviews for a specific target")
@@ -82,6 +93,7 @@ public class ReviewController {
             @RequestParam(required = false) String search,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant from,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) Instant to,
+            @RequestParam(required = false) Boolean showOnHomepage,
             @RequestParam(defaultValue = "0") int page,
             @RequestParam(defaultValue = "20") int size,
             @RequestParam(defaultValue = "createdAt,desc") String sort) {
@@ -96,7 +108,7 @@ public class ReviewController {
 
         Sort safeSort = parseSort(sort);
         Pageable pageable = PageRequest.of(page, size, safeSort);
-        AdminReviewPageDto result = reviewService.getAdminReviews(status, targetType, rating, search, from, to, pageable);
+        AdminReviewPageDto result = reviewService.getAdminReviews(status, targetType, rating, search, from, to, showOnHomepage, pageable);
 
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Reviews retrieved successfully", result));
     }
@@ -118,6 +130,26 @@ public class ReviewController {
     public ResponseEntity<ApiResponse<AdminReviewResponseDto>> moderateReview(@PathVariable Long reviewId, @Valid @RequestBody ReviewModerationRequestDto request) {
         AdminReviewResponseDto result = reviewService.moderateReview(reviewId, request);
         return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Review moderation status updated successfully", result));
+    }
+
+    @Operation(summary = "Set whether a review is displayed on the homepage")
+    @PatchMapping("/admin/reviews/{reviewId}/homepage")
+    public ResponseEntity<ApiResponse<AdminReviewResponseDto>> setReviewHomepageDisplay(
+            @PathVariable Long reviewId,
+            @RequestParam(required = false) Boolean enabled,
+            @RequestBody(required = false) Map<String, Object> body) {
+        boolean display = false;
+        if (enabled != null) {
+            display = enabled;
+        } else if (body != null) {
+            if (body.containsKey("showOnHomepage")) {
+                display = Boolean.parseBoolean(String.valueOf(body.get("showOnHomepage")));
+            } else if (body.containsKey("enabled")) {
+                display = Boolean.parseBoolean(String.valueOf(body.get("enabled")));
+            }
+        }
+        AdminReviewResponseDto result = reviewService.setReviewHomepageDisplay(reviewId, display);
+        return ResponseEntity.ok(ApiResponse.success(HttpStatus.OK.value(), "Review homepage display status updated successfully", result));
     }
 
     private Sort parseSort(String sort) {

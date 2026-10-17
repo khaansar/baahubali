@@ -193,13 +193,34 @@ public class ReviewService {
          * Only approved reviews are visible through the public endpoint.
          * Pending reviews remain in the moderation queue.
          */
+        boolean isPlatformOrHomepage = "PLATFORM".equalsIgnoreCase(normalizedTargetId)
+                || "HOMEPAGE".equalsIgnoreCase(normalizedTargetId);
+
         List<Review> reviews = reviewRepository.findAll(
-                (root, query, criteriaBuilder) ->
-                        criteriaBuilder.and(
-                                criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
-                                criteriaBuilder.notEqual(root.get("status"), Review.ReviewStatus.REJECTED),
-                                criteriaBuilder.isNull(root.get("deletedAt"))
-                        ),
+                (root, query, criteriaBuilder) -> {
+                    Predicate notDeleted = criteriaBuilder.isNull(root.get("deletedAt"));
+                    Predicate notRejected = criteriaBuilder.notEqual(root.get("status"), Review.ReviewStatus.REJECTED);
+
+                    if (isPlatformOrHomepage) {
+                        return criteriaBuilder.and(
+                                notDeleted,
+                                notRejected,
+                                criteriaBuilder.or(
+                                        criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
+                                        criteriaBuilder.and(
+                                                criteriaBuilder.isTrue(root.get("showOnHomepage")),
+                                                criteriaBuilder.equal(root.get("status"), Review.ReviewStatus.APPROVED)
+                                        )
+                                )
+                        );
+                    }
+
+                    return criteriaBuilder.and(
+                            criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
+                            notRejected,
+                            notDeleted
+                    );
+                },
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
         );
 
@@ -253,6 +274,12 @@ public class ReviewService {
     }
 
     @Transactional(readOnly = true)
+    @Cacheable(cacheNames = "community:reviews", key = "'homepage'", unless = "#result == null")
+    public List<ReviewResponseDto> getApprovedHomepageReviews() {
+        return getHydratedReviews("PLATFORM");
+    }
+
+    @Transactional(readOnly = true)
     @Cacheable(cacheNames = "community:review-average", key = "#targetId.trim()", unless = "#result == null")
     public Double getAverageRating(String targetId) {
         Double average = reviewRepository.getAverageRatingForTarget(
@@ -294,6 +321,20 @@ public class ReviewService {
             Instant to,
             Pageable pageable
     ) {
+        return getAdminReviews(status, targetType, rating, search, from, to, null, pageable);
+    }
+
+    @Transactional(readOnly = true)
+    public AdminReviewPageDto getAdminReviews(
+            Review.ReviewStatus status,
+            Review.TargetType targetType,
+            Integer rating,
+            String search,
+            Instant from,
+            Instant to,
+            Boolean showOnHomepage,
+            Pageable pageable
+    ) {
         if (rating != null && (rating < 1 || rating > 5)) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "Rating must be between 1 and 5.");
         }
@@ -325,6 +366,10 @@ public class ReviewService {
 
             if (to != null) {
                 predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("createdAt"), to));
+            }
+
+            if (showOnHomepage != null) {
+                predicates.add(criteriaBuilder.equal(root.get("showOnHomepage"), showOnHomepage));
             }
 
             if (StringUtils.hasText(search)) {
@@ -411,6 +456,29 @@ public class ReviewService {
         review.setModeratedBy(UserContextHolder.getUserId());
         review.setModeratedAt(Instant.now());
 
+        if (request.showOnHomepage() != null) {
+            review.setShowOnHomepage(request.showOnHomepage());
+        }
+
+        Review saved = reviewRepository.saveAndFlush(review);
+
+        return toAdminReviewResponse(saved);
+    }
+
+    @Transactional
+    @CacheEvict(
+            cacheNames = {
+                    "community:reviews",
+                    "community:review-average"
+            },
+            allEntries = true
+    )
+    public AdminReviewResponseDto setReviewHomepageDisplay(Long reviewId, boolean enabled) {
+        Review review = reviewRepository.findById(reviewId)
+                .filter(existing -> existing.getDeletedAt() == null)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
+
+        review.setShowOnHomepage(enabled);
         Review saved = reviewRepository.saveAndFlush(review);
 
         return toAdminReviewResponse(saved);

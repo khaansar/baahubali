@@ -18,6 +18,7 @@ public record AdminReviewResponseDto(
         String moderationReason,
         String moderatedBy,
         Instant moderatedAt,
+        Boolean showOnHomepage,
         Instant createdAt,
         Instant updatedAt
 ) {
@@ -43,6 +44,7 @@ public record AdminReviewResponseDto(
                 review.getModerationReason(),
                 review.getModeratedBy(),
                 review.getModeratedAt(),
+                review.isShowOnHomepage(),
                 review.getCreatedAt(),
                 review.getUpdatedAt()
         );
