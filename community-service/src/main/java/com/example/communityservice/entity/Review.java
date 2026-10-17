@@ -43,6 +43,10 @@ public class Review {
     @Column(nullable = false)
     private ReviewStatus status = ReviewStatus.PENDING;
 
+    @Builder.Default
+    @Column(name = "show_on_homepage", nullable = false)
+    private boolean showOnHomepage = false;
+
     @Column(name = "moderation_reason", columnDefinition = "TEXT")
     private String moderationReason;
 

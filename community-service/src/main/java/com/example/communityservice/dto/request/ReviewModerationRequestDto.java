@@ -9,5 +9,11 @@ public record ReviewModerationRequestDto(
         Review.ReviewStatus status,
 
         @Size(max = 2000, message = "The moderation reason cannot exceed 2000 characters")
-        String moderationReason
-) {}
+        String moderationReason,
+
+        Boolean showOnHomepage
+) {
+    public ReviewModerationRequestDto(Review.ReviewStatus status, String moderationReason) {
+        this(status, moderationReason, null);
+    }
+}
