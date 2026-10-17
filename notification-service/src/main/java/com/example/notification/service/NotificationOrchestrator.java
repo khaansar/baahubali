@@ -16,7 +16,6 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.time.Instant;
-import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -82,13 +81,14 @@ public class NotificationOrchestrator {
         }
 
         Map<String, Object> payload = mutablePayload(event.payload());
-        enrichPayload(payload, event.eventType());
 
+        /*
+         * Frontend links are needed by email templates. Do not make an
+         * in-app notification depend on frontend URL configuration.
+         */
         if (channel == Notification.Channel.EMAIL) {
-            /*
-             * Do not overwrite a firstName explicitly supplied by the
-             * producer. Use the resolved contact name when available.
-             */
+            enrichEmailPayload(payload, event.eventType());
+
             if (isBlank(stringValue(payload.get("firstName")))) {
                 payload.put("firstName", isBlank(firstName) ? "there" : firstName);
             }
@@ -113,8 +113,7 @@ public class NotificationOrchestrator {
 
         /*
          * The unique (event_id, channel) constraint is the final
-         * idempotency guard if two consumers process the same event
-         * concurrently. Kafka delivery can be at least once.
+         * idempotency guard when multiple consumers process the same event.
          */
         try {
             notificationRepository.saveAndFlush(notification);
@@ -127,36 +126,71 @@ public class NotificationOrchestrator {
     }
 
     /**
-     * Adds absolute frontend links for email templates while keeping
-     * the in-app action URL relative for same-origin frontend navigation.
+     * Ensures the email template receives absolute frontend URLs.
      *
-     * Expected event payload fields:
-     * - ATTEMPT_SUBMITTED: attemptId
-     * - PAYMENT_CAPTURED: slug
-     *
-     * STREAK_AT_RISK uses the frontend /tests route.
+     * A producer may send a relative URL, such as "/tests". Relative
+     * values must be converted to absolute URLs before they are rendered
+     * into email HTML.
      */
-    private void enrichPayload(Map<String, Object> payload, String eventType) {
-        String baseUrl = frontendBaseUrl();
-
+    private void enrichEmailPayload(Map<String, Object> payload, String eventType) {
         switch (eventType) {
             case "ATTEMPT_SUBMITTED" -> {
                 String attemptId = stringValue(payload.get("attemptId"));
-                if (!isBlank(attemptId)) {
-                    payload.putIfAbsent("resultUrl", baseUrl + "/attempt/" + attemptId + "/result");
-                }
+                String fallbackPath = isBlank(attemptId) ? null : "/attempt/" + attemptId + "/result";
+                ensureAbsoluteFrontendUrl(payload, "resultUrl", fallbackPath);
             }
             case "PAYMENT_CAPTURED" -> {
                 String slug = stringValue(payload.get("slug"));
-                if (!isBlank(slug)) {
-                    payload.putIfAbsent("seriesUrl", baseUrl + "/test-series/" + slug);
-                }
+                String fallbackPath = isBlank(slug) ? null : "/test-series/" + slug;
+                ensureAbsoluteFrontendUrl(payload, "seriesUrl", fallbackPath);
             }
-            case "STREAK_AT_RISK" -> payload.putIfAbsent("testsUrl", baseUrl + "/tests");
+            case "STREAK_AT_RISK" -> ensureAbsoluteFrontendUrl(payload, "testsUrl", "/tests");
             default -> {
-                // Other event types do not need generated frontend links.
+                // Other event types do not require generated frontend links.
             }
         }
+    }
+
+    /**
+     * Preserves a valid absolute HTTP(S) URL. Converts relative URLs to
+     * absolute URLs using notification.frontend-base-url.
+     */
+    private void ensureAbsoluteFrontendUrl(Map<String, Object> payload, String payloadKey, String fallbackPath) {
+        String existingValue = stringValue(payload.get(payloadKey));
+
+        if (isAbsoluteHttpUrl(existingValue)) {
+            return;
+        }
+
+        String path = !isBlank(existingValue) ? existingValue.trim() : fallbackPath;
+
+        if (isBlank(path)) {
+            return;
+        }
+
+        String baseUrl = frontendBaseUrl();
+        String normalizedPath = path.startsWith("/") ? path : "/" + path;
+
+        payload.put(payloadKey, baseUrl + normalizedPath);
+    }
+
+    private boolean isAbsoluteHttpUrl(String value) {
+        if (isBlank(value)) {
+            return false;
+        }
+
+        String normalized = value.trim().toLowerCase();
+        return normalized.startsWith("https://") || normalized.startsWith("http://");
+    }
+
+    private String frontendBaseUrl() {
+        String baseUrl = notificationProperties.getFrontendBaseUrl();
+
+        if (isBlank(baseUrl)) {
+            throw new IllegalStateException("FRONTEND_BASE_URL must be configured for email links");
+        }
+
+        return baseUrl.trim().replaceAll("/+$", "");
     }
 
     @Transactional
@@ -213,7 +247,7 @@ public class NotificationOrchestrator {
                 notification.setLastError(null);
             } else {
                 notification.setStatus(Notification.Status.FAILED);
-                notification.setLastError(result.errorMessage());
+                notification.setLastError(truncate(result.errorMessage()));
             }
 
             notificationRepository.save(notification);
@@ -264,6 +298,10 @@ public class NotificationOrchestrator {
         };
     }
 
+    /**
+     * In-app action URLs intentionally remain relative because they are
+     * consumed by the frontend application, not by an email client.
+     */
     private String resolveActionUrl(String eventType, Map<String, Object> payload) {
         return switch (eventType) {
             case "ATTEMPT_SUBMITTED" -> {
@@ -277,18 +315,6 @@ public class NotificationOrchestrator {
             case "STREAK_AT_RISK" -> "/tests";
             default -> null;
         };
-    }
-
-    private String frontendBaseUrl() {
-        String baseUrl = notificationProperties.getFrontendBaseUrl();
-
-        if (baseUrl == null || baseUrl.isBlank()) {
-            throw new IllegalStateException(
-                    "FRONTEND_BASE_URL must be configured"
-            );
-        }
-
-        return baseUrl.replaceAll("/+$", "");
     }
 
     private Map<String, Object> mutablePayload(Object value) {
