@@ -1,0 +1,302 @@
+{
+  "databases": [
+    {
+      "name": "iam_db",
+      "service": "iam-service",
+      "tables": [
+        {
+          "name": "users",
+          "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the user." },
+                { "name": "first_name", "type": "VARCHAR(100)", "constraints": "NOT NULL", "description": "User's given name." },
+                { "name": "last_name", "type": "VARCHAR(100)", "constraints": "NULLABLE", "description": "User's family name." },
+                { "name": "email", "type": "VARCHAR(255)", "constraints": "UNIQUE, INDEXED", "description": "User's email address used for login and communication." },
+                { "name": "password_hash", "type": "VARCHAR(255)", "constraints": "NOT NULL", "description": "Securely hashed password for authentication." },
+                { "name": "role", "type": "VARCHAR(20)", "constraints": "ENUM('STUDENT', 'ADMIN')", "description": "System role determining access privileges." },
+                { "name": "avatar_url", "type": "VARCHAR(512)", "constraints": "NULLABLE", "description": "URL to the user's profile picture or avatar image." },
+                { "name": "is_active", "type": "BOOLEAN", "constraints": "DEFAULT true", "description": "Flag indicating if the user account is active or suspended." },
+                { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the user account was created." },
+                { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the user account was last modified." },
+                { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the user account was soft-deleted." }
+            ]
+        }
+      ]
+    },
+    {
+        "name": "test_db",
+        "service": "test-service",
+        "tables": [
+            {
+            "name": "test_series",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the test series." },
+                { "name": "title", "type": "VARCHAR(255)", "constraints": "NOT NULL", "description": "Display name of the test series." },
+                { "name": "base_price", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "description": "Standard price of the test series." },
+                { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED')", "description": "Current publication state of the test series." },
+                { "name": "created_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the creator, sourced from x-user-id." },
+                { "name": "updated_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the user who last modified the test series, sourced from x-user-id." },
+                { "name": "subject_id", "type": "VARCHAR(36)", "constraints": "NULLABLE, FOREIGN KEY -> catalog.subjects.id", "description": "Optional subject/category reference used for catalog browsing." },
+                { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the test series was created." },
+                { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the test series was last modified." },
+                { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the test series was soft-deleted." }
+            ],
+            "indexes": [
+                "INDEX(status)"
+            ]
+            },
+            {
+            "name": "mock_tests",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)" },
+                { "name": "series_id", "type": "VARCHAR(36)", "constraints": "FOREIGN KEY -> test_series.id" },
+                { "name": "title", "type": "VARCHAR(255)", "constraints": "NOT NULL" },
+                { "name": "duration_minutes", "type": "INT", "constraints": "NOT NULL" },
+                { "name": "total_marks", "type": "INT", "constraints": "NOT NULL" },
+                { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('DRAFT', 'PUBLISHED', 'ARCHIVED')", "description": "Current publication state of the mock test." },
+                { "name": "instructions", "type": "TEXT", "constraints": "NULLABLE", "description": "Instructions displayed to the student before starting the test." },
+                { "name": "is_free", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "Whether the mock test can be attempted without payment." },
+                { "name": "negative_marking_enabled", "type": "BOOLEAN", "constraints": "DEFAULT true", "description": "Whether negative marking is enabled for this test." },
+                { "name": "is_section_order_strict", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "If true, students cannot skip ahead or freely navigate between sections." },
+                { "name": "shuffle_sections", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "If true, sections are randomized per attempt to prevent cheating." },
+                { "name": "created_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the creator, sourced from x-user-id." },
+                { "name": "updated_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the user who last modified the mock test, sourced from x-user-id." },
+                { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP" },
+                { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE" },
+                { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE" }
+            ],
+            "indexes": [
+                "INDEX(series_id)",
+                "INDEX(status)"
+            ]
+            },
+            {
+            "name": "sections",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)" },
+                { "name": "test_id", "type": "VARCHAR(36)", "constraints": "FOREIGN KEY -> mock_tests.id" },
+                { "name": "title", "type": "VARCHAR(255)", "constraints": "NOT NULL" },
+                { "name": "sequence_order", "type": "INT", "constraints": "NOT NULL", "description": "Structural order of the section within the test." },
+                { "name": "duration_minutes", "type": "INT", "constraints": "NULLABLE", "description": "Optional sectional time limit." },
+                { "name": "shuffle_questions", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "If true, questions inside this section are randomized per attempt." },
+                { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP" },
+                { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE" },
+                { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE" }
+            ],
+            "indexes": [
+                "INDEX(test_id)",
+                "UNIQUE(test_id, sequence_order)"
+            ]
+            },
+            {
+            "name": "questions",
+            "description": "Reusable question bank. Questions can be reused across multiple test sections.",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the logical question." },
+                { "name": "question_type", "type": "VARCHAR(20)", "constraints": "ENUM('MCQ', 'NUMERICAL', 'MULTI_CORRECT')", "description": "Format of the question." },
+                { "name": "question_text", "type": "TEXT", "constraints": "NOT NULL", "description": "The actual content/body of the question." },
+                { "name": "options_json", "type": "JSON", "constraints": "NULLABLE", "description": "JSON payload containing answer options, null for Numerical questions." },
+                { "name": "correct_answer", "type": "JSON", "constraints": "NOT NULL", "description": "MCQ: {\"correct\":\"B\"}; MULTI_CORRECT: {\"correct\":[\"A\",\"C\"]}; NUMERICAL: {\"value\":9.8,\"tolerance\":0.2}." },
+                { "name": "positive_marks", "type": "DECIMAL(5,2)", "constraints": "NOT NULL", "description": "Default marks awarded for a correct answer." },
+                { "name": "negative_marks", "type": "DECIMAL(5,2)", "constraints": "DEFAULT 0.00", "description": "Default marks deducted for an incorrect answer." },
+                { "name": "sequence_order", "type": "INT", "constraints": "NOT NULL", "description": "Default ordering of the question when placed in a context." },
+                { "name": "explanation", "type": "TEXT", "constraints": "NULLABLE", "description": "Explanation shown after submission/review." },
+                { "name": "difficulty", "type": "VARCHAR(20)", "constraints": "ENUM('EASY','MEDIUM','HARD'), NULLABLE", "description": "Difficulty classification of the question." },
+                { "name": "topic_tags", "type": "JSON", "constraints": "NULLABLE", "description": "Topic/tag metadata associated with the question." },
+                { "name": "created_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the creator, sourced from x-user-id." },
+                { "name": "updated_by", "type": "VARCHAR(36)", "constraints": "NOT NULL", "description": "User ID of the user who last modified the question, sourced from x-user-id." },
+                { "name": "is_locked", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "Whether the question is locked from direct modification after being used in a published test." },
+                { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the question was created." },
+                { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the question was last modified." },
+                { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the question was soft-deleted." }
+            ]
+            },
+            {
+            "name": "section_questions",
+            "description": "Mapping table that allows reusable questions to be placed in multiple test sections.",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)" },
+                { "name": "section_id", "type": "VARCHAR(36)", "constraints": "NOT NULL, FOREIGN KEY -> sections.id" },
+                { "name": "question_id", "type": "VARCHAR(36)", "constraints": "NOT NULL, FOREIGN KEY -> questions.id" },
+                { "name": "sequence_order", "type": "INT", "constraints": "NOT NULL", "description": "Order of the question within the section." },
+                { "name": "positive_marks_override", "type": "DECIMAL(5,2)", "constraints": "NULLABLE", "description": "Optional per-test/section override for positive marks." },
+                { "name": "negative_marks_override", "type": "DECIMAL(5,2)", "constraints": "NULLABLE", "description": "Optional per-test/section override for negative marks." }
+            ],
+            "indexes": [
+                "UNIQUE(section_id, question_id)",
+                "UNIQUE(section_id, sequence_order)"
+            ]
+            },
+            {
+            "name": "question_media",
+            "columns": [
+                { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)" },
+                { "name": "question_id", "type": "VARCHAR(36)", "constraints": "NOT NULL, FOREIGN KEY -> questions.id" },
+                { "name": "media_type", "type": "VARCHAR(20)", "constraints": "ENUM('IMAGE','AUDIO','LATEX')", "description": "Type of media attached to the question." },
+                { "name": "url", "type": "VARCHAR(500)", "constraints": "NOT NULL", "description": "Location of the media resource." },
+                { "name": "position", "type": "VARCHAR(20)", "constraints": "ENUM('QUESTION','OPTION_A','OPTION_B','OPTION_C','OPTION_D','OPTION_E'), NULLABLE", "description": "Location where the media should be rendered." }
+            ]
+            }
+        ]
+        },
+    {
+      "name": "payment_db",
+      "service": "payment-service",
+      "tables": [
+        {
+          "name": "promotions",
+          "columns": [
+            { "name": "code", "type": "VARCHAR(50)", "constraints": "PRIMARY KEY", "description": "Unique promotional code string." },
+            { "name": "discount_percent", "type": "DECIMAL(5,2)", "constraints": "NOT NULL", "description": "Percentage of discount applied by this promo code." },
+            { "name": "max_uses", "type": "INT", "constraints": "NOT NULL", "description": "Maximum number of times this code can be redeemed globally." },
+            { "name": "expires_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp after which the code is no longer valid." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the promotion was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the promotion was last modified." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the promotion was soft-deleted." }
+          ]
+        },
+        {
+          "name": "orders",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the order." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user placing the order." },
+            { "name": "series_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> test_db.test_series.id", "description": "Reference to the purchased test series." },
+            { "name": "promotion_code", "type": "VARCHAR(50)", "constraints": "FOREIGN KEY -> promotions.code (NULLABLE)", "description": "Promo code applied to this order, if any." },
+            { "name": "original_amount", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "description": "Cost before any discounts are applied." },
+            { "name": "discount_amount", "type": "DECIMAL(10,2)", "constraints": "DEFAULT 0.00", "description": "Total discount applied to the order." },
+            { "name": "final_amount", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "description": "Final amount to be paid by the user." },
+            { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('PENDING', 'PAID', 'FAILED')", "description": "Current payment state of the order." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the order was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the order was last modified." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the order was soft-deleted." }
+          ]
+        },
+        {
+          "name": "transactions",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the payment transaction." },
+            { "name": "order_id", "type": "VARCHAR(36)", "constraints": "FOREIGN KEY -> orders.id", "description": "Reference to the associated order." },
+            { "name": "gateway_tx_id", "type": "VARCHAR(255)", "constraints": "UNIQUE, NULLABLE", "description": "External transaction ID from the payment gateway." },
+            { "name": "amount", "type": "DECIMAL(10,2)", "constraints": "NOT NULL", "description": "Actual amount processed in this transaction." },
+            { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('INITIATED', 'SUCCESS', 'FAILED')", "description": "State of the payment gateway transaction." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the transaction was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the transaction was last modified." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "attempt_db",
+      "service": "attempt-service",
+      "tables": [
+        {
+          "name": "test_attempts",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the test attempt." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user taking the test." },
+            { "name": "test_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> test_db.mock_tests.id", "description": "Reference to the mock test being attempted." },
+            { "name": "start_time", "type": "TIMESTAMP", "constraints": "NOT NULL", "description": "Timestamp when the user started the test." },
+            { "name": "end_time", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the user finished or submitted the test." },
+            { "name": "total_score", "type": "DECIMAL(6,2)", "constraints": "NULLABLE", "description": "Calculated final score for the attempt." },
+            { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('IN_PROGRESS', 'SUBMITTED', 'EVALUATED')", "description": "Current state of the test attempt." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the attempt record was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the attempt record was last modified." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the attempt record was soft-deleted." }
+          ]
+        },
+        {
+          "name": "student_answers",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the student's answer." },
+            { "name": "attempt_id", "type": "VARCHAR(36)", "constraints": "FOREIGN KEY -> test_attempts.id", "description": "Reference to the parent test attempt." },
+            { "name": "question_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> test_db.questions.id", "description": "Reference to the question being answered." },
+            { "name": "selected_answer", "type": "VARCHAR(255)", "constraints": "NULLABLE", "description": "The option key or value provided by the student." },
+            { "name": "is_correct", "type": "BOOLEAN", "constraints": "NULLABLE", "description": "Boolean indicating if the answer was evaluated as correct." },
+            { "name": "time_spent_seconds", "type": "INT", "constraints": "DEFAULT 0", "description": "Time in seconds the student spent on this specific question." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the answer was first recorded." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the answer was last modified." }
+          ]
+        },
+        {
+          "name": "proctoring_events",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the proctoring event." },
+            { "name": "attempt_id", "type": "VARCHAR(36)", "constraints": "FOREIGN KEY -> test_attempts.id", "description": "Reference to the associated test attempt." },
+            { "name": "event_type", "type": "VARCHAR(50)", "constraints": "ENUM('TAB_SWITCH', 'WINDOW_MINIMIZE', 'FACE_MISSING', 'MULTIPLE_FACES')", "description": "Category of the suspicious activity or event." },
+            { "name": "metadata_json", "type": "JSON", "constraints": "NULLABLE", "description": "Additional details about the event, such as duration or snapshot links." },
+            { "name": "event_timestamp", "type": "TIMESTAMP", "constraints": "NOT NULL", "description": "Exact time the event occurred during the test." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the event record was created." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "progress_db",
+      "service": "progress-service",
+      "tables": [
+        {
+          "name": "user_access_grants",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the access grant." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user receiving access." },
+            { "name": "series_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> test_db.test_series.id", "description": "Reference to the test series being accessed." },
+            { "name": "status", "type": "VARCHAR(20)", "constraints": "ENUM('ACTIVE', 'EXPIRED', 'REVOKED')", "description": "Current validity state of the grant." },
+            { "name": "expires_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the user's access expires." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the access grant was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the access grant was last modified." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the access grant was soft-deleted." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "leaderboard_db",
+      "service": "leaderboard-service",
+      "tables": [
+        {
+          "name": "historical_rankings",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the ranking record." },
+            { "name": "test_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> test_db.mock_tests.id", "description": "Reference to the mock test this ranking belongs to." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user being ranked." },
+            { "name": "score", "type": "DECIMAL(6,2)", "constraints": "NOT NULL", "description": "The user's score used for this ranking." },
+            { "name": "rank_position", "type": "INT", "constraints": "NOT NULL", "description": "The numerical rank achieved by the user." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when this historical ranking was calculated." }
+          ]
+        }
+      ]
+    },
+    {
+      "name": "notification_db",
+      "service": "notification-service",
+      "tables": [
+        {
+          "name": "user_devices",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the device record." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user who owns the device." },
+            { "name": "device_token", "type": "VARCHAR(512)", "constraints": "NOT NULL, UNIQUE", "description": "Push notification token provided by the device OS." },
+            { "name": "platform", "type": "VARCHAR(20)", "constraints": "ENUM('ANDROID', 'IOS', 'WEB')", "description": "Operating system or platform of the device." },
+            { "name": "is_active", "type": "BOOLEAN", "constraints": "DEFAULT true", "description": "Flag indicating if the token is still valid for push notifications." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the device token was registered." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the device token was last refreshed." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the device record was soft-deleted." }
+          ]
+        },
+        {
+          "name": "notifications",
+          "columns": [
+            { "name": "id", "type": "VARCHAR(36)", "constraints": "PRIMARY KEY (UUID)", "description": "Unique identifier for the notification." },
+            { "name": "user_id", "type": "VARCHAR(36)", "constraints": "SOFT REF -> iam_db.users.id", "description": "Reference to the user receiving the notification." },
+            { "name": "type", "type": "VARCHAR(20)", "constraints": "ENUM('EMAIL', 'IN_APP', 'PUSH')", "description": "Delivery method or category of the notification." },
+            { "name": "title", "type": "VARCHAR(255)", "constraints": "NOT NULL", "description": "Subject or title of the notification message." },
+            { "name": "message_body", "type": "TEXT", "constraints": "NOT NULL", "description": "Main content of the notification." },
+            { "name": "is_read", "type": "BOOLEAN", "constraints": "DEFAULT false", "description": "Flag indicating if the user has viewed the notification." },
+            { "name": "created_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP", "description": "Timestamp when the notification was created." },
+            { "name": "updated_at", "type": "TIMESTAMP", "constraints": "DEFAULT CURRENT_TIMESTAMP ON UPDATE", "description": "Timestamp when the notification was last modified." },
+            { "name": "deleted_at", "type": "TIMESTAMP", "constraints": "NULLABLE", "description": "Timestamp when the notification was soft-deleted." }
+          ]
+        }
+      ]
+    }
+  ]
+}
