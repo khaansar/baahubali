@@ -18,6 +18,6 @@ public class WebMvcConfig implements WebMvcConfigurer {
                 .addPathPatterns("/internal/**");
 
         registry.addInterceptor(adminAuthorizationInterceptor)
-                .addPathPatterns("/admins/**", "/admin/**");
+                .addPathPatterns("/admin/**");
     }
 }

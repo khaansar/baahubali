@@ -1,18 +1,31 @@
 package com.example.testservice.client;
 
-import com.example.testservice.config.TestServiceFeignConfig;
 import java.util.UUID;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
-@FeignClient(
-        name = "attempt-service",
-        url = "${internal.services.attempt-url}",
-        configuration = TestServiceFeignConfig.class
-)
-public interface AttemptServiceClient {
+@Component
+public class AttemptServiceClient {
 
-    @GetMapping("/internal/attempts/active-exists/{testId}")
-    boolean hasActiveAttempts(@PathVariable("testId") UUID testId);
+    private final RestClient http;
+
+    public AttemptServiceClient(
+            @Value("${internal.services.attempt-url}") String url,
+            @Value("${internal.auth.my-secret}") String secret,
+            RestClient.Builder builder) {
+        this.http = builder
+                .baseUrl(url)
+                .defaultHeader("X-Service-Caller", "test-service")
+                .defaultHeader("X-Service-Auth", secret)
+                .build();
+    }
+
+    public boolean hasActiveAttempts(UUID testId) {
+        Boolean response = http.get()
+                .uri("/internal/attempts/active-exists/{testId}", testId)
+                .retrieve()
+                .body(Boolean.class);
+        return Boolean.TRUE.equals(response);
+    }
 }

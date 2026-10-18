@@ -1,39 +1,50 @@
 package com.example.communityservice.client;
 
-import com.example.communityservice.config.CommunityFeignConfig;
 import com.example.communityservice.dto.ApiResponse;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-
 import java.util.List;
 import java.util.UUID;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
-@FeignClient(
-        name = "test-service",
-        url = "${internal.services.test-url}",
-        configuration = CommunityFeignConfig.class
-)
-public interface TestSeriesClient {
+@Component
+public class TestSeriesClient {
 
-    @PostMapping("/internal/series/names")
-    ApiResponse<List<SeriesNameDto>> getSeriesNames(
-            @RequestBody List<UUID> seriesIds
-    );
+    private final RestClient http;
 
-    @GetMapping("/internal/series/{seriesId}/review-access")
-    ApiResponse<SeriesReviewAccessDto> getSeriesReviewAccess(
-            @PathVariable("seriesId") UUID seriesId
-    );
+    public TestSeriesClient(
+            @Value("${internal.services.test-url}") String url,
+            @Value("${internal.auth.my-secret}") String secret,
+            RestClient.Builder builder) {
+        this.http = builder
+                .baseUrl(url)
+                .defaultHeader("X-Service-Caller", "community-service")
+                .defaultHeader("X-Service-Auth", secret)
+                .build();
+    }
 
-    record SeriesNameDto(
+    public ApiResponse<List<SeriesNameDto>> getSeriesNames(List<UUID> seriesIds) {
+        return http.post()
+                .uri("/internal/series/names")
+                .body(seriesIds)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public ApiResponse<SeriesReviewAccessDto> getSeriesReviewAccess(UUID seriesId) {
+        return http.get()
+                .uri("/internal/series/{seriesId}/review-access", seriesId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public record SeriesNameDto(
             UUID seriesId,
             String name
     ) {}
 
-    record SeriesReviewAccessDto(
+    public record SeriesReviewAccessDto(
             UUID seriesId,
             boolean paid
     ) {}

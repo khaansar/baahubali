@@ -109,12 +109,13 @@ public class AuditLoggingInterceptor implements HandlerInterceptor {
                 || uri.matches(".*/admin/questions/?")
                 || uri.matches(".*/admin/questions/bulk/?")
                 || uri.matches(".*/admin/mock-tests/[^/]+/sections/?")
+                || uri.matches(".*/admin/sections/[^/]+/questions/?")
                 || uri.matches(".*/admin/mock-tests/[^/]+/clone/?");
     }
 
     private AuditAction resolveAction(String uri, String method) {
 
-        if ("PUT".equalsIgnoreCase(method)) {
+        if ("PUT".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
 
             if (uri.matches(".*/admin/categories/[^/]+/?")) {
                 return new AuditAction("CATEGORY_UPDATED", "CATEGORY");
@@ -164,7 +165,7 @@ public class AuditLoggingInterceptor implements HandlerInterceptor {
             }
         }
 
-        if ("POST".equalsIgnoreCase(method)) {
+        if ("POST".equalsIgnoreCase(method) || "PATCH".equalsIgnoreCase(method)) {
 
             if (uri.matches(".*/admin/mock-tests/[^/]+/publish/?")) {
                 return new AuditAction("TEST_PUBLISHED", "TEST");

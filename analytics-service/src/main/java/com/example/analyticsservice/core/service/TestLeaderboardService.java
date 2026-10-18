@@ -13,7 +13,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import feign.FeignException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
@@ -22,6 +21,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.http.HttpStatus;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
+import org.springframework.web.client.HttpClientErrorException;
+import org.springframework.web.client.RestClientException;
 
 @Service
 @RequiredArgsConstructor
@@ -78,12 +79,12 @@ public class TestLeaderboardService {
                 );
             }
             return response.data().testId().toString();
-        } catch (FeignException.NotFound exception) {
+        } catch (HttpClientErrorException.NotFound exception) {
             throw new ResponseStatusException(
                     HttpStatus.NOT_FOUND,
                     "Test is not available in the public catalog"
             );
-        } catch (FeignException exception) {
+        } catch (RestClientException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "Test service is unavailable"
@@ -110,7 +111,7 @@ public class TestLeaderboardService {
                 );
             }
             return response.data();
-        } catch (FeignException exception) {
+        } catch (RestClientException exception) {
             throw new ResponseStatusException(
                     HttpStatus.BAD_GATEWAY,
                     "IAM service is unavailable"

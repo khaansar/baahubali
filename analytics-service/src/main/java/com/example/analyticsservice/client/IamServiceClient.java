@@ -1,22 +1,36 @@
 package com.example.analyticsservice.client;
 
-import com.example.analyticsservice.config.AnalyticsFeignConfig;
 import java.util.List;
 import java.util.Map;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
-@FeignClient(
-        name = "iam-service",
-        url = "${internal.services.iam-url}",
-        configuration = AnalyticsFeignConfig.class
-)
-public interface IamServiceClient {
+@Component
+public class IamServiceClient {
 
-    @PostMapping("/internal/users/batch")
-    ServiceResponse<Map<String, UserProfile>> getUsersBatch(@RequestBody List<String> userIds);
+    private final RestClient http;
 
-    record UserProfile(String id, String displayName, String avatarUrl) {
+    public IamServiceClient(
+            @Value("${internal.services.iam-url}") String url,
+            @Value("${internal.auth.my-secret}") String secret,
+            RestClient.Builder builder) {
+        this.http = builder
+                .baseUrl(url)
+                .defaultHeader("X-Service-Caller", "analytics-service")
+                .defaultHeader("X-Service-Auth", secret)
+                .build();
+    }
+
+    public ServiceResponse<Map<String, UserProfile>> getUsersBatch(List<String> userIds) {
+        return http.post()
+                .uri("/internal/users/batch")
+                .body(userIds)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
+
+    public record UserProfile(String id, String displayName, String avatarUrl) {
     }
 }

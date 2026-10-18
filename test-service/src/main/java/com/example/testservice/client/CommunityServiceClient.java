@@ -1,20 +1,32 @@
 package com.example.testservice.client;
 
-import com.example.testservice.config.TestServiceFeignConfig;
 import com.example.testservice.dto.ApiResponse;
 import java.util.Map;
-import org.springframework.cloud.openfeign.FeignClient;
-import org.springframework.web.bind.annotation.GetMapping;
-import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.ParameterizedTypeReference;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
 
-@FeignClient(
-        name = "community-service",
-        url = "${internal.services.community-url}",
-        configuration = TestServiceFeignConfig.class
-)
-public interface CommunityServiceClient {
+@Component
+public class CommunityServiceClient {
 
-    @GetMapping("/internal/reviews/{targetId}/average")
-    ApiResponse<Map<String, Double>> getAverageRating(
-            @PathVariable("targetId") String targetId);
+    private final RestClient http;
+
+    public CommunityServiceClient(
+            @Value("${internal.services.community-url}") String url,
+            @Value("${internal.auth.my-secret}") String secret,
+            RestClient.Builder builder) {
+        this.http = builder
+                .baseUrl(url)
+                .defaultHeader("X-Service-Caller", "test-service")
+                .defaultHeader("X-Service-Auth", secret)
+                .build();
+    }
+
+    public ApiResponse<Map<String, Double>> getAverageRating(String targetId) {
+        return http.get()
+                .uri("/internal/reviews/{targetId}/average", targetId)
+                .retrieve()
+                .body(new ParameterizedTypeReference<>() {});
+    }
 }

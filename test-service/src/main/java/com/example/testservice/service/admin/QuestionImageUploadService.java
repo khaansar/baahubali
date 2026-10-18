@@ -1,7 +1,9 @@
 package com.example.testservice.service.admin;
 
 import com.cloudinary.Cloudinary;
+import com.example.common.audit.AuditEvent;
 import com.example.testservice.dto.QuestionImageUploadIntentResponse;
+import com.example.testservice.service.KafkaPublisherService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
@@ -9,6 +11,7 @@ import org.springframework.stereotype.Service;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.UUID;
+import java.time.Instant;
 
 @Service
 @RequiredArgsConstructor
@@ -18,6 +21,7 @@ public class QuestionImageUploadService {
     private static final String PUBLIC_ID_PREFIX = "questions/";
 
     private final Cloudinary cloudinary;
+    private final KafkaPublisherService kafkaPublisherService;
 
     @Value("${cloudinary.cloud-name}")
     private String cloudName;
@@ -46,6 +50,22 @@ public class QuestionImageUploadService {
 
         Map<String, String> uploadParameters = new LinkedHashMap<>();
         parameters.forEach((key, value) -> uploadParameters.put(key, String.valueOf(value)));
+
+        kafkaPublisherService.emitAuditEvent(new AuditEvent(
+                UUID.randomUUID(),
+                adminId,
+                "ADMIN",
+                "QUESTION_IMAGE_UPLOAD_INTENT_CREATED",
+                "QUESTION_IMAGE",
+                publicId,
+                "test-service",
+                "/admin/question-images/upload-intent",
+                "POST",
+                200,
+                null,
+                Map.of("assetFolder", ASSET_FOLDER),
+                Instant.now()
+        ));
 
         return new QuestionImageUploadIntentResponse(
                 cloudName,

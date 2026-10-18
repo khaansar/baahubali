@@ -1,6 +1,6 @@
 package com.example.attemptservice.service;
 
-import com.example.attemptservice.client.TestServiceFeignClient;
+import com.example.attemptservice.client.TestServiceClient;
 import com.example.attemptservice.dto.AttemptHistorySummary;
 import com.example.attemptservice.dto.AttemptReviewResponse;
 import com.example.attemptservice.dto.AttemptStateResponse;
@@ -82,7 +82,7 @@ public class AttemptService {
         thread.setDaemon(true);
         return thread;
     });
-    private final TestServiceFeignClient testServiceFeignClient;
+    private final TestServiceClient testServiceClient;
 
     public AttemptService(AttemptRepository attemptRepository,
                            ActiveAttemptRepository activeAttemptRepository,
@@ -92,7 +92,7 @@ public class AttemptService {
                            @Lazy AttemptFlushWorker attemptFlushWorker,
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper,
-                           TestServiceFeignClient testServiceFeignClient) {
+                           TestServiceClient testServiceClient) {
         this.attemptRepository = attemptRepository;
         this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
@@ -102,7 +102,7 @@ public class AttemptService {
         this.redisTemplate = redisTemplate;
         this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
-        this.testServiceFeignClient = testServiceFeignClient;
+        this.testServiceClient = testServiceClient;
     }
 
     @Transactional
@@ -110,7 +110,7 @@ public class AttemptService {
         Instant now = Instant.now();
 
         TestServiceResponse<InternalTestBlueprintDto> response =
-                testServiceFeignClient.getTestBlueprint(request.getTestId());
+                testServiceClient.getTestBlueprint(request.getTestId());
         if (response == null || !response.success() || response.data() == null) {
             throw new ResponseStatusException(HttpStatus.BAD_GATEWAY,
                     "Test service did not return a test blueprint");
@@ -326,7 +326,7 @@ public class AttemptService {
 
         try {
             TestServiceResponse<InternalTestBlueprintDto> response =
-                    testServiceFeignClient.getTestBlueprint(lockedAttempt.getTestId());
+                    testServiceClient.getTestBlueprint(lockedAttempt.getTestId());
 
             if (response == null || !response.success() || response.data() == null) {
                 throw new IllegalStateException(
@@ -417,7 +417,7 @@ public class AttemptService {
         if (!testIds.isEmpty()) {
             try {
                 TestServiceResponse<List<com.example.attemptservice.dto.internal.InternalTestBulkInfoDto>> response =
-                        testServiceFeignClient.getBulkTestInfo(testIds);
+                        testServiceClient.getBulkTestInfo(testIds);
 
                 if (response != null && response.data() != null) {
                     for (com.example.attemptservice.dto.internal.InternalTestBulkInfoDto info : response.data()) {
@@ -472,7 +472,7 @@ public class AttemptService {
                 ));
 
         TestServiceResponse<InternalTestBlueprintDto> response =
-                testServiceFeignClient.getTestBlueprint(attempt.getTestId());
+                testServiceClient.getTestBlueprint(attempt.getTestId());
 
         if (response == null || !response.success() || response.data() == null) {
             throw new ResponseStatusException(
