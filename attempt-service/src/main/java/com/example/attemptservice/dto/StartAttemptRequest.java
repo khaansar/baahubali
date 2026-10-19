@@ -14,4 +14,5 @@ public class StartAttemptRequest {
     @NotBlank(message = "testId is required")
     private String testId;
     
+    private String accessCode;
 }

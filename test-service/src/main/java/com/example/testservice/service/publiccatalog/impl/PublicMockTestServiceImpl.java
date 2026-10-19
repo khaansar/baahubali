@@ -167,7 +167,10 @@ public class PublicMockTestServiceImpl {
                 test.getSeries().getCategory().getName(),
                 test.getDurationMinutes(),
                 test.getTotalMarks(),
-                test.isFree()
+                test.isFree(),
+                test.getWindowStartTime(),
+                test.getWindowEndTime(),
+                test.getAccessCode() != null && !test.getAccessCode().isBlank()
         );
     }
 }

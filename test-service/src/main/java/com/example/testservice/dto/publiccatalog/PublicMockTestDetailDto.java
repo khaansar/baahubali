@@ -1,6 +1,7 @@
 package com.example.testservice.dto.publiccatalog;
 
 import java.math.BigDecimal;
+import java.time.Instant;
 import java.util.UUID;
 
 public record PublicMockTestDetailDto(
@@ -13,6 +14,9 @@ public record PublicMockTestDetailDto(
         String categoryName,
         Integer durationMinutes,
         BigDecimal totalMarks,
-        boolean isFree
+        boolean isFree,
+        Instant windowStartTime,
+        Instant windowEndTime,
+        boolean hasAccessCode
 ) {
 }

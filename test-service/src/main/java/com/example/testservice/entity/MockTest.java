@@ -61,6 +61,15 @@ public class MockTest extends BaseEntity {
     @Column(name = "is_free")
     private boolean isFree;
 
+    @Column(name = "access_code", length = 64)
+    private String accessCode;
+
+    @Column(name = "window_start_time")
+    private Instant windowStartTime;
+
+    @Column(name = "window_end_time")
+    private Instant windowEndTime;
+
     @Column(name = "published_at")
     private Instant publishedAt;
 

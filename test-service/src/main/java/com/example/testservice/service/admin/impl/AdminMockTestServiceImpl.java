@@ -189,6 +189,9 @@ public class AdminMockTestServiceImpl {
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
         test.setFree(dto.isFree());
+        test.setAccessCode(dto.accessCode());
+        test.setWindowStartTime(dto.windowStartTime());
+        test.setWindowEndTime(dto.windowEndTime());
 
         test.setStatus(Status.DRAFT);
         test.setTotalMarks(BigDecimal.ZERO);
@@ -235,6 +238,9 @@ public class AdminMockTestServiceImpl {
                 test.isNegativeMarkingEnabled(),
                 test.getInstructions(),
                 test.isFree(),
+                test.getAccessCode(),
+                test.getWindowStartTime(),
+                test.getWindowEndTime(),
                 test.getPublishedAt(),
                 test.getCreatedAt(),
                 test.getUpdatedAt(),
@@ -305,6 +311,9 @@ public class AdminMockTestServiceImpl {
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
         test.setFree(dto.isFree());
+        test.setAccessCode(dto.accessCode());
+        test.setWindowStartTime(dto.windowStartTime());
+        test.setWindowEndTime(dto.windowEndTime());
 
         mockTestRepository.save(test);
 
@@ -494,6 +503,9 @@ public class AdminMockTestServiceImpl {
                 test.getInstructions(),
                 test.getTotalMarks(),
                 test.isFree(),
+                test.getWindowStartTime(),
+                test.getWindowEndTime(),
+                test.getAccessCode() != null && !test.getAccessCode().isBlank(),
                 test.getCreatedAt(),
                 test.getUpdatedAt(),
                 test.getDeletedAt(),
@@ -585,6 +597,9 @@ public class AdminMockTestServiceImpl {
                 test.getDurationMinutes(),
                 test.getInstructions(),
                 test.isFree(),
+                test.getAccessCode(),
+                test.getWindowStartTime(),
+                test.getWindowEndTime(),
                 test.isSectionOrderStrict(),
                 test.isShuffleSections(),
                 test.isNegativeMarkingEnabled(),

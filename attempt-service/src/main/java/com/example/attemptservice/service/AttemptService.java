@@ -125,6 +125,24 @@ public class AttemptService {
                     "Test service returned an invalid test duration");
         }
 
+        if (blueprint.getWindowStartTime() != null && now.isBefore(blueprint.getWindowStartTime())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Exam window has not opened yet. Exam starts at: " + blueprint.getWindowStartTime());
+        }
+
+        if (blueprint.getWindowEndTime() != null && now.isAfter(blueprint.getWindowEndTime())) {
+            throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                    "Exam window has closed. Exam ended at: " + blueprint.getWindowEndTime());
+        }
+
+        if (blueprint.getAccessCode() != null && !blueprint.getAccessCode().isBlank()) {
+            String providedCode = request.getAccessCode() != null ? request.getAccessCode().trim() : "";
+            if (!blueprint.getAccessCode().trim().equalsIgnoreCase(providedCode)) {
+                throw new ResponseStatusException(HttpStatus.FORBIDDEN,
+                        "Invalid or missing classroom access code");
+            }
+        }
+
         Optional<Attempt> existingAttempt = attemptRepository
                 .findFirstByUserIdAndTestIdAndStatusOrderByStartedAtDesc(
                         request.getUserId(),

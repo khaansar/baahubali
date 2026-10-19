@@ -1,5 +1,7 @@
 package com.example.testservice.dto.admin;
 
+import java.time.Instant;
+
 public record MockTestCreateDto(
         String title,
         Integer durationMinutes,
@@ -7,5 +9,8 @@ public record MockTestCreateDto(
         boolean shuffleSections,
         boolean negativeMarkingEnabled,
         String instructions,
-        boolean isFree
+        boolean isFree,
+        String accessCode,
+        Instant windowStartTime,
+        Instant windowEndTime
 ) {}

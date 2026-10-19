@@ -20,6 +20,9 @@ public class InternalTestBlueprintDto {
     private String instructions;
     private BigDecimal totalMarks;
     private Boolean free;
+    private String accessCode;
+    private Instant windowStartTime;
+    private Instant windowEndTime;
     private Boolean negativeMarkingEnabled;
     private Instant createdAt;
     private Instant updatedAt;
