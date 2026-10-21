@@ -46,8 +46,8 @@ class TestLeaderboardServiceTest {
     @Test
     void resolvesTheSlugThenReturnsHydratedUserProfiles() {
         TestLeaderboardRow row = new TestLeaderboardRow(
-                "user-1", BigDecimal.valueOf(95), BigDecimal.valueOf(100),
-                BigDecimal.valueOf(95), 420, LocalDateTime.parse("2026-10-01T10:00:00"));
+                "user-1", new BigDecimal("95.456"), new BigDecimal("100.004"),
+                new BigDecimal("66.666"), 420, LocalDateTime.parse("2026-10-01T10:00:00"));
         when(reports.findFirstAttemptLeaderboard(testId.toString(), PageRequest.of(0, 25)))
                 .thenReturn(new PageImpl<>(List.of(row), PageRequest.of(0, 25), 1));
         when(iamServiceClient.getUsersBatch(List.of("user-1")))
@@ -63,6 +63,9 @@ class TestLeaderboardServiceTest {
             assertThat(entry.rank()).isEqualTo(1);
             assertThat(entry.userName()).isEqualTo("Ada Lovelace");
             assertThat(entry.avatarUrl()).isEqualTo("https://cdn.example/ada.png");
+            assertThat(entry.score()).isEqualByComparingTo("95.46");
+            assertThat(entry.maxScore()).isEqualByComparingTo("100.00");
+            assertThat(entry.accuracy()).isEqualByComparingTo("66.67");
         });
         verify(testServiceClient).getPublishedTestStatusBySlug("physics-mock-1");
     }
