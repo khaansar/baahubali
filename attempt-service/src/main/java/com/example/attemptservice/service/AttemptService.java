@@ -1,6 +1,7 @@
 package com.example.attemptservice.service;
 
 import com.example.attemptservice.client.TestServiceClient;
+import com.example.attemptservice.client.AnalyticsServiceClient;
 import com.example.attemptservice.dto.AttemptHistorySummary;
 import com.example.attemptservice.dto.AttemptReviewResponse;
 import com.example.attemptservice.dto.AttemptStateResponse;
@@ -92,6 +93,7 @@ public class AttemptService {
         return thread;
     });
     private final TestServiceClient testServiceClient;
+    private final AnalyticsServiceClient analyticsServiceClient;
 
     public AttemptService(AttemptRepository attemptRepository,
                            ActiveAttemptRepository activeAttemptRepository,
@@ -101,7 +103,8 @@ public class AttemptService {
                            @Lazy AttemptFlushWorker attemptFlushWorker,
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper,
-                           TestServiceClient testServiceClient) {
+                           TestServiceClient testServiceClient,
+                           AnalyticsServiceClient analyticsServiceClient) {
         this.attemptRepository = attemptRepository;
         this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
@@ -112,6 +115,7 @@ public class AttemptService {
         this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceClient = testServiceClient;
+        this.analyticsServiceClient = analyticsServiceClient;
     }
 
     @Transactional
@@ -493,6 +497,7 @@ public class AttemptService {
         }
 
         InternalTestBlueprintDto blueprint = response.data();
+        Double finalScore = analyticsServiceClient.getTotalScore(attemptId, userId);
         List<QuestionReviewDto> reviewDtos = new ArrayList<>();
         List<SectionReviewDto> sectionReviewDtos = new ArrayList<>();
         int correctCount = 0;
@@ -605,7 +610,7 @@ public class AttemptService {
 
         return AttemptReviewResponse.builder()
                 .attemptId(attempt.getId())
-                .finalScore(attempt.getFinalScore())
+                .finalScore(finalScore)
                 .totalQuestions(reviewDtos.size())
                 .correctCount(correctCount)
                 .wrongCount(wrongCount)
