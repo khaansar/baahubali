@@ -17,13 +17,21 @@ import lombok.Setter;
 @Builder
 public class QuestionReviewDto {
     private String questionId;
+    private String sectionId;
+    private String sectionTitle;
     private String questionText;
 
     private List<Map<String, Object>> questionImages;
     private Map<String, List<Map<String, Object>>> optionImages;
+    private Map<String, Object> options;
+    private String questionType;
 
     private String selectedOption;
     private String correctOption;
+    private String status;
+    private Double positiveMarks;
+    private Double negativeMarks;
+    private Double marksAwarded;
     private String explanation;
     private List<Map<String, Object>> explanationImages;
 

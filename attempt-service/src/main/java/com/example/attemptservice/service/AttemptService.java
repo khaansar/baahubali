@@ -7,6 +7,7 @@ import com.example.attemptservice.dto.AttemptStateResponse;
 import com.example.attemptservice.dto.PatchAttemptRequest;
 import com.example.attemptservice.dto.PatchAttemptResponse;
 import com.example.attemptservice.dto.QuestionReviewDto;
+import com.example.attemptservice.dto.SectionReviewDto;
 import com.example.attemptservice.dto.StartAttemptRequest;
 import com.example.attemptservice.dto.StartAttemptResponse;
 import com.example.attemptservice.dto.SubmitAttemptResponse;
@@ -44,10 +45,18 @@ import org.springframework.web.servlet.mvc.method.annotation.SseEmitter;
 
 import java.time.Duration;
 import java.time.Instant;
+import java.math.BigDecimal;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collection;
+import java.util.HashMap;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Optional;
+import java.util.Set;
+import java.util.TreeSet;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.CopyOnWriteArrayList;
@@ -465,11 +474,13 @@ public class AttemptService {
 
         List<AttemptAnswer> studentAnswers = attemptAnswerRepository.findByAttemptId(attemptId);
 
-        Map<String, String> answerMap = studentAnswers.stream()
-                .collect(Collectors.toMap(
-                        AttemptAnswer::getQuestionId,
-                        AttemptAnswer::getSelectedOption
-                ));
+        Map<String, String> answerMap = new HashMap<>();
+        for (AttemptAnswer answer : studentAnswers) {
+            // A null selection represents an unanswered question.  Do not use
+            // Collectors.toMap here: duplicate or null legacy rows must not make
+            // a student's review unavailable.
+            answerMap.put(answer.getQuestionId(), answer.getSelectedOption());
+        }
 
         TestServiceResponse<InternalTestBlueprintDto> response =
                 testServiceClient.getTestBlueprint(attempt.getTestId());
@@ -483,6 +494,10 @@ public class AttemptService {
 
         InternalTestBlueprintDto blueprint = response.data();
         List<QuestionReviewDto> reviewDtos = new ArrayList<>();
+        List<SectionReviewDto> sectionReviewDtos = new ArrayList<>();
+        int correctCount = 0;
+        int wrongCount = 0;
+        int unansweredCount = 0;
 
         Map<String, List<String>> questionOrderMap = null;
         if (attempt.getQuestionOrderJson() != null && !attempt.getQuestionOrderJson().isBlank()) {
@@ -493,6 +508,10 @@ public class AttemptService {
 
         if (blueprint.getSections() != null) {
             for (InternalTestBlueprintDto.InternalSectionDto section : blueprint.getSections()) {
+                int sectionCorrectCount = 0;
+                int sectionWrongCount = 0;
+                int sectionUnansweredCount = 0;
+                double sectionMarksAwarded = 0;
                 if (section.getQuestions() != null) {
                     List<InternalTestBlueprintDto.InternalQuestionDto> sectionQuestions = section.getQuestions();
                     if (questionOrderMap != null && questionOrderMap.containsKey(section.getSectionId())) {
@@ -517,23 +536,26 @@ public class AttemptService {
                     }
                     for (InternalTestBlueprintDto.InternalQuestionDto q : sectionQuestions) {
                         String selected = answerMap.get(q.getQuestionId());
+                        String correctOpt = getCorrectOption(q);
+                        QuestionResult result = evaluateQuestion(q, selected,
+                                Boolean.TRUE.equals(blueprint.getNegativeMarkingEnabled()));
 
-                        String correctOpt = null;
-
-                        if (q.getCorrectAnswer() != null) {
-                            if ("MCQ".equalsIgnoreCase(q.getQuestionType())) {
-                                Object key = q.getCorrectAnswer().get("key");
-                                correctOpt = key != null ? key.toString() : null;
-                            } else if ("MULTI_CORRECT".equalsIgnoreCase(q.getQuestionType())) {
-                                Object keys = q.getCorrectAnswer().get("keys");
-                                correctOpt = keys != null ? keys.toString() : null;
-                            } else if ("NUMERICAL".equalsIgnoreCase(q.getQuestionType())) {
-                                Object val = q.getCorrectAnswer().get("value");
-                                correctOpt = val != null ? val.toString() : null;
+                        switch (result.status()) {
+                            case "CORRECT" -> {
+                                correctCount++;
+                                sectionCorrectCount++;
+                            }
+                            case "WRONG" -> {
+                                wrongCount++;
+                                sectionWrongCount++;
+                            }
+                            default -> {
+                                unansweredCount++;
+                                sectionUnansweredCount++;
                             }
                         }
+                        sectionMarksAwarded += result.marksAwarded();
 
-                        
                         InternalTestBlueprintDto.InternalTranslationDto translation =
                                 (q.getTranslations() != null && !q.getTranslations().isEmpty())
                                         ? q.getTranslations().get(0)
@@ -545,13 +567,23 @@ public class AttemptService {
 
                         reviewDtos.add(QuestionReviewDto.builder()
                                 .questionId(q.getQuestionId())
+                                .sectionId(section.getSectionId())
+                                .sectionTitle(section.getTitle())
                                 .questionText(qText)
-                                .questionImages(translation != null ? translation.getQuestionImages() : null)
-                                .optionImages(translation != null ? translation.getOptionImages() : null)
+                                .questionImages(translation != null && translation.getQuestionImages() != null
+                                        ? translation.getQuestionImages() : List.of())
+                                .optionImages(translation != null && translation.getOptionImages() != null
+                                        ? translation.getOptionImages() : Map.of())
+                                .options(readOptions(translation != null ? translation.getOptionsJson() : null))
+                                .questionType(q.getQuestionType())
                                 .selectedOption(selected)
                                 .correctOption(correctOpt)
+                                .status(result.status())
+                                .positiveMarks(decimalValue(q.getPositiveMarks()))
+                                .negativeMarks(decimalValue(q.getNegativeMarks()))
+                                .marksAwarded(result.marksAwarded())
                                 .explanation(q.getExplanation())
-                                .explanationImages(q.getExplanationImages())
+                                .explanationImages(q.getExplanationImages() != null ? q.getExplanationImages() : List.of())
                                 .createdAt(q.getCreatedAt())
                                 .updatedAt(q.getUpdatedAt())
                                 .deletedAt(q.getDeletedAt())
@@ -559,17 +591,135 @@ public class AttemptService {
 
                     }
                 }
+                sectionReviewDtos.add(SectionReviewDto.builder()
+                        .sectionId(section.getSectionId())
+                        .sectionTitle(section.getTitle())
+                        .totalQuestions(section.getQuestions() == null ? 0 : section.getQuestions().size())
+                        .correctCount(sectionCorrectCount)
+                        .wrongCount(sectionWrongCount)
+                        .unansweredCount(sectionUnansweredCount)
+                        .marksAwarded(round(sectionMarksAwarded))
+                        .build());
             }
         }
 
         return AttemptReviewResponse.builder()
                 .attemptId(attempt.getId())
                 .finalScore(attempt.getFinalScore())
+                .totalQuestions(reviewDtos.size())
+                .correctCount(correctCount)
+                .wrongCount(wrongCount)
+                .unansweredCount(unansweredCount)
+                .sections(sectionReviewDtos)
                 .questions(reviewDtos)
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
                 .deletedAt(attempt.getDeletedAt())
                 .build();
+    }
+
+    private String getCorrectOption(InternalTestBlueprintDto.InternalQuestionDto question) {
+        if (question.getCorrectAnswer() == null) {
+            return null;
+        }
+
+        Object answer = switch (question.getQuestionType() == null ? "" : question.getQuestionType().toUpperCase()) {
+            case "MCQ" -> question.getCorrectAnswer().get("key");
+            case "MULTI_CORRECT" -> question.getCorrectAnswer().get("keys");
+            case "NUMERICAL" -> question.getCorrectAnswer().get("value");
+            default -> null;
+        };
+        return answer == null ? null : answer.toString();
+    }
+
+    private QuestionResult evaluateQuestion(InternalTestBlueprintDto.InternalQuestionDto question,
+                                            String selectedOption,
+                                            boolean negativeMarkingEnabled) {
+        if (selectedOption == null || selectedOption.isBlank()) {
+            return new QuestionResult("UNANSWERED", 0D);
+        }
+
+        if (isCorrect(question, selectedOption)) {
+            return new QuestionResult("CORRECT", decimalValue(question.getPositiveMarks()));
+        }
+
+        return new QuestionResult("WRONG", negativeMarkingEnabled
+                ? -decimalValue(question.getNegativeMarks())
+                : 0D);
+    }
+
+    private boolean isCorrect(InternalTestBlueprintDto.InternalQuestionDto question, String selectedOption) {
+        if (question.getCorrectAnswer() == null || question.getQuestionType() == null) {
+            return false;
+        }
+
+        return switch (question.getQuestionType().toUpperCase()) {
+            case "MCQ" -> matchesText(question.getCorrectAnswer().get("key"), selectedOption);
+            case "MULTI_CORRECT" -> normalizeSet(question.getCorrectAnswer().get("keys"))
+                    .equals(normalizeSet(selectedOption));
+            case "NUMERICAL" -> matchesNumber(question.getCorrectAnswer().get("value"), selectedOption);
+            default -> false;
+        };
+    }
+
+    private boolean matchesText(Object correctAnswer, String selectedOption) {
+        return correctAnswer != null && correctAnswer.toString().trim()
+                .equalsIgnoreCase(selectedOption.trim());
+    }
+
+    private boolean matchesNumber(Object correctAnswer, String selectedOption) {
+        if (correctAnswer == null) {
+            return false;
+        }
+        try {
+            return new BigDecimal(correctAnswer.toString().trim())
+                    .compareTo(new BigDecimal(selectedOption.trim())) == 0;
+        } catch (NumberFormatException ex) {
+            return matchesText(correctAnswer, selectedOption);
+        }
+    }
+
+    private Set<String> normalizeSet(Object value) {
+        if (value == null) {
+            return Set.of();
+        }
+        if (value instanceof Collection<?> values) {
+            return values.stream().filter(Objects::nonNull).map(Object::toString)
+                    .map(String::trim).filter(valueText -> !valueText.isBlank())
+                    .map(String::toUpperCase).collect(Collectors.toCollection(TreeSet::new));
+        }
+
+        String text = value.toString().trim().replace("[", "").replace("]", "")
+                .replace("\"", "").replace("'", "");
+        if (text.isBlank()) {
+            return Set.of();
+        }
+        return Arrays.stream(text.split(",")).map(String::trim)
+                .filter(valueText -> !valueText.isBlank()).map(String::toUpperCase)
+                .collect(Collectors.toCollection(TreeSet::new));
+    }
+
+    private Map<String, Object> readOptions(String optionsJson) {
+        if (optionsJson == null || optionsJson.isBlank()) {
+            return Map.of();
+        }
+        try {
+            return objectMapper.readValue(optionsJson, new TypeReference<LinkedHashMap<String, Object>>() {});
+        } catch (Exception ex) {
+            log.warn("Unable to parse options JSON for attempt review");
+            return Map.of();
+        }
+    }
+
+    private double decimalValue(BigDecimal value) {
+        return value == null ? 0D : value.doubleValue();
+    }
+
+    private double round(double value) {
+        return Math.round(value * 100D) / 100D;
+    }
+
+    private record QuestionResult(String status, double marksAwarded) {
     }
 
     public AttemptStateSnapshot getAttemptState(String attemptId, String userId) {
