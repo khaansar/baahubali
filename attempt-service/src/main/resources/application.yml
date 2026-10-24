@@ -53,6 +53,7 @@ internal:
       test-service: ${TEST_SERVICE_SECRET}
   services:
     test-url: ${TEST_SERVICE_URL}
+    analytics-url: ${ANALYTICS_SERVICE_URL}
 
 app:
   api:
