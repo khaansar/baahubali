@@ -9,7 +9,7 @@ public record TestLeaderboardEntry(
         String avatarUrl,
         BigDecimal score,
         BigDecimal maxScore,
-        BigDecimal accuracyPercentage,
+        BigDecimal accuracy,
         Integer timeTakenSeconds,
         LocalDateTime firstAttemptAt
 ) {

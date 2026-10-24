@@ -7,6 +7,8 @@ import com.example.analyticsservice.contract.TestLeaderboardEntry;
 import com.example.analyticsservice.contract.TestLeaderboardResponse;
 import com.example.analyticsservice.contract.TestLeaderboardRow;
 import com.example.analyticsservice.core.repository.TestReportRepository;
+import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
@@ -50,9 +52,9 @@ public class TestLeaderboardService {
                     normalizedPage * normalizedPageSize + i + 1,
                     profileName(profile),
                     profile != null ? profile.avatarUrl() : null,
-                    row.score(),
-                    row.maxScore(),
-                    row.accuracyPercentage(),
+                    round(row.score()),
+                    round(row.maxScore()),
+                    round(row.accuracyPercentage()),
                     row.timeTakenSeconds(),
                     row.firstAttemptAt()
             ));
@@ -130,5 +132,14 @@ public class TestLeaderboardService {
         return profile != null && StringUtils.hasText(profile.displayName())
                 ? profile.displayName().trim()
                 : "Anonymous User";
+    }
+
+    /**
+     * Normalizes decimal leaderboard metrics for the public API. Integer
+     * values such as rank, participant count, and elapsed seconds are left
+     * unchanged.
+     */
+    private static BigDecimal round(BigDecimal value) {
+        return value == null ? null : value.setScale(2, RoundingMode.HALF_UP);
     }
 }
