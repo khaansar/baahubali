@@ -66,6 +66,7 @@ internal:
   services:
     test-url: ${TEST_SERVICE_URL}
     iam-url: ${IAM_SERVICE_URL}
+    attempt-url: ${ATTEMPT_SERVICE_URL}
 
 app:
   cache:
