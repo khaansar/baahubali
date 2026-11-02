@@ -17,6 +17,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+import java.util.List;
 import java.util.Map;
 
 @RestController
@@ -36,6 +37,22 @@ public class InternalAttemptController {
         boolean hasAttempted = attemptService.hasUserAttemptedTest(userId, testId);
         return ResponseEntity.ok(ApiResponse.success(
                 200, "Attempt verification completed successfully", Map.of("hasAttempted", hasAttempted)));
+    }
+
+    @Operation(summary = "Check if a user has a test running now (Internal)")
+    @GetMapping("/users/{userId}/active")
+    public ResponseEntity<ApiResponse<Map<String, Boolean>>> hasRunningAttempt(@PathVariable String userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "Active attempt check completed successfully",
+                Map.of("active", attemptService.hasRunningAttempt(userId))));
+    }
+
+    @Operation(summary = "List the tests a user has finished (Internal)")
+    @GetMapping("/users/{userId}/tests")
+    public ResponseEntity<ApiResponse<List<String>>> getFinishedTestIds(@PathVariable String userId) {
+        return ResponseEntity.ok(ApiResponse.success(
+                HttpStatus.OK.value(), "Finished tests fetched successfully",
+                attemptService.getFinishedTestIds(userId)));
     }
 
     @Operation(summary = "Store the calculated final score for an attempt (Internal)")

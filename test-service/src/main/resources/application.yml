@@ -55,6 +55,7 @@ internal:
     my-secret: ${TEST_SERVICE_SECRET}
     allowed-clients:
       api-gateway: ${API_GATEWAY_SECRET}
+      kalki: ${KALKI_SERVICE_SECRET}
       attempt-service: ${ATTEMPT_SERVICE_SECRET}
       payment-service: ${PAYMENT_SERVICE_SECRET}
       analytics-service: ${ANALYTICS_SERVICE_SECRET}

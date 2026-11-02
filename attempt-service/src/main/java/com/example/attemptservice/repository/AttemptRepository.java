@@ -39,6 +39,12 @@ public interface AttemptRepository extends JpaRepository<Attempt, String> {
             AttemptStatus status
     );
 
+    @Query("SELECT DISTINCT a.testId FROM Attempt a WHERE a.userId = :userId AND a.status IN :statuses")
+    List<String> findDistinctTestIdsByUserIdAndStatusIn(
+            @Param("userId") String userId,
+            @Param("statuses") List<AttemptStatus> statuses
+    );
+
     @Query(value = "SELECT * FROM attempts WHERE id = :attemptId FOR UPDATE", nativeQuery = true)
     Optional<Attempt> findByIdForUpdate(@Param("attemptId") String attemptId);
 
