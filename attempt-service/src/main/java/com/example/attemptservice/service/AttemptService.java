@@ -1128,6 +1128,24 @@ public class AttemptService {
     }
 
     @Transactional(readOnly = true)
+    public boolean hasRunningAttempt(String userId) {
+        Instant now = Instant.now();
+        return attemptRepository
+                .findByUserIdAndStatusOrderByStartedAtDesc(userId, AttemptStatus.IN_PROGRESS)
+                .stream()
+                .anyMatch(attempt -> now.isBefore(
+                        attempt.getStartedAt().plusSeconds(attempt.getDurationMinutes() * 60L)));
+    }
+
+    @Transactional(readOnly = true)
+    public List<String> getFinishedTestIds(String userId) {
+        return attemptRepository.findDistinctTestIdsByUserIdAndStatusIn(
+                userId,
+                List.of(AttemptStatus.SUBMITTED, AttemptStatus.EXPIRED)
+        );
+    }
+
+    @Transactional(readOnly = true)
     public boolean hasUserAttemptedTest(String userId, String testId) {
         return attemptRepository.existsByUserIdAndTestIdAndStatus(
                 userId,

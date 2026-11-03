@@ -143,6 +143,18 @@ spring:
                     redis-rate-limiter.burstCapacity: 40
                     redis-rate-limiter.requestedTokens: 1
 
+            - id: kalki
+              uri: ${KALKI_SERVICE_URL:http://kalki-api:8000}
+              predicates:
+                - Path=/companion-api/**
+              filters:
+                - name: RequestRateLimiter
+                  args:
+                    key-resolver: "#{@userOrIpKeyResolver}"
+                    redis-rate-limiter.replenishRate: 2
+                    redis-rate-limiter.burstCapacity: 10
+                    redis-rate-limiter.requestedTokens: 1
+
 logging:
   level:
     org.springframework.cloud.gateway: INFO
