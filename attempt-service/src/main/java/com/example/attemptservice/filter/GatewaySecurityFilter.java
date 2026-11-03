@@ -24,6 +24,13 @@ public class GatewaySecurityFilter extends OncePerRequestFilter {
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain)
             throws ServletException, IOException {
 
+        // Internal routes are authenticated by InternalAuthInterceptor with service
+        // credentials, not by the gateway-provided user identity header.
+        if (request.getRequestURI().startsWith(request.getContextPath() + "/internal/")) {
+            filterChain.doFilter(request, response);
+            return;
+        }
+
         // Only secure external-facing endpoints routed by API Gateway
         if (request.getRequestURI().startsWith("/attempts-api/")) {
             String userId = request.getHeader("X-User-Id");

@@ -20,6 +20,14 @@ public interface MockTestRepository extends JpaRepository<MockTest, UUID>, JpaSp
 
     boolean existsBySlug(String slug);
 
+    @Query("""
+        SELECT m.id FROM MockTest m
+        WHERE m.status = com.example.testservice.entity.Status.PUBLISHED
+        AND m.deletedAt IS NULL
+        AND (:free IS NULL OR m.isFree = :free)
+    """)
+    List<UUID> findPublishedIds(@Param("free") Boolean free);
+
     @Modifying
     @Query("""
         UPDATE MockTest m

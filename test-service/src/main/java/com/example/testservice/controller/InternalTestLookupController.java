@@ -2,12 +2,14 @@ package com.example.testservice.controller;
 
 import com.example.testservice.entity.MockTest;
 import com.example.testservice.repository.MockTestRepository;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -22,6 +24,11 @@ public class InternalTestLookupController {
             UUID testId,
             UUID seriesId,
             boolean free) {
+    }
+
+    @GetMapping("/published")
+    public List<UUID> published(@RequestParam(required = false) Boolean free) {
+        return tests.findPublishedIds(free);
     }
 
     @GetMapping("/{testId}/series")

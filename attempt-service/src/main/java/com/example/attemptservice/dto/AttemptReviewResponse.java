@@ -18,6 +18,11 @@ import java.util.List;
 public class AttemptReviewResponse {
     private String attemptId;
     private Double finalScore;
+    private Integer totalQuestions;
+    private Integer correctCount;
+    private Integer wrongCount;
+    private Integer unansweredCount;
+    private List<SectionReviewDto> sections;
     private List<QuestionReviewDto> questions;
     private Instant createdAt;
     private Instant updatedAt;

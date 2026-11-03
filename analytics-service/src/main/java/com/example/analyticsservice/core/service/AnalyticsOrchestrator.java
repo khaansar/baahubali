@@ -2,6 +2,8 @@ package com.example.analyticsservice.core.service;
 
 import com.example.analyticsservice.core.exception.*;
 
+import com.example.analyticsservice.client.AttemptServiceClient;
+
 import com.example.analyticsservice.core.entity.*;
 import com.example.analyticsservice.core.repository.*;
 
@@ -34,6 +36,7 @@ public class AnalyticsOrchestrator {
     private final RankingEngine rankingEngine;
     private final ReportAssembler reportAssembler;
     private final ReportPersistenceService persistence;
+    private final AttemptServiceClient attemptServiceClient;
     private final JsonMapper jsonMapper;
     private final ApplicationEventPublisher applicationEventPublisher;
 
@@ -49,6 +52,10 @@ public class AnalyticsOrchestrator {
             SectionAnalysisResult sectionResult = sectionAnalysisEngine.analyze(event);
             PeerComparisonResult peer = rankingEngine.processRankAndStats(event);
             verifyEngineResults(sectionResult, peer);
+
+            // Keep attempts.final_score in sync with analytics' source-of-truth calculation.
+            // This call is idempotent, so a Kafka retry can safely repeat it.
+            attemptServiceClient.updateFinalScore(attemptId, sectionResult.totalScore());
 
             ReportData report = reportAssembler.assemble(event, sectionResult, peer);
             String reportJson = jsonMapper.writeValueAsString(report);
