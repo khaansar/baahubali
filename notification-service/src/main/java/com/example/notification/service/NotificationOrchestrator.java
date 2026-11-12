@@ -75,6 +75,7 @@ public class NotificationOrchestrator {
             }
             case "STREAK_AT_RISK" -> ensureAbsoluteFrontendUrl(payload, "testsUrl", "/tests");
             case "ACCESS_GRANTED" -> enrichAccessGranted(payload);
+            case "ACCESS_REVOKED" -> enrichAccessRevoked(payload);
             default -> {}
         }
     }
@@ -89,13 +90,26 @@ public class NotificationOrchestrator {
         String title = stringValue(payload.get("seriesTitle"));
         payload.put("seriesTitle", HtmlUtils.htmlEscape(isBlank(title) ? "a new test series" : title));
 
-        String reason = stringValue(payload.get("reason"));
-        payload.put("reasonBlock", isBlank(reason) ? "" :
-            "<div style=\"margin:24px 0 0;padding:14px 16px;background:#f5f3ff;border-left:4px solid #6366f1;border-radius:6px;\">"
-            + "<p style=\"margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#4f46e5;\">A note from our team</p>"
-            + "<p style=\"margin:0;font-size:14px;line-height:1.6;color:#334155;\">" + HtmlUtils.htmlEscape(reason.trim()) + "</p></div>");
-
+        payload.put("reasonBlock", reasonBlock(stringValue(payload.get("reason")), "A note from our team", "#f5f3ff", "#6366f1", "#4f46e5"));
         payload.put("accessPeriod", accessPeriodText(stringValue(payload.get("expiresAt"))));
+    }
+
+    private void enrichAccessRevoked(Map<String, Object> payload) {
+        String slug = stringValue(payload.get("slug"));
+        ensureAbsoluteFrontendUrl(payload, "seriesUrl", isBlank(slug) ? "/test-series" : "/test-series/" + slug);
+        ensureAbsoluteFrontendUrl(payload, "historyUrl", "/history");
+        ensureAbsoluteFrontendUrl(payload, "supportUrl", "/support");
+        String title = stringValue(payload.get("seriesTitle"));
+        payload.put("seriesTitle", HtmlUtils.htmlEscape(isBlank(title) ? "a test series" : title));
+        payload.put("reasonBlock", reasonBlock(stringValue(payload.get("reason")), "Reason", "#f8fafc", "#94a3b8", "#475569"));
+    }
+
+    /** Escaped, pre-styled callout for an admin-entered reason; empty when there is none. */
+    private String reasonBlock(String reason, String label, String background, String border, String labelColor) {
+        if (isBlank(reason)) { return ""; }
+        return "<div style=\"margin:24px 0 0;padding:14px 16px;background:" + background + ";border-left:4px solid " + border + ";border-radius:6px;\">"
+            + "<p style=\"margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:" + labelColor + ";\">" + label + "</p>"
+            + "<p style=\"margin:0;font-size:14px;line-height:1.6;color:#334155;\">" + HtmlUtils.htmlEscape(reason.trim()) + "</p></div>";
     }
 
     private String accessPeriodText(String expiresAt) {
@@ -171,7 +185,7 @@ public class NotificationOrchestrator {
             case "ATTEMPT_SUBMITTED" -> List.of(Notification.Channel.IN_APP);
             case "PAYMENT_CAPTURED" -> List.of(Notification.Channel.IN_APP, Notification.Channel.EMAIL);
             case "STREAK_AT_RISK" -> List.of(Notification.Channel.EMAIL);
-            case "ACCESS_GRANTED" -> List.of(Notification.Channel.IN_APP, Notification.Channel.EMAIL);
+            case "ACCESS_GRANTED", "ACCESS_REVOKED" -> List.of(Notification.Channel.IN_APP, Notification.Channel.EMAIL);
             default -> {
                 Object configured = event.payload() == null ? null : event.payload().get("channel");
                 if (configured == null) { yield List.of(Notification.Channel.EMAIL); }
@@ -190,6 +204,7 @@ public class NotificationOrchestrator {
             case "PAYMENT_CAPTURED" -> "Payment successful";
             case "STREAK_AT_RISK" -> "Keep your streak alive";
             case "ACCESS_GRANTED" -> "New test series unlocked";
+            case "ACCESS_REVOKED" -> "Test series access removed";
             default -> eventType.replace('_', ' ');
         };
     }
@@ -199,6 +214,10 @@ public class NotificationOrchestrator {
             case "ATTEMPT_SUBMITTED" -> "Your test has been submitted successfully.";
             case "PAYMENT_CAPTURED" -> "Your payment was successful. Your purchased access is ready.";
             case "STREAK_AT_RISK" -> "Submit a test today to keep your current streak alive.";
+            case "ACCESS_REVOKED" -> {
+                String title = stringValue(payload.get("seriesTitle"));
+                yield isBlank(title) ? "Your access to a test series has been removed." : "Your access to " + title + " has been removed.";
+            }
             case "ACCESS_GRANTED" -> {
                 String title = stringValue(payload.get("seriesTitle"));
                 yield isBlank(title) ? "You have been given access to a new test series." : "You now have access to " + title + ".";
@@ -218,6 +237,7 @@ public class NotificationOrchestrator {
                 yield isBlank(slug) ? null : "/test-series/" + slug;
             }
             case "STREAK_AT_RISK" -> "/tests";
+            case "ACCESS_REVOKED" -> "/history";
             case "ACCESS_GRANTED" -> {
                 String slug = stringValue(payload.get("slug"));
                 yield isBlank(slug) ? "/my-learning" : "/test-series/" + slug;

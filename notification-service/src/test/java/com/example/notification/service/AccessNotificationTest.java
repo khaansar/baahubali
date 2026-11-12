@@ -32,7 +32,7 @@ import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
-class AccessGrantedNotificationTest {
+class AccessNotificationTest {
     @Mock NotificationRepository notifications;
     @Mock NotificationAttemptRepository attempts;
     @Mock TemplateService templates;
@@ -61,13 +61,21 @@ class AccessGrantedNotificationTest {
     }
 
     DomainEvent event(Map<String, Object> payload) {
-        return new DomainEvent(UUID.randomUUID().toString(), "ACCESS_GRANTED", 1, Instant.now(), "payment-service",
+        return event("ACCESS_GRANTED", payload);
+    }
+
+    DomainEvent event(String type, Map<String, Object> payload) {
+        return new DomainEvent(UUID.randomUUID().toString(), type, 1, Instant.now(), "payment-service",
             UUID.randomUUID().toString(), null, null, payload);
     }
 
     Map<String, Object> emailPayload() throws Exception {
+        return emailPayload("ACCESS_GRANTED_EMAIL_V1");
+    }
+
+    Map<String, Object> emailPayload(String template) throws Exception {
         Notification email = saved.stream().filter(n -> n.getChannel() == Notification.Channel.EMAIL).findFirst().orElseThrow();
-        assertEquals("ACCESS_GRANTED_EMAIL_V1", email.getTemplateCode());
+        assertEquals(template, email.getTemplateCode());
         return mapper.readValue(email.getPayload(), new TypeReference<>() {});
     }
 
@@ -97,5 +105,28 @@ class AccessGrantedNotificationTest {
         assertEquals("Your access does not expire.", email.get("accessPeriod"));
         assertEquals("https://app.example.com/my-learning", email.get("seriesUrl"));
         assertEquals("a new test series", email.get("seriesTitle"));
+    }
+
+    @Test void revokeSendsEmailAndInAppWithEscapedReasonAndHelpLinks() throws Exception {
+        orchestrator.process(event("ACCESS_REVOKED", new HashMap<>(Map.of("seriesTitle", "Bank PO Pack", "slug", "bank-po",
+            "reason", "Promotion ended <early>"))));
+
+        assertEquals(2, saved.size());
+        Notification inApp = saved.stream().filter(n -> n.getChannel() == Notification.Channel.IN_APP).findFirst().orElseThrow();
+        assertEquals("Your access to Bank PO Pack has been removed.", inApp.getMessage());
+        assertEquals("/history", inApp.getActionUrl());
+
+        Map<String, Object> email = emailPayload("ACCESS_REVOKED_EMAIL_V1");
+        assertEquals("https://app.example.com/history", email.get("historyUrl"));
+        assertEquals("https://app.example.com/support", email.get("supportUrl"));
+        assertEquals("https://app.example.com/test-series/bank-po", email.get("seriesUrl"));
+        assertTrue(((String) email.get("reasonBlock")).contains("Promotion ended &lt;early&gt;"));
+    }
+
+    @Test void revokeWithoutReasonOmitsReasonBlock() throws Exception {
+        orchestrator.process(event("ACCESS_REVOKED", new HashMap<>()));
+        Map<String, Object> email = emailPayload("ACCESS_REVOKED_EMAIL_V1");
+        assertEquals("", email.get("reasonBlock"));
+        assertEquals("a test series", email.get("seriesTitle"));
     }
 }
