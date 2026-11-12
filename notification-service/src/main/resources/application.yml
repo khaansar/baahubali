@@ -64,6 +64,8 @@ notification:
   max-attempts: ${NOTIFICATION_MAX_ATTEMPTS:5}
   retry-delay-seconds: ${NOTIFICATION_RETRY_DELAY_SECONDS:30}
   frontend-base-url: ${FRONTEND_BASE_URL}
+  # IANA zone for dates shown in emails (e.g. access end dates).
+  display-time-zone: ${NOTIFICATION_DISPLAY_TIME_ZONE:Asia/Kolkata}
   sse-heartbeat-ms: ${NOTIFICATION_SSE_HEARTBEAT_MS:25000}
 
 management:

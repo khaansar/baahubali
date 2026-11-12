@@ -1,5 +1,9 @@
 package com.example.notification.service;
 
+import java.time.format.DateTimeFormatter;
+import java.time.format.DateTimeParseException;
+import java.util.Locale;
+import org.springframework.web.util.HtmlUtils;
 import com.example.notification.config.NotificationProperties;
 import com.example.notification.entity.Notification;
 import com.example.notification.entity.NotificationAttempt;
@@ -70,7 +74,39 @@ public class NotificationOrchestrator {
                 ensureAbsoluteFrontendUrl(payload, "seriesUrl", fallbackPath);
             }
             case "STREAK_AT_RISK" -> ensureAbsoluteFrontendUrl(payload, "testsUrl", "/tests");
+            case "ACCESS_GRANTED" -> enrichAccessGranted(payload);
             default -> {}
+        }
+    }
+
+    /**
+     * Templates are plain {{key}} substitution, so admin-entered text is HTML-escaped here and
+     * optional sections are pre-rendered (empty string when absent) to avoid leaving placeholders.
+     */
+    private void enrichAccessGranted(Map<String, Object> payload) {
+        String slug = stringValue(payload.get("slug"));
+        ensureAbsoluteFrontendUrl(payload, "seriesUrl", isBlank(slug) ? "/my-learning" : "/test-series/" + slug);
+        String title = stringValue(payload.get("seriesTitle"));
+        payload.put("seriesTitle", HtmlUtils.htmlEscape(isBlank(title) ? "a new test series" : title));
+
+        String reason = stringValue(payload.get("reason"));
+        payload.put("reasonBlock", isBlank(reason) ? "" :
+            "<div style=\"margin:24px 0 0;padding:14px 16px;background:#f5f3ff;border-left:4px solid #6366f1;border-radius:6px;\">"
+            + "<p style=\"margin:0 0 4px;font-size:12px;font-weight:600;letter-spacing:0.04em;text-transform:uppercase;color:#4f46e5;\">A note from our team</p>"
+            + "<p style=\"margin:0;font-size:14px;line-height:1.6;color:#334155;\">" + HtmlUtils.htmlEscape(reason.trim()) + "</p></div>");
+
+        payload.put("accessPeriod", accessPeriodText(stringValue(payload.get("expiresAt"))));
+    }
+
+    private String accessPeriodText(String expiresAt) {
+        if (isBlank(expiresAt)) { return "Your access does not expire."; }
+        try {
+            String date = DateTimeFormatter.ofPattern("d MMMM yyyy", Locale.ENGLISH)
+                .withZone(notificationProperties.getDisplayTimeZone()).format(Instant.parse(expiresAt));
+            return "Your access is valid until <strong>" + date + "</strong>.";
+        } catch (DateTimeParseException e) {
+            log.warn("Unparseable expiresAt in ACCESS_GRANTED payload: {}", expiresAt);
+            return "";
         }
     }
 
@@ -135,6 +171,7 @@ public class NotificationOrchestrator {
             case "ATTEMPT_SUBMITTED" -> List.of(Notification.Channel.IN_APP);
             case "PAYMENT_CAPTURED" -> List.of(Notification.Channel.IN_APP, Notification.Channel.EMAIL);
             case "STREAK_AT_RISK" -> List.of(Notification.Channel.EMAIL);
+            case "ACCESS_GRANTED" -> List.of(Notification.Channel.IN_APP, Notification.Channel.EMAIL);
             default -> {
                 Object configured = event.payload() == null ? null : event.payload().get("channel");
                 if (configured == null) { yield List.of(Notification.Channel.EMAIL); }
@@ -152,6 +189,7 @@ public class NotificationOrchestrator {
             case "ATTEMPT_SUBMITTED" -> "Test submitted";
             case "PAYMENT_CAPTURED" -> "Payment successful";
             case "STREAK_AT_RISK" -> "Keep your streak alive";
+            case "ACCESS_GRANTED" -> "New test series unlocked";
             default -> eventType.replace('_', ' ');
         };
     }
@@ -161,6 +199,10 @@ public class NotificationOrchestrator {
             case "ATTEMPT_SUBMITTED" -> "Your test has been submitted successfully.";
             case "PAYMENT_CAPTURED" -> "Your payment was successful. Your purchased access is ready.";
             case "STREAK_AT_RISK" -> "Submit a test today to keep your current streak alive.";
+            case "ACCESS_GRANTED" -> {
+                String title = stringValue(payload.get("seriesTitle"));
+                yield isBlank(title) ? "You have been given access to a new test series." : "You now have access to " + title + ".";
+            }
             default -> "You have a new notification.";
         };
     }
@@ -176,6 +218,10 @@ public class NotificationOrchestrator {
                 yield isBlank(slug) ? null : "/test-series/" + slug;
             }
             case "STREAK_AT_RISK" -> "/tests";
+            case "ACCESS_GRANTED" -> {
+                String slug = stringValue(payload.get("slug"));
+                yield isBlank(slug) ? "/my-learning" : "/test-series/" + slug;
+            }
             default -> null;
         };
     }
