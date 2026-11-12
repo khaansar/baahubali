@@ -2,6 +2,8 @@ package com.example.payment.repository;
 
 import com.example.payment.entity.ProductPrice;
 import java.time.Instant;
+import java.util.Collection;
+import java.util.List;
 import java.util.Optional;
 import java.util.UUID;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -25,4 +27,19 @@ public interface ProductPriceRepository extends JpaRepository<ProductPrice, UUID
         LIMIT 1
         """)
     Optional<ProductPrice> findActive(@Param("pid") UUID pid, @Param("cur") String cur, @Param("now") Instant now);
+
+    @Query("""
+        SELECT p
+        FROM ProductPrice p
+        WHERE p.productId IN :pids
+          AND p.currency = :cur
+          AND p.status = 'ACTIVE'
+          AND p.effectiveFrom <= :now
+          AND (
+              p.effectiveUntil IS NULL
+              OR p.effectiveUntil > :now
+          )
+        ORDER BY p.effectiveFrom DESC
+        """)
+    List<ProductPrice> findActiveFor(@Param("pids") Collection<UUID> pids, @Param("cur") String cur, @Param("now") Instant now);
 }
