@@ -72,6 +72,11 @@ public class AdminCouponService {
     }
 
     @Transactional(readOnly = true)
+    public CouponView get(UUID id) {
+        return CouponView.of(find(id));
+    }
+
+    @Transactional(readOnly = true)
     public PageResponse<RedemptionView> redemptions(UUID id, int page, int size) {
         find(id);
         return PageResponse.of(redemptions.findByCouponId(id, Paging.of(page, size)).map(RedemptionView::of));
