@@ -112,4 +112,38 @@ class EntitlementServiceTest {
         service.grantManual(UUID.randomUUID(), user, ProductType.TEST_SERIES, series, EntitlementSource.ADMIN_GRANT, "reason", null);
         verify(events, never()).publish(anyString(), anyString(), any(), any(), eq(EventTypes.ACCESS_GRANTED), any());
     }
+
+    Entitlement activeEntitlement(Instant exp) {
+        Entitlement e = active(exp);
+        e.setUserId(user); e.setProductType(ProductType.TEST_SERIES); e.setProductReferenceId(series);
+        e.setSource(EntitlementSource.ADMIN_GRANT);
+        return e;
+    }
+    @SuppressWarnings("unchecked")
+    @Test void adminRevokePublishesAccessRevokedWithReason() {
+        Entitlement e = activeEntitlement(null);
+        UUID id = UUID.randomUUID();
+        when(repo.findById(id)).thenReturn(Optional.of(e));
+        when(products.findByProductTypeAndReferenceId(any(), any())).thenReturn(Optional.empty());
+
+        service.revokeById(UUID.randomUUID(), id, "Granted by mistake");
+
+        ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
+        verify(events).publish(eq("payment"), eq("ENTITLEMENT"), any(), eq(user), eq(EventTypes.ACCESS_REVOKED), payload.capture());
+        assertEquals("Granted by mistake", payload.getValue().get("reason"));
+    }
+    @Test void revokingLapsedGrantDoesNotNotify() {
+        Entitlement e = activeEntitlement(Instant.now().minusSeconds(60));
+        UUID id = UUID.randomUUID();
+        when(repo.findById(id)).thenReturn(Optional.of(e));
+        service.revokeById(UUID.randomUUID(), id, "cleanup");
+        verify(events, never()).publish(anyString(), anyString(), any(), any(), eq(EventTypes.ACCESS_REVOKED), any());
+    }
+    @Test void refundRevocationDoesNotSendAccessNotice() {
+        Entitlement e = activeEntitlement(null);
+        UUID order = UUID.randomUUID();
+        when(repo.findActiveByOrder(order)).thenReturn(java.util.List.of(e));
+        service.revokeForOrder(order, "refund", "SYSTEM", null);
+        verify(events, never()).publish(anyString(), anyString(), any(), any(), eq(EventTypes.ACCESS_REVOKED), any());
+    }
 }

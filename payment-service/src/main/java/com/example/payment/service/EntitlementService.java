@@ -48,12 +48,12 @@ public class EntitlementService {
             throw new PaymentException(ErrorCode.VALIDATION_FAILED, "Manual grants cannot use source PURCHASE");
         boolean alreadyActive = repo.findActive(userId, type, refId).isPresent();
         Entitlement e = grant(userId, type, refId, source, null, "ADMIN", adminId.toString(), reason, expiresAt);
-        if (!alreadyActive) publishAccessGranted(e, reason);
+        if (!alreadyActive) publishAccessNotice(EventTypes.ACCESS_GRANTED, e, reason);
         return e;
     }
 
-    /** Lets the notification service tell the user about the new access. Slug lookup is best-effort. */
-    private void publishAccessGranted(Entitlement e, String reason) {
+    /** Lets the notification service tell the user their access changed. Slug lookup is best-effort. */
+    private void publishAccessNotice(String eventType, Entitlement e, String reason) {
         Map<String, Object> payload = new LinkedHashMap<>();
         payload.put("productType", e.getProductType().name());
         payload.put("productReferenceId", e.getProductReferenceId().toString());
@@ -70,7 +70,7 @@ public class EntitlementService {
         }
         if (reason != null && !reason.isBlank()) payload.put("reason", reason.trim());
         if (e.getExpiresAt() != null) payload.put("expiresAt", e.getExpiresAt().toString());
-        events.publish("payment", "ENTITLEMENT", e.getId(), e.getUserId(), EventTypes.ACCESS_GRANTED, payload);
+        events.publish("payment", "ENTITLEMENT", e.getId(), e.getUserId(), eventType, payload);
     }
 
     /** Idempotent. uq_ent_active (generated column) is the real guard; a lost race propagates and the caller retries. */
@@ -98,7 +98,11 @@ public class EntitlementService {
     public void revokeById(UUID adminId, UUID entitlementId, String reason) {
         Entitlement e = repo.findById(entitlementId)
             .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "Entitlement not found"));
+        // A lapsed grant gave no access any more, so telling the user it was "removed" would only confuse them.
+        boolean userHadAccess = e.getStatus() == EntitlementStatus.ACTIVE
+            && (e.getExpiresAt() == null || e.getExpiresAt().isAfter(Instant.now()));
         revoke(e, reason, "ADMIN", adminId.toString());
+        if (userHadAccess) publishAccessNotice(EventTypes.ACCESS_REVOKED, e, reason);
     }
 
     @Transactional
