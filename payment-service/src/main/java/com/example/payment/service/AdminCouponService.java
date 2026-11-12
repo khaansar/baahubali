@@ -65,9 +65,10 @@ public class AdminCouponService {
 
     @Transactional(readOnly = true)
     public PageResponse<CouponView> list(String q, int page, int size) {
-        Specification<Coupon> spec = (q == null || q.isBlank()) ? null
+        // Spring Data JPA 4 rejects Specification.where(null); use unrestricted() for "no filter".
+        Specification<Coupon> spec = (q == null || q.isBlank()) ? Specification.unrestricted()
             : (root, query, cb) -> cb.like(root.get("code"), q.trim().toUpperCase(Locale.ROOT) + "%");
-        return PageResponse.of(coupons.findAll(Specification.where(spec), Paging.of(page, size)).map(CouponView::of));
+        return PageResponse.of(coupons.findAll(spec, Paging.of(page, size)).map(CouponView::of));
     }
 
     @Transactional(readOnly = true)
