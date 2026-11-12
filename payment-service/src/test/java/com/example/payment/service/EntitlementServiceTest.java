@@ -8,6 +8,11 @@ import com.example.payment.entity.enums.ProductType;
 import com.example.payment.event.DomainEventPublisher;
 import com.example.payment.exception.PaymentException;
 import com.example.payment.repository.EntitlementRepository;
+import com.example.payment.repository.ProductRepository;
+import com.example.payment.entity.Product;
+import com.example.payment.event.EventTypes;
+import org.mockito.ArgumentCaptor;
+import java.util.Map;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -19,11 +24,14 @@ import org.mockito.quality.Strictness;
 import java.time.Instant;
 import java.util.Optional;
 import java.util.UUID;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertSame;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -31,11 +39,11 @@ import static org.mockito.Mockito.when;
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
 class EntitlementServiceTest {
-    @Mock EntitlementRepository repo; @Mock TestServiceClient testClient; @Mock DomainEventPublisher events; @Mock AuditService audit;
+    @Mock EntitlementRepository repo; @Mock TestServiceClient testClient; @Mock DomainEventPublisher events; @Mock AuditService audit; @Mock ProductRepository products;
     EntitlementService service;
     UUID user = UUID.randomUUID(), test = UUID.randomUUID(), series = UUID.randomUUID();
 
-    @BeforeEach void setUp() { service = new EntitlementService(repo, testClient, events, audit, new SimpleMeterRegistry()); }
+    @BeforeEach void setUp() { service = new EntitlementService(repo, testClient, events, audit, new SimpleMeterRegistry(), products); }
 
     Entitlement active(Instant exp) { Entitlement e = new Entitlement(); e.setExpiresAt(exp); return e; }
 
@@ -74,5 +82,34 @@ class EntitlementServiceTest {
     @Test void manualGrantCannotUsePurchaseSource() {
         assertThrows(PaymentException.class, () -> service.grantManual(UUID.randomUUID(), user, ProductType.TEST_SERIES, series,
             EntitlementSource.PURCHASE, "x", null));
+    }
+
+    @SuppressWarnings("unchecked")
+    @Test void newManualGrantPublishesAccessGrantedWithReasonTitleAndSlug() {
+        when(repo.findActive(user, ProductType.TEST_SERIES, series)).thenReturn(Optional.empty());
+        Product p = new Product(); p.setName("SSC CGL Full Mocks");
+        when(products.findByProductTypeAndReferenceId(ProductType.TEST_SERIES, series)).thenReturn(Optional.of(p));
+        when(testClient.seriesSlugOf(series)).thenReturn("ssc-cgl-full-mocks");
+
+        service.grantManual(UUID.randomUUID(), user, ProductType.TEST_SERIES, series, EntitlementSource.PROMOTION, "  Scholarship winner ", null);
+
+        ArgumentCaptor<Map<String, Object>> payload = ArgumentCaptor.forClass(Map.class);
+        verify(events).publish(eq("payment"), eq("ENTITLEMENT"), any(), eq(user), eq(EventTypes.ACCESS_GRANTED), payload.capture());
+        assertEquals("Scholarship winner", payload.getValue().get("reason"));
+        assertEquals("SSC CGL Full Mocks", payload.getValue().get("seriesTitle"));
+        assertEquals("ssc-cgl-full-mocks", payload.getValue().get("slug"));
+        assertFalse(payload.getValue().containsKey("expiresAt"));
+    }
+    @Test void manualGrantStillSucceedsWhenSlugLookupFails() {
+        when(repo.findActive(user, ProductType.TEST_SERIES, series)).thenReturn(Optional.empty());
+        when(products.findByProductTypeAndReferenceId(any(), any())).thenReturn(Optional.empty());
+        when(testClient.seriesSlugOf(series)).thenThrow(new RuntimeException("down"));
+        service.grantManual(UUID.randomUUID(), user, ProductType.TEST_SERIES, series, EntitlementSource.ADMIN_GRANT, "reason", null);
+        verify(events).publish(anyString(), anyString(), any(), any(), eq(EventTypes.ACCESS_GRANTED), any());
+    }
+    @Test void repeatManualGrantDoesNotNotifyAgain() {
+        when(repo.findActive(user, ProductType.TEST_SERIES, series)).thenReturn(Optional.of(active(null)));
+        service.grantManual(UUID.randomUUID(), user, ProductType.TEST_SERIES, series, EntitlementSource.ADMIN_GRANT, "reason", null);
+        verify(events, never()).publish(anyString(), anyString(), any(), any(), eq(EventTypes.ACCESS_GRANTED), any());
     }
 }

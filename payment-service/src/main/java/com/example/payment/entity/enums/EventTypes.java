@@ -15,4 +15,6 @@ public final class EventTypes {
     public static final String REFUND_FAILED = "REFUND_FAILED";
     public static final String ENTITLEMENT_GRANTED = "ENTITLEMENT_GRANTED";
     public static final String ENTITLEMENT_REVOKED = "ENTITLEMENT_REVOKED";
+    /** User-facing notice for a manual grant; published on the payment topic the notification service consumes. */
+    public static final String ACCESS_GRANTED = "ACCESS_GRANTED";
 }
