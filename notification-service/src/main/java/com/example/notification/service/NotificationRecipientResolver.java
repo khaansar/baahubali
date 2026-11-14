@@ -1,8 +1,9 @@
 package com.example.notification.service;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.stereotype.Service;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -25,32 +26,26 @@ public class NotificationRecipientResolver {
                 .build();
     }
 
+    /** Returns the user's verified email contact, or null when there is none to send to. */
     public Contact resolve(String userId) {
         try {
-            JsonNode response = iamClient.get()
+            ContactResponse response = iamClient.get()
                     .uri("/internal/users/{userId}/notification-contact", userId)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(ContactResponse.class);
 
-            JsonNode data = response == null
-                    ? null
-                    : response.path("data");
+            ContactData data = response == null ? null : response.data();
 
-            if (data == null || data.isMissingNode() || data.isNull()) {
+            if (data == null
+                    || data.email() == null
+                    || data.email().isBlank()
+                    || !Boolean.TRUE.equals(data.emailVerified())) {
                 return null;
             }
 
-            String email = data.path("email").asText(null);
-            String firstName = data.path("firstName").asText(null);
-            boolean emailVerified = data.path("emailVerified").asBoolean(false);
+            return new Contact(data.email(), data.firstName());
 
-            if (email == null || email.isBlank() || !emailVerified) {
-                return null;
-            }
-
-            return new Contact(email, firstName);
-
-        } catch (RestClientException e) {
+        } catch (RestClientException | HttpMessageConversionException e) {
             log.error(
                     "Failed to resolve notification contact for userId={}",
                     userId,
@@ -61,5 +56,14 @@ public class NotificationRecipientResolver {
     }
 
     public record Contact(String email, String firstName) {
+    }
+
+    /** IAM's standard response envelope; only the payload is needed here. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record ContactResponse(ContactData data) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record ContactData(String email, String firstName, Boolean emailVerified) {
     }
 }
