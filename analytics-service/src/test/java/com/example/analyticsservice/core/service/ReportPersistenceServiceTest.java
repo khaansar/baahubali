@@ -162,6 +162,19 @@ class ReportPersistenceServiceTest {
     }
 
     @Test
+    void claimOfStuckProcessingReportIsReclaimed() {
+        TestReportEntity processing = report("PROCESSING");
+
+        when(reports.findByAttemptIdForUpdate("att-1"))
+                .thenReturn(Optional.of(processing));
+
+        assertThat(service.claim(event)).isTrue();
+
+        assertThat(processing.getStatus()).isEqualTo("PROCESSING");
+        verify(reports).save(processing);
+    }
+
+    @Test
     void claimRetryEvictsTheCachedReportOnlyAfterCommit() {
         when(reports.findByAttemptIdForUpdate("att-1"))
                 .thenReturn(Optional.of(report("FAILED")));

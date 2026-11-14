@@ -50,6 +50,8 @@ public class ReportPersistenceService {
      *
      * @return true if the attempt should be processed (new, or a previous PROCESSING/FAILED
      *         report being retried); false if a COMPLETED report already exists (duplicate).
+     *         Events are keyed by userId, so a PROCESSING report seen here belongs to a run that
+     *         died mid-way; reprocessing is safe because {@link #complete} is idempotent.
      * @throws org.springframework.dao.DataIntegrityViolationException if a concurrent insert
      *         won the race on attempt_id; the caller re-evaluates by calling again.
      */
@@ -66,19 +68,16 @@ public class ReportPersistenceService {
                 return false;
             }
 
-            if (ReportStatus.PROCESSING.name().equals(report.getStatus())) {
-                log.info("Duplicate event already being processed, attemptId={}", event.attemptId());
-                return false;
-            }
-
-            if (ReportStatus.FAILED.name().equals(report.getStatus())) {
+            if (ReportStatus.FAILED.name().equals(report.getStatus())
+                    || ReportStatus.PROCESSING.name().equals(report.getStatus())) {
+                String previousStatus = report.getStatus();
                 report.setStatus(ReportStatus.PROCESSING.name());
                 if (event.startedAt() != null) {
                     report.setStartedAt(toLocalDateTime(event.startedAt()));
                 }
                 reports.save(report);
                 evictReportCacheAfterCommit(event.attemptId(), event.userId());
-                log.info("Retrying failed report, attemptId={}", event.attemptId());
+                log.info("Retrying {} report, attemptId={}", previousStatus, event.attemptId());
                 return true;
             }
 
