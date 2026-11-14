@@ -5,6 +5,7 @@ import com.example.iam.dto.LoginRequest;
 import com.example.iam.dto.RegisterRequest;
 import com.example.iam.entity.Role;
 import com.example.iam.entity.User;
+import com.example.iam.exception.AccountDisabledException;
 import com.example.iam.exception.EmailAlreadyExistsException;
 import com.example.iam.exception.EmailNotVerifiedException;
 import com.example.iam.exception.InvalidCredentialsException;
@@ -80,6 +81,10 @@ public class AuthServiceImpl implements AuthService {
             throw new InvalidCredentialsException();
         }
 
+        if (!user.canSignIn()) {
+            throw new AccountDisabledException();
+        }
+
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
             throw new EmailNotVerifiedException();
         }
@@ -102,9 +107,11 @@ public class AuthServiceImpl implements AuthService {
                 refreshTokenService.rotate(refreshToken);
 
         User user = userRepository.findById(rotation.userId())
-                .orElseThrow(
-                        () -> new com.example.iam.exception.InvalidRefreshTokenException()
-                );
+                .filter(User::canSignIn)
+                .orElseThrow(() -> {
+                    logout(rotation.userId().toString());
+                    return new com.example.iam.exception.InvalidRefreshTokenException();
+                });
 
         String accessToken =
                 jwtService.generateToken(user, rotation.sessionId());

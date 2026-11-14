@@ -87,4 +87,9 @@ public class User {
 
     @Column(name = "deleted_at")
     private Instant deletedAt;
+
+    /** Deactivated or deleted accounts cannot sign in or refresh a session. */
+    public boolean canSignIn() {
+        return Boolean.TRUE.equals(isActive) && deletedAt == null;
+    }
 }

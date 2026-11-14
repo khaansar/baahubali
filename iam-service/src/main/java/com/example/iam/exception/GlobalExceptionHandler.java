@@ -94,6 +94,42 @@ public class GlobalExceptionHandler {
         );
     }
 
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccountDisabled(
+            AccountDisabledException ex) {
+
+        return buildResponse(
+                HttpStatus.FORBIDDEN,
+                ex.getMessage(),
+                "ACCOUNT_DISABLED",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFound(
+            UserNotFoundException ex) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                "USER_NOT_FOUND",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(AccountActionNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccountActionNotAllowed(
+            AccountActionNotAllowedException ex) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                "ACCOUNT_ACTION_NOT_ALLOWED",
+                List.of()
+        );
+    }
+
     @ExceptionHandler(InvalidEmailVerificationTokenException.class)
     public ResponseEntity<ApiResponse<Void>> handleInvalidEmailVerificationToken(
             InvalidEmailVerificationTokenException ex) {
