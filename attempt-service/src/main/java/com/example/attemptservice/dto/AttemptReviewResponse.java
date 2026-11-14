@@ -26,5 +26,4 @@ public class AttemptReviewResponse {
     private List<QuestionReviewDto> questions;
     private Instant createdAt;
     private Instant updatedAt;
-    private Instant deletedAt;
 }

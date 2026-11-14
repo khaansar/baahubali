@@ -158,7 +158,6 @@ public class AttemptService {
                         .deadline(deadline)
                         .createdAt(attempt.getCreatedAt())
                         .updatedAt(attempt.getUpdatedAt())
-                        .deletedAt(attempt.getDeletedAt())
                         .build();
             }
 
@@ -181,7 +180,6 @@ public class AttemptService {
                         .deadline(activeDeadline)
                         .createdAt(activeAttempt.getCreatedAt())
                         .updatedAt(activeAttempt.getUpdatedAt())
-                        .deletedAt(activeAttempt.getDeletedAt())
                         .build();
             }
             throw new ResponseStatusException(HttpStatus.CONFLICT,
@@ -277,7 +275,6 @@ public class AttemptService {
                 .deadline(deadline)
                 .createdAt(saved.getCreatedAt())
                 .updatedAt(saved.getUpdatedAt())
-                .deletedAt(saved.getDeletedAt())
                 .build();
     }
 
@@ -488,7 +485,6 @@ public class AttemptService {
                             .startedAt(attempt.getStartedAt())
                             .createdAt(attempt.getCreatedAt())
                             .updatedAt(attempt.getUpdatedAt())
-                            .deletedAt(attempt.getDeletedAt())
                             .build();
                 })
                 .toList();
@@ -650,7 +646,6 @@ public class AttemptService {
                 .questions(reviewDtos)
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
-                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 
@@ -1035,7 +1030,6 @@ public class AttemptService {
                 .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
-                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 
@@ -1142,7 +1136,6 @@ public class AttemptService {
                 .finalScore(attempt.getFinalScore())
                 .createdAt(attempt.getCreatedAt())
                 .updatedAt(attempt.getUpdatedAt())
-                .deletedAt(attempt.getDeletedAt())
                 .build();
     }
 

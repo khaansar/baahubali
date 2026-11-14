@@ -36,7 +36,6 @@ public class InternalTestBlueprintDto {
         private Boolean shuffleQuestions;
         private Instant createdAt;
         private Instant updatedAt;
-        private Instant deletedAt;
         private List<InternalQuestionDto> questions;
     }
 
@@ -71,6 +70,5 @@ public class InternalTestBlueprintDto {
         private Map<String, List<Map<String, Object>>> optionImages;
         private Instant createdAt;
         private Instant updatedAt;
-        private Instant deletedAt;
     }
 }

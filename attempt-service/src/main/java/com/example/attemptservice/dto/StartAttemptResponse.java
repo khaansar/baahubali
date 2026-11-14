@@ -18,5 +18,4 @@ public class StartAttemptResponse {
     private Instant deadline;
     private Instant createdAt;
     private Instant updatedAt;
-    private Instant deletedAt;
 }
