@@ -14,6 +14,7 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.MissingRequestHeaderException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 import org.springframework.web.server.ResponseStatusException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
@@ -25,6 +26,15 @@ public class NotificationExceptionHandler {
 
     @Value("${app.api.version}")
     private String apiVersion;
+
+    /**
+     * The client closed a streaming connection (e.g. the notification stream) mid-response.
+     * There is no one left to answer, so nothing is written.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientDisconnected(AsyncRequestNotUsableException exception) {
+        log.debug("Client disconnected before the response completed: {}", exception.getMessage());
+    }
 
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ApiResponse<Void>> handleResponseStatus(ResponseStatusException exception) {
