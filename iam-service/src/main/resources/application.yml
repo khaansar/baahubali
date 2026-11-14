@@ -75,8 +75,11 @@ app:
   api:
     version: ${API_VERSION}
 
-  email-verification:
-    base-url: ${EMAIL_VERIFICATION_BASE_URL}
+  # One-time codes for email verification and account deletion.
+  otp:
+    ttl: ${OTP_TTL:10m}                         # how long a code stays valid
+    max-attempts: ${OTP_MAX_ATTEMPTS:5}         # wrong entries before the code is discarded
+    resend-cooldown: ${OTP_RESEND_COOLDOWN:60s} # minimum wait between codes for one user
 
   password-reset:
     base-url: ${PASSWORD_RESET_BASE_URL}

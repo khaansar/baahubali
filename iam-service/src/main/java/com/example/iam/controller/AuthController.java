@@ -138,7 +138,7 @@ public class AuthController {
     public ResponseEntity<ApiResponse<Map<String, Object>>> verifyEmail(
             @Valid @RequestBody VerifyEmailRequest request) {
 
-        authService.verifyEmail(request.token());
+        authService.verifyEmail(request.email(), request.code());
 
         return ResponseEntity.ok()
                 .body(ApiResponse.success(
@@ -148,32 +148,16 @@ public class AuthController {
                 ));
     }
 
-    @GetMapping("/verify-email/validate")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> validateEmailVerificationToken(
-            @RequestParam String token) {
-
-        if (!authService.isEmailVerificationTokenValid(token)) {
-            throw new com.example.iam.exception.InvalidEmailVerificationTokenException();
-        }
-
-        return ResponseEntity.ok()
-                .body(ApiResponse.success(
-                        HttpStatus.OK.value(),
-                        "Email verification link is valid",
-                        Map.of("valid", true)
-                ));
-    }
-
     @PostMapping("/resend-verification")
     public ResponseEntity<ApiResponse<Map<String, Object>>> resendVerification(
-            @RequestParam String email) {
+            @Valid @RequestBody com.example.iam.dto.ResendVerificationRequest request) {
 
-        authService.resendVerificationEmail(email);
+        authService.resendVerificationCode(request.email());
 
         return ResponseEntity.ok()
                 .body(ApiResponse.success(
                         HttpStatus.OK.value(),
-                        "If the account exists and requires verification, a verification email has been sent",
+                        "If the account exists and requires verification, a new code has been sent",
                         Map.of()
                 ));
     }

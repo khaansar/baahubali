@@ -10,9 +10,8 @@ public interface AuthService {
     AuthenticationResult authenticate(LoginRequest request);
     AuthenticationResult refresh(String refreshToken);
     void logout(String userId);
-    void verifyEmail(String token);
-    boolean isEmailVerificationTokenValid(String token);
-    void resendVerificationEmail(String email);
+    void verifyEmail(String email, String code);
+    void resendVerificationCode(String email);
     void forgotPassword(String email);
     boolean isPasswordResetTokenValid(String token);
     void resetPassword(String token, String newPassword);

@@ -3,7 +3,7 @@ package com.example.iam.event;
 import java.time.Instant;
 import java.util.Map;
 
-public record EmailVerificationRequestedEvent(
+public record OtpRequestedEvent(
         String eventId,
         String eventType,
         Integer version,

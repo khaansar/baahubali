@@ -21,14 +21,20 @@ public class IamEventPublisher {
     private final KafkaTemplate<String, String> kafkaTemplate;
     private final ObjectMapper objectMapper;
 
-    public void publishEmailVerificationRequested(
+    public static final String EMAIL_VERIFICATION_OTP_REQUESTED = "USER_EMAIL_VERIFICATION_OTP_REQUESTED";
+    public static final String ACCOUNT_DELETION_OTP_REQUESTED = "ACCOUNT_DELETION_OTP_REQUESTED";
+
+    /** Asks the notification service to email a one-time code to the user. */
+    public void publishOtpRequested(
             User user,
-            String verificationUrl
+            String eventType,
+            String otp,
+            long expiresInMinutes
     ) {
-        EmailVerificationRequestedEvent event =
-                new EmailVerificationRequestedEvent(
+        OtpRequestedEvent event =
+                new OtpRequestedEvent(
                         UUID.randomUUID().toString(),
-                        "USER_EMAIL_VERIFICATION_REQUESTED",
+                        eventType,
                         1,
                         Instant.now(),
                         "iam-service",
@@ -38,7 +44,8 @@ public class IamEventPublisher {
                         Map.of(
                                 "channel", "EMAIL",
                                 "firstName", user.getFirstName(),
-                                "verificationUrl", verificationUrl
+                                "otp", otp,
+                                "expiresInMinutes", expiresInMinutes
                         )
                 );
 
@@ -52,7 +59,8 @@ public class IamEventPublisher {
             ).whenComplete((result, exception) -> {
                 if (exception != null) {
                     log.error(
-                            "Failed to publish email verification event userId={}",
+                            "Failed to publish {} event userId={}",
+                            eventType,
                             user.getId(),
                             exception
                     );
@@ -60,14 +68,15 @@ public class IamEventPublisher {
                 }
 
                 log.debug(
-                        "Published email verification event userId={}",
+                        "Published {} event userId={}",
+                        eventType,
                         user.getId()
                 );
             });
 
         } catch (Exception e) {
             throw new IllegalStateException(
-                    "Failed to serialize email verification event",
+                    "Failed to serialize " + eventType + " event",
                     e
             );
         }

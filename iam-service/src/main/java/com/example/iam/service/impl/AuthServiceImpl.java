@@ -61,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
 
         user = userRepository.save(user);
 
-        emailVerificationService.issueVerificationEmail(user);
+        emailVerificationService.sendVerificationCode(user);
 
         return user;
     }
@@ -130,18 +130,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void verifyEmail(String token) {
-        emailVerificationService.verifyEmail(token);
+    public void verifyEmail(String email, String code) {
+        emailVerificationService.verifyEmail(email, code);
     }
 
     @Override
-    public boolean isEmailVerificationTokenValid(String token) {
-        return emailVerificationService.isVerificationTokenValid(token);
-    }
-
-    @Override
-    public void resendVerificationEmail(String email) {
-        emailVerificationService.resendVerificationEmail(email);
+    public void resendVerificationCode(String email) {
+        emailVerificationService.resendVerificationCode(email);
     }
 
     @Value("${app.password-reset.base-url:http://localhost:3000/reset-password}")

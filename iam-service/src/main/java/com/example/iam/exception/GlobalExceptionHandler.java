@@ -130,16 +130,30 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidEmailVerificationToken(
-            InvalidEmailVerificationTokenException ex) {
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidOtp(
+            InvalidOtpException ex) {
 
         return buildResponse(
-                HttpStatus.GONE,
+                HttpStatus.BAD_REQUEST,
                 ex.getMessage(),
-                "EMAIL_VERIFICATION_TOKEN_INVALID",
+                "OTP_INVALID",
                 List.of()
         );
+    }
+
+    @ExceptionHandler(OtpCooldownException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOtpCooldown(
+            OtpCooldownException ex) {
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ApiResponse.error(
+                        HttpStatus.TOO_MANY_REQUESTS.value(),
+                        ex.getMessage(),
+                        "OTP_COOLDOWN",
+                        List.of()
+                ));
     }
 
     @ExceptionHandler(InvalidPasswordResetTokenException.class)

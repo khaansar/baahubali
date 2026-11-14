@@ -191,7 +191,6 @@ gateway:
       - /auth-api/register
       - /auth-api/refresh
       - /auth-api/verify-email
-      - /auth-api/verify-email/validate
       - /auth-api/resend-verification
       - /auth-api/forgot-password
       - /auth-api/reset-password
