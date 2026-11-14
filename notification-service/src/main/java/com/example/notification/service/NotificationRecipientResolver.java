@@ -28,7 +28,7 @@ public class NotificationRecipientResolver {
     public Contact resolve(String userId) {
         try {
             JsonNode response = iamClient.get()
-                    .uri("/auth-api/internal/users/{userId}/notification-contact", userId)
+                    .uri("/internal/users/{userId}/notification-contact", userId)
                     .retrieve()
                     .body(JsonNode.class);
 
