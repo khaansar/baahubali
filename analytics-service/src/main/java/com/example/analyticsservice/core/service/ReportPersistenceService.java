@@ -9,8 +9,6 @@ import com.example.analyticsservice.contract.SectionAnalysisResult;
 import com.example.analyticsservice.core.entity.ReportStatus;
 import com.example.analyticsservice.core.entity.SectionPerformanceEntity;
 import com.example.analyticsservice.core.repository.SectionPerformanceRepository;
-import com.example.analyticsservice.core.entity.TestLeaderboardSnapshotEntity;
-import com.example.analyticsservice.core.repository.TestLeaderboardSnapshotRepository;
 import com.example.analyticsservice.core.entity.TestReportEntity;
 import com.example.analyticsservice.core.repository.TestReportRepository;
 import com.example.analyticsservice.web.service.ReportCacheService;
@@ -40,7 +38,6 @@ public class ReportPersistenceService {
 
     private final TestReportRepository reports;
     private final SectionPerformanceRepository sections;
-    private final TestLeaderboardSnapshotRepository snapshots;
     private final ReportCacheService reportCacheService;
     private final UserTopicPerformanceRepository topicPerformanceRepository;
     private final TestAttemptRegistryService testAttemptRegistryService;
@@ -102,7 +99,7 @@ public class ReportPersistenceService {
         return true;
     }
 
-    /** Writes report, section rows and leaderboard snapshot atomically and marks COMPLETED. */
+    /** Writes the report and its section rows atomically and marks the report COMPLETED. */
     @Transactional
     public void complete(AttemptSubmittedEvent event,
                          SectionAnalysisResult sectionResult,
@@ -124,7 +121,6 @@ public class ReportPersistenceService {
         if (event.startedAt() != null) {
             report.setStartedAt(toLocalDateTime(event.startedAt()));
         }
-        report.setRankPosition(peer.rank());
         report.setPercentile(scale2(peer.percentile()));
         report.setReportData(reportJson);
         report.setStatus(ReportStatus.COMPLETED.name());
@@ -149,16 +145,6 @@ public class ReportPersistenceService {
                 })
                 .toList();
         sections.saveAll(rows);
-
-        TestLeaderboardSnapshotEntity snapshot = snapshots.findByAttemptId(attemptId)
-                .orElseGet(TestLeaderboardSnapshotEntity::new);
-        snapshot.setTestId(event.testId());
-        snapshot.setAttemptId(attemptId);
-        snapshot.setUserId(event.userId());
-        snapshot.setScore(scale2(sectionResult.totalScore()));
-        snapshot.setTimeTakenSeconds(toInt(event.timeTakenSeconds()));
-        snapshot.setRankPosition(peer.rank());
-        snapshots.save(snapshot);
 
         if (event.topicAnswers() != null && !event.topicAnswers().isEmpty()) {
             for (com.example.analyticsservice.contract.TopicAnswerPayload topicPayload : event.topicAnswers()) {

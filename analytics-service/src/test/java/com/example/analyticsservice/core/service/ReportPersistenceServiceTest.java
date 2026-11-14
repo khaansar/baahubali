@@ -7,10 +7,8 @@ import com.example.analyticsservice.contract.SectionAnalysisResult;
 import com.example.analyticsservice.contract.SectionPerformanceResult;
 import com.example.analyticsservice.core.entity.ReportStatus;
 import com.example.analyticsservice.core.entity.SectionPerformanceEntity;
-import com.example.analyticsservice.core.entity.TestLeaderboardSnapshotEntity;
 import com.example.analyticsservice.core.entity.TestReportEntity;
 import com.example.analyticsservice.core.repository.SectionPerformanceRepository;
-import com.example.analyticsservice.core.repository.TestLeaderboardSnapshotRepository;
 import com.example.analyticsservice.core.repository.TestReportRepository;
 import com.example.analyticsservice.core.repository.UserTopicPerformanceRepository;
 import com.example.analyticsservice.web.service.ReportCacheService;
@@ -40,7 +38,6 @@ class ReportPersistenceServiceTest {
 
     private TestReportRepository reports;
     private SectionPerformanceRepository sections;
-    private TestLeaderboardSnapshotRepository snapshots;
     private UserTopicPerformanceRepository topicPerformanceRepository;
     private ReportCacheService reportCacheService;
     private TestAttemptRegistryService testAttemptRegistryService;
@@ -82,7 +79,6 @@ class ReportPersistenceServiceTest {
     void setUp() {
         reports = mock(TestReportRepository.class);
         sections = mock(SectionPerformanceRepository.class);
-        snapshots = mock(TestLeaderboardSnapshotRepository.class);
         topicPerformanceRepository = mock(UserTopicPerformanceRepository.class);
         reportCacheService = mock(ReportCacheService.class);
         testAttemptRegistryService = mock(TestAttemptRegistryService.class);
@@ -90,14 +86,10 @@ class ReportPersistenceServiceTest {
         service = new ReportPersistenceService(
                 reports,
                 sections,
-                snapshots,
                 reportCacheService,
                 topicPerformanceRepository,
                 testAttemptRegistryService
         );
-
-        when(snapshots.findByAttemptId("att-1"))
-                .thenReturn(Optional.empty());
     }
 
     @AfterEach
@@ -193,7 +185,7 @@ class ReportPersistenceServiceTest {
     }
 
     @Test
-    void completePersistsReportSectionsAndSnapshot() {
+    void completePersistsReportAndSections() {
         TestReportEntity processing = report("PROCESSING");
 
         when(reports.findByAttemptIdForUpdate("att-1"))
@@ -209,7 +201,6 @@ class ReportPersistenceServiceTest {
                 .isEqualByComparingTo("300.00");
         assertThat(processing.getAccuracyPercentage())
                 .isEqualByComparingTo("82.50");
-        assertThat(processing.getRankPosition()).isEqualTo(42);
         assertThat(processing.getPercentile())
                 .isEqualByComparingTo("97.20");
         assertThat(processing.getReportData())
@@ -237,44 +228,6 @@ class ReportPersistenceServiceTest {
         assertThat(first.getAccuracyPercentage())
                 .isEqualByComparingTo("80.00");
         assertThat(first.getTimeSpentSeconds()).isEqualTo(1800);
-        assertThat(first.getTopicName()).isNull();
-
-        ArgumentCaptor<TestLeaderboardSnapshotEntity> snapshotCaptor =
-                ArgumentCaptor.forClass(TestLeaderboardSnapshotEntity.class);
-
-        verify(snapshots).save(snapshotCaptor.capture());
-
-        assertThat(snapshotCaptor.getValue().getTestId()).isEqualTo("test-1");
-        assertThat(snapshotCaptor.getValue().getAttemptId()).isEqualTo("att-1");
-        assertThat(snapshotCaptor.getValue().getUserId()).isEqualTo("user-1");
-        assertThat(snapshotCaptor.getValue().getScore())
-                .isEqualByComparingTo("185.50");
-        assertThat(snapshotCaptor.getValue().getTimeTakenSeconds()).isEqualTo(5420);
-        assertThat(snapshotCaptor.getValue().getRankPosition()).isEqualTo(42);
-    }
-
-    @Test
-    void completeUpdatesExistingSnapshotInsteadOfDuplicating() {
-        TestReportEntity processing = report("PROCESSING");
-
-        TestLeaderboardSnapshotEntity existing =
-                new TestLeaderboardSnapshotEntity();
-        existing.setId(7L);
-
-        when(reports.findByAttemptIdForUpdate("att-1"))
-                .thenReturn(Optional.of(processing));
-        when(snapshots.findByAttemptId("att-1"))
-                .thenReturn(Optional.of(existing));
-
-        service.complete(event, sectionResult, peer, "{}");
-
-        ArgumentCaptor<TestLeaderboardSnapshotEntity> snapshotCaptor =
-                ArgumentCaptor.forClass(TestLeaderboardSnapshotEntity.class);
-
-        verify(snapshots).save(snapshotCaptor.capture());
-
-        assertThat(snapshotCaptor.getValue()).isSameAs(existing);
-        assertThat(existing.getRankPosition()).isEqualTo(42);
     }
 
     @Test
@@ -286,7 +239,6 @@ class ReportPersistenceServiceTest {
 
         verify(reports, never()).save(any());
         verify(sections, never()).saveAll(any());
-        verify(snapshots, never()).save(any());
     }
 
     @Test
