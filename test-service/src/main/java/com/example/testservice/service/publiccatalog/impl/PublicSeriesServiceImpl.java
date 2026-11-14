@@ -54,9 +54,6 @@ public class PublicSeriesServiceImpl {
             predicates.add(cb.isNull(root.get("deletedAt")));
 
             predicates.add(cb.isNotNull(root.get("category")));
-            predicates.add(
-                    cb.isNull(root.get("category").get("deletedAt"))
-            );
 
             if (categoryId != null) {
                 predicates.add(

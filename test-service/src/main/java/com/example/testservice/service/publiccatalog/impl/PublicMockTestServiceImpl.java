@@ -67,7 +67,6 @@ public class PublicMockTestServiceImpl {
                     cb.equal(seriesJoin.get("status"), Status.PUBLISHED)
             );
             predicates.add(cb.isNull(seriesJoin.get("deletedAt")));
-            predicates.add(cb.isNull(categoryJoin.get("deletedAt")));
 
             if (categoryId != null) {
                 predicates.add(
