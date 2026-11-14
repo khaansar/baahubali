@@ -6,6 +6,5 @@ public record MockTestCreateDto(
         boolean isSectionOrderStrict,
         boolean shuffleSections,
         boolean negativeMarkingEnabled,
-        String instructions,
-        boolean isFree
+        String instructions
 ) {}

@@ -240,7 +240,7 @@ public class AdminTestSeriesServiceImpl {
         paymentProductSyncOutboxService.enqueue(saved.getId(), saved.getTitle(), active, saved.getBasePrice());
 
         if (oldPrice == null || newPrice == null || oldPrice.compareTo(newPrice) != 0) {
-            boolean isFree = newPrice != null && newPrice.compareTo(BigDecimal.ZERO) == 0;
+            boolean isFree = saved.isFree();
             Instant updatedAt = Instant.now();
 
             mockTestRepository.updateFreeStatusBySeriesId(

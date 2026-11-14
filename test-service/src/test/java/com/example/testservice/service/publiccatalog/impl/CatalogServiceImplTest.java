@@ -121,18 +121,6 @@ class CatalogServiceImplTest {
     }
 
     @Test
-    void getTestStructure_hidesSoftDeletedCategory() {
-        category.setDeletedAt(Instant.now());
-        when(mockTestRepository.findById(testId))
-                .thenReturn(Optional.of(mockTest));
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> catalogService.getTestStructure(testId)
-        );
-    }
-
-    @Test
     void getTestStructure_hidesMissingTest() {
         when(mockTestRepository.findById(testId))
                 .thenReturn(Optional.empty());
@@ -194,18 +182,6 @@ class CatalogServiceImplTest {
     @Test
     void getTestStructureBySlug_hidesSeriesWithoutCategory() {
         series.setCategory(null);
-        when(mockTestRepository.findBySlug("mock-test-1"))
-                .thenReturn(Optional.of(mockTest));
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> catalogService.getTestStructureBySlug("mock-test-1")
-        );
-    }
-
-    @Test
-    void getTestStructureBySlug_hidesSoftDeletedCategory() {
-        category.setDeletedAt(Instant.now());
         when(mockTestRepository.findBySlug("mock-test-1"))
                 .thenReturn(Optional.of(mockTest));
 

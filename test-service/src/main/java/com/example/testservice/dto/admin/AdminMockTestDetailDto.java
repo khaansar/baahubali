@@ -35,7 +35,6 @@ public record AdminMockTestDetailDto(
             boolean shuffleQuestions,
             int questionCount,
             Instant createdAt,
-            Instant updatedAt,
-            Instant deletedAt
+            Instant updatedAt
     ) {}
 }

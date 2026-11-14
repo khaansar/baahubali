@@ -23,5 +23,4 @@ public class AttemptHistorySummary {
     private Instant startedAt;
     private Instant createdAt;
     private Instant updatedAt;
-    private Instant deletedAt;
 }

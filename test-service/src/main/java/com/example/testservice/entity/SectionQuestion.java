@@ -3,7 +3,6 @@ package com.example.testservice.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.SQLRestriction;
 
 import java.math.BigDecimal;
 
@@ -11,7 +10,6 @@ import java.math.BigDecimal;
 @Table(name = "section_questions")
 @Getter
 @Setter
-@SQLRestriction("deleted_at IS NULL")
 public class SectionQuestion extends BaseEntity {
 
     @ManyToOne(fetch = FetchType.LAZY)

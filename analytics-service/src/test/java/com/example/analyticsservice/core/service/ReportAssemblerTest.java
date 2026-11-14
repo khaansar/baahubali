@@ -37,7 +37,6 @@ class ReportAssemblerTest {
         assertThat(report.summary().totalScore()).isEqualTo(185.5);
         assertThat(report.summary().maxScore()).isEqualTo(300.0);
         assertThat(report.summary().accuracy()).isEqualTo(82.5);
-        assertThat(report.summary().rank()).isEqualTo(42);
         assertThat(report.summary().totalParticipants()).isEqualTo(1500);
         assertThat(report.summary().percentile()).isEqualTo(97.2);
         assertThat(report.summary().timeTakenSeconds()).isEqualTo(5420L);

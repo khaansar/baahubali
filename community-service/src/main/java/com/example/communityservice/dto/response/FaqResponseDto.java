@@ -10,8 +10,7 @@ public record FaqResponseDto(
         String answer,
         Integer displayOrder,
         Instant createdAt,
-        Instant updatedAt,
-        Instant deletedAt
+        Instant updatedAt
 ) {
     public static FaqResponseDto from(Faq faq) {
         return new FaqResponseDto(
@@ -21,8 +20,7 @@ public record FaqResponseDto(
                 faq.getAnswer(),
                 faq.getDisplayOrder(),
                 faq.getCreatedAt(),
-                faq.getUpdatedAt(),
-                faq.getDeletedAt()
+                faq.getUpdatedAt()
         );
     }
 }

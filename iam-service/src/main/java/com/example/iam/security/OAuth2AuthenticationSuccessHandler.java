@@ -47,8 +47,7 @@ public class OAuth2AuthenticationSuccessHandler
 
         User user = provisioningService.provisionGoogleUser(oidcUser);
 
-        if (!Boolean.TRUE.equals(user.getIsActive())
-                || user.getDeletedAt() != null) {
+        if (!user.canSignIn()) {
 
             response.sendRedirect(
                     buildFrontendUrl("/login?oauth_error=account_disabled")

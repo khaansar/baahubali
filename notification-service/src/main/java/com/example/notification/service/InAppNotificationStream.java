@@ -64,7 +64,8 @@ public class InAppNotificationStream {
                 emitter.send(SseEmitter.event().id(notification.id()).name("notification").data(notification));
             } catch (IOException | IllegalStateException exception) {
                 removeEmitter(userId, userEmitters, emitter);
-                emitter.completeWithError(exception);
+                // The client is gone; close quietly instead of raising an error response.
+                emitter.complete();
                 log.debug("Removed disconnected notification stream for userId={}", userId);
             }
         }
@@ -78,7 +79,8 @@ public class InAppNotificationStream {
                     emitter.send(SseEmitter.event().comment("keepalive"));
                 } catch (IOException | IllegalStateException exception) {
                     removeEmitter(userId, userEmitters, emitter);
-                    emitter.completeWithError(exception);
+                    // The client is gone; close quietly instead of raising an error response.
+                    emitter.complete();
                     log.debug("Removed inactive notification stream for userId={}", userId);
                 }
             }

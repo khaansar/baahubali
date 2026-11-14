@@ -13,7 +13,8 @@ spring:
     driver-class-name: com.mysql.cj.jdbc.Driver
 
   jpa:
-    hibernate.ddl-auto: ${JPA_DDL_AUTO}
+    hibernate:
+      ddl-auto: ${JPA_DDL_AUTO}
     open-in-view: false
     database-platform: org.hibernate.dialect.MySQLDialect
     properties.hibernate.jdbc.time_zone: UTC

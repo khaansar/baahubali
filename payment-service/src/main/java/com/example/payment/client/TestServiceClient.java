@@ -3,9 +3,10 @@ package com.example.payment.client;
 import com.example.payment.config.PaymentProperties;
 import com.example.payment.exception.ErrorCode;
 import com.example.payment.exception.PaymentException;
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClient;
@@ -30,14 +31,12 @@ public class TestServiceClient {
 
     public UUID seriesIdOf(UUID testId) {
         try {
-            JsonNode response = http.get()
+            SeriesRef response = http.get()
                     .uri("/tests-api/internal/tests/{id}/series", testId)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(SeriesRef.class);
 
-            String seriesId = response == null
-                    ? null
-                    : response.path("seriesId").asText(null);
+            String seriesId = response == null ? null : response.seriesId();
 
             return seriesId == null || seriesId.isBlank()
                     ? null
@@ -45,7 +44,7 @@ public class TestServiceClient {
 
         } catch (HttpClientErrorException.NotFound e) {
             return null;
-        } catch (RestClientException e) {
+        } catch (RestClientException | HttpMessageConversionException e) {
             throw new PaymentException(
                     ErrorCode.UPSTREAM_UNAVAILABLE,
                     "Test service unavailable");
@@ -58,14 +57,12 @@ public class TestServiceClient {
         }
 
         try {
-            JsonNode response = http.get()
+            SeriesSlug response = http.get()
                     .uri("/tests-api/internal/series/{seriesId}", seriesId)
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(SeriesSlug.class);
 
-            String slug = response == null
-                    ? null
-                    : response.path("slug").asText(null);
+            String slug = response == null ? null : response.slug();
 
             return slug == null || slug.isBlank()
                     ? null
@@ -73,11 +70,19 @@ public class TestServiceClient {
 
         } catch (HttpClientErrorException.NotFound e) {
             return null;
-        } catch (RestClientException e) {
+        } catch (RestClientException | HttpMessageConversionException e) {
             throw new PaymentException(
                     ErrorCode.UPSTREAM_UNAVAILABLE,
                     "Test service unavailable while resolving test-series slug"
             );
         }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record SeriesRef(String seriesId) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record SeriesSlug(String slug) {
     }
 }

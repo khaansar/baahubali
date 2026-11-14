@@ -64,8 +64,6 @@ public class Review {
     @Column(name = "updated_at")
     private Instant updatedAt;
 
-    @Column(name = "deleted_at")
-    private Instant deletedAt;
 
     public enum TargetType { TEST, SERIES, PLATFORM }
 

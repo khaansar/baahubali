@@ -17,5 +17,4 @@ public class PatchAttemptResponse {
     private boolean success;
     private Instant createdAt;
     private Instant updatedAt;
-    private Instant deletedAt;
 }

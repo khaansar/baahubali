@@ -131,19 +131,6 @@ class PublicMockTestServiceImplTest {
     }
 
     @Test
-    void getPublishedMockTestBySlug_hidesSoftDeletedCategory() {
-        category.setDeletedAt(Instant.now());
-        when(mockTestRepository.findBySlug("mock-test-1"))
-                .thenReturn(Optional.of(mockTest));
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> publicMockTestService.getPublishedMockTestBySlug(
-                        "mock-test-1")
-        );
-    }
-
-    @Test
     void getPublishedMockTestBySlug_hidesMissingTest() {
         when(mockTestRepository.findBySlug("missing-test"))
                 .thenReturn(Optional.empty());

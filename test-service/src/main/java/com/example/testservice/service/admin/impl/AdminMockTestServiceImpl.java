@@ -22,6 +22,7 @@ import com.example.testservice.repository.QuestionRepository;
 import com.example.testservice.repository.TestSeriesRepository;
 import com.example.testservice.service.KafkaPublisherService;
 import com.example.testservice.service.LanguageValidationUtil;
+import com.example.testservice.service.PaymentProductSyncOutboxService;
 import com.example.testservice.service.SlugService;
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -52,6 +53,7 @@ public class AdminMockTestServiceImpl {
     private final KafkaPublisherService kafkaPublisherService;
     private final ObjectMapper objectMapper;
     private final SlugService slugService;
+    private final PaymentProductSyncOutboxService paymentProductSyncOutboxService;
 
     @Value("${internal.auth.secret:secret123}")
     private String internalSecret;
@@ -146,6 +148,7 @@ public class AdminMockTestServiceImpl {
         if (series.getStatus() != Status.PUBLISHED) {
             series.setStatus(Status.PUBLISHED);
             testSeriesRepository.save(series);
+            syncSeriesProduct(series);
         }
 
         mockTestRepository.save(test);
@@ -188,7 +191,7 @@ public class AdminMockTestServiceImpl {
         test.setShuffleSections(dto.shuffleSections());
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
-        test.setFree(dto.isFree());
+        test.setFree(test.getSeries().isFree());
 
         test.setStatus(Status.DRAFT);
         test.setTotalMarks(BigDecimal.ZERO);
@@ -248,8 +251,7 @@ public class AdminMockTestServiceImpl {
                                 section.isShuffleQuestions(),
                                 section.getSectionQuestions().size(),
                                 section.getCreatedAt(),
-                                section.getUpdatedAt(),
-                                section.getDeletedAt()
+                                section.getUpdatedAt()
                         ))
                         .toList()
         );
@@ -304,7 +306,7 @@ public class AdminMockTestServiceImpl {
         test.setShuffleSections(dto.shuffleSections());
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
-        test.setFree(dto.isFree());
+        test.setFree(test.getSeries().isFree());
 
         mockTestRepository.save(test);
 
@@ -341,6 +343,7 @@ public class AdminMockTestServiceImpl {
         if (!hasPublishedTests) {
             series.setStatus(Status.DRAFT);
             testSeriesRepository.save(series);
+            syncSeriesProduct(series);
         }
 
         return getAdminMockTestDetail(testId);
@@ -373,7 +376,7 @@ public class AdminMockTestServiceImpl {
         clone.setShuffleSections(source.isShuffleSections());
         clone.setNegativeMarkingEnabled(source.isNegativeMarkingEnabled());
         clone.setInstructions(source.getInstructions());
-        clone.setFree(source.isFree());
+        clone.setFree(source.getSeries().isFree());
 
         clone.setStatus(Status.DRAFT);
         clone.setTotalMarks(source.getTotalMarks());
@@ -468,6 +471,7 @@ public class AdminMockTestServiceImpl {
         if (!hasPublishedTests) {
             series.setStatus(Status.DRAFT);
             testSeriesRepository.save(series);
+            syncSeriesProduct(series);
         }
 
         return getAdminMockTestDetail(testId);
@@ -505,7 +509,6 @@ public class AdminMockTestServiceImpl {
                                 section.getDurationMinutes(),
                                 section.getCreatedAt(),
                                 section.getUpdatedAt(),
-                                section.getDeletedAt(),
                                 section.getSectionQuestions().stream()
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
@@ -601,7 +604,6 @@ public class AdminMockTestServiceImpl {
                                 section.isShuffleQuestions(),
                                 section.getCreatedAt(),
                                 section.getUpdatedAt(),
-                                section.getDeletedAt(),
                                 section.getSectionQuestions().stream()
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
@@ -626,8 +628,7 @@ public class AdminMockTestServiceImpl {
                                                                                             new TypeReference<Map<String, List<QuestionImageDto>>>() {}
                                                                                     ),
                                                                             translation.getCreatedAt(),
-                                                                            translation.getUpdatedAt(),
-                                                                            translation.getDeletedAt()
+                                                                            translation.getUpdatedAt()
                                                                     )
                                                             )
                                                             .toList();
@@ -664,5 +665,11 @@ public class AdminMockTestServiceImpl {
                         ))
                         .toList()
         );
+    }
+
+    /** Keeps the payment product's ACTIVE/INACTIVE status aligned with the series status. */
+    private void syncSeriesProduct(TestSeries series) {
+        boolean active = series.getStatus() == Status.PUBLISHED && series.getDeletedAt() == null;
+        paymentProductSyncOutboxService.enqueue(series.getId(), series.getTitle(), active, series.getBasePrice());
     }
 }

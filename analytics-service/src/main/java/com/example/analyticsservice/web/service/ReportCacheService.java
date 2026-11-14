@@ -181,7 +181,7 @@ public class ReportCacheService {
     /**
      * Rounds the decimal fields in the overall report summary.
      *
-     * Rank, participant count, and time taken are integer-valued fields
+     * Participant count and time taken are integer-valued fields
      * and are intentionally not modified.
      */
     private ReportSummary normalizeSummary(ReportSummary summary) {
@@ -193,7 +193,6 @@ public class ReportCacheService {
         return new ReportSummary(
                 round(summary.totalScore()),
                 round(summary.maxScore()),
-                summary.rank(),
                 summary.totalParticipants(),
                 round(summary.percentile()),
                 round(summary.accuracy()),
