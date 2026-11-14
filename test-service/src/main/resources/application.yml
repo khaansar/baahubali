@@ -24,7 +24,6 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED}
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
-    baseline-version: 18
 
   kafka:
     bootstrap-servers: ${KAFKA_BOOTSTRAP_SERVERS:localhost:9092}

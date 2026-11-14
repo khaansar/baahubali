@@ -1,8 +1,0 @@
-ALTER TABLE faqs
-    ADD COLUMN created_at TIMESTAMP(6) NULL,
-    ADD COLUMN updated_at TIMESTAMP(6) NULL,
-    ADD COLUMN deleted_at TIMESTAMP(6) NULL;
-
-ALTER TABLE reviews
-    ADD COLUMN updated_at TIMESTAMP(6) NULL,
-    ADD COLUMN deleted_at TIMESTAMP(6) NULL;

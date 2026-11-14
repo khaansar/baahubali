@@ -42,7 +42,6 @@ spring:
   flyway:
     enabled: ${SPRING_FLYWAY_ENABLED}
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE}
-    baseline-version: 5
 
   session:
     timeout: 5m
