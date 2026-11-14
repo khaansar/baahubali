@@ -23,7 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @SQLRestriction("deleted_at IS NULL")
-public class TestSeries extends BaseEntity {
+public class TestSeries extends SoftDeletableEntity {
 
     @Column(nullable = false)
     private String title;

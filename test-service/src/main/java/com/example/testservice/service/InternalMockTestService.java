@@ -63,7 +63,6 @@ public class InternalMockTestService {
                         section.isShuffleQuestions(),
                         section.getCreatedAt(),
                         section.getUpdatedAt(),
-                        section.getDeletedAt(),
                         section.getSectionQuestions().stream().map(sq -> {
                             var question = sq.getQuestion();
 
@@ -86,8 +85,7 @@ public class InternalMockTestService {
                                                                     new TypeReference<Map<String, List<QuestionImageDto>>>() {}
                                                             ),
                                                     t.getCreatedAt(),
-                                                    t.getUpdatedAt(),
-                                                    t.getDeletedAt()
+                                                    t.getUpdatedAt()
                                             ))
                                             .collect(Collectors.toList());
 

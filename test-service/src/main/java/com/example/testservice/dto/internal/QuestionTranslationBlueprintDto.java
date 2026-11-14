@@ -13,6 +13,5 @@ public record QuestionTranslationBlueprintDto(
         List<QuestionImageDto> questionImages,
         Map<String, List<QuestionImageDto>> optionImages,
         Instant createdAt,
-        Instant updatedAt,
-        Instant deletedAt
+        Instant updatedAt
 ) {}

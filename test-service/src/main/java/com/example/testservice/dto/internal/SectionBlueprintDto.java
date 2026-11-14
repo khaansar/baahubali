@@ -12,6 +12,5 @@ public record SectionBlueprintDto(
         boolean shuffleQuestions,
         Instant createdAt,
         Instant updatedAt,
-        Instant deletedAt,
         List<QuestionBlueprintDto> questions
 ) {}

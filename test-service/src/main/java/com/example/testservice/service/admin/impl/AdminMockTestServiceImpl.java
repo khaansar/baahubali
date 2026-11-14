@@ -251,8 +251,7 @@ public class AdminMockTestServiceImpl {
                                 section.isShuffleQuestions(),
                                 section.getSectionQuestions().size(),
                                 section.getCreatedAt(),
-                                section.getUpdatedAt(),
-                                section.getDeletedAt()
+                                section.getUpdatedAt()
                         ))
                         .toList()
         );
@@ -510,7 +509,6 @@ public class AdminMockTestServiceImpl {
                                 section.getDurationMinutes(),
                                 section.getCreatedAt(),
                                 section.getUpdatedAt(),
-                                section.getDeletedAt(),
                                 section.getSectionQuestions().stream()
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
@@ -606,7 +604,6 @@ public class AdminMockTestServiceImpl {
                                 section.isShuffleQuestions(),
                                 section.getCreatedAt(),
                                 section.getUpdatedAt(),
-                                section.getDeletedAt(),
                                 section.getSectionQuestions().stream()
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
@@ -631,8 +628,7 @@ public class AdminMockTestServiceImpl {
                                                                                             new TypeReference<Map<String, List<QuestionImageDto>>>() {}
                                                                                     ),
                                                                             translation.getCreatedAt(),
-                                                                            translation.getUpdatedAt(),
-                                                                            translation.getDeletedAt()
+                                                                            translation.getUpdatedAt()
                                                                     )
                                                             )
                                                             .toList();

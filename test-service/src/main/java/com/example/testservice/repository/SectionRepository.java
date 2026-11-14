@@ -6,5 +6,4 @@ import java.util.List;
 import java.util.UUID;
 
 public interface SectionRepository extends JpaRepository<Section, UUID> {
-    List<Section> findByMockTestIdAndDeletedAtIsNullOrderBySequenceOrderAsc(UUID testId);
 }

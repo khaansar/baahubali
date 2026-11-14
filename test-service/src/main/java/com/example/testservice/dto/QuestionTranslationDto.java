@@ -29,7 +29,4 @@ public class QuestionTranslationDto {
 
     @JsonProperty(access = JsonProperty.Access.READ_ONLY)
     private Instant updatedAt;
-
-    @JsonProperty(access = JsonProperty.Access.READ_ONLY)
-    private Instant deletedAt;
 }

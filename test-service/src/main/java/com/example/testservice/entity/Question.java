@@ -18,7 +18,7 @@ import java.util.Map;
 @Getter
 @Setter
 @SQLRestriction("deleted_at IS NULL")
-public class Question extends BaseEntity {
+public class Question extends SoftDeletableEntity {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "question_type", nullable = false, updatable = false)

@@ -154,8 +154,7 @@ public class PublicSeriesServiceImpl {
             );
         }
 
-        if (series.getCategory() == null
-                || series.getCategory().getDeletedAt() != null) {
+        if (series.getCategory() == null) {
             throw new ResourceNotFoundException(
                     "Test Series is not available in the public catalog."
             );

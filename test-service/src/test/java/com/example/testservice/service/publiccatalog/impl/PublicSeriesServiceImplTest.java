@@ -183,19 +183,6 @@ class PublicSeriesServiceImplTest {
     }
 
     @Test
-    void getSeriesById_hidesSeriesWithDeletedCategory() {
-        category.setDeletedAt(Instant.now());
-
-        when(testSeriesRepository.findById(seriesId))
-                .thenReturn(Optional.of(series));
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> publicSeriesService.getSeriesById(seriesId)
-        );
-    }
-
-    @Test
     void getSeriesById_hidesSeriesWithOnlyDeletedPublishedTests() {
         publishedTest.setDeletedAt(Instant.now());
 
@@ -255,18 +242,6 @@ class PublicSeriesServiceImplTest {
     @Test
     void getSeriesBySlug_hidesSeriesWithoutCategory() {
         series.setCategory(null);
-        when(testSeriesRepository.findBySlug("ssc-cgl-mock-tests"))
-                .thenReturn(Optional.of(series));
-
-        assertThrows(
-                ResourceNotFoundException.class,
-                () -> publicSeriesService.getSeriesBySlug("ssc-cgl-mock-tests")
-        );
-    }
-
-    @Test
-    void getSeriesBySlug_hidesSeriesWithDeletedCategory() {
-        category.setDeletedAt(Instant.now());
         when(testSeriesRepository.findBySlug("ssc-cgl-mock-tests"))
                 .thenReturn(Optional.of(series));
 

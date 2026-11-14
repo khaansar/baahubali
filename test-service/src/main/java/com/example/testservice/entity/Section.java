@@ -3,7 +3,6 @@ package com.example.testservice.entity;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
-import org.hibernate.annotations.SQLRestriction;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -12,7 +11,6 @@ import java.util.List;
 @Table(name = "sections")
 @Getter
 @Setter
-@SQLRestriction("deleted_at IS NULL")
 public class Section extends BaseEntity {
 
     @Column(nullable = false)

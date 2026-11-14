@@ -402,7 +402,6 @@ public class AdminQuestionServiceImpl {
         dto.setOptionImages(toOptionImageDtos(translation.getOptionImages()));
         dto.setCreatedAt(translation.getCreatedAt());
         dto.setUpdatedAt(translation.getUpdatedAt());
-        dto.setDeletedAt(translation.getDeletedAt());
 
         return dto;
     }

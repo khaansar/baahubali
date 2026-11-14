@@ -153,7 +153,6 @@ public class PublicMockTestServiceImpl {
                 .filter(mockTest -> mockTest.getSeries().getStatus() == Status.PUBLISHED)
                 .filter(mockTest -> mockTest.getSeries().getDeletedAt() == null)
                 .filter(mockTest -> mockTest.getSeries().getCategory() != null)
-                .filter(mockTest -> mockTest.getSeries().getCategory().getDeletedAt() == null)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Mock test not found"));
 
