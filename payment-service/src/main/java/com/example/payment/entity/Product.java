@@ -6,7 +6,6 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
-import java.time.Instant;
 import java.util.UUID;
 import lombok.Getter;
 import lombok.Setter;
@@ -30,9 +29,7 @@ public class Product extends BaseEntity {
     @Column(nullable = false)
     private String status = "ACTIVE";
 
-    private Instant deletedAt;
-
     public boolean isActive() {
-        return "ACTIVE".equals(status) && deletedAt == null;
+        return "ACTIVE".equals(status);
     }
 }

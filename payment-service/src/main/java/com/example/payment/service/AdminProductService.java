@@ -38,7 +38,6 @@ public class AdminProductService {
         String currency = props.getCurrencyDefault();
         Instant now = Instant.now();
         Specification<Product> spec = Specification.<Product>unrestricted()
-            .and((root, query, cb) -> cb.isNull(root.get("deletedAt")))
             .and(Specs.eq("productType", type))
             .and(nameContains(q))
             .and(in("id", ids))
