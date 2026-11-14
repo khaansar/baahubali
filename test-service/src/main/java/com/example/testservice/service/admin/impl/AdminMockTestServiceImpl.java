@@ -191,7 +191,7 @@ public class AdminMockTestServiceImpl {
         test.setShuffleSections(dto.shuffleSections());
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
-        test.setFree(dto.isFree());
+        test.setFree(test.getSeries().isFree());
 
         test.setStatus(Status.DRAFT);
         test.setTotalMarks(BigDecimal.ZERO);
@@ -307,7 +307,7 @@ public class AdminMockTestServiceImpl {
         test.setShuffleSections(dto.shuffleSections());
         test.setNegativeMarkingEnabled(dto.negativeMarkingEnabled());
         test.setInstructions(dto.instructions());
-        test.setFree(dto.isFree());
+        test.setFree(test.getSeries().isFree());
 
         mockTestRepository.save(test);
 
@@ -377,7 +377,7 @@ public class AdminMockTestServiceImpl {
         clone.setShuffleSections(source.isShuffleSections());
         clone.setNegativeMarkingEnabled(source.isNegativeMarkingEnabled());
         clone.setInstructions(source.getInstructions());
-        clone.setFree(source.isFree());
+        clone.setFree(source.getSeries().isFree());
 
         clone.setStatus(Status.DRAFT);
         clone.setTotalMarks(source.getTotalMarks());
