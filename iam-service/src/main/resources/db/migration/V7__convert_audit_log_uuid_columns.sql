@@ -1,3 +1,6 @@
+-- V6 created audit_logs with CHAR(36) UUIDs; it is always empty when V7 runs, so recreate it with BINARY(36).
+DROP TABLE IF EXISTS audit_logs;
+
 CREATE TABLE audit_logs (
     id BIGINT NOT NULL AUTO_INCREMENT,
     event_id BINARY(36) NOT NULL,
