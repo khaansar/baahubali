@@ -30,6 +30,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
+import jakarta.persistence.EntityManager;
+import jakarta.persistence.LockModeType;
+import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -92,6 +95,9 @@ public class AttemptService {
         return thread;
     });
     private final TestServiceClient testServiceClient;
+
+    @PersistenceContext
+    private EntityManager entityManager;
 
     public AttemptService(AttemptRepository attemptRepository,
                            ActiveAttemptRepository activeAttemptRepository,
@@ -306,13 +312,26 @@ public class AttemptService {
         attemptRepository.save(attempt);
     }
 
+    /**
+     * Row-locks the attempt and reloads its current state, so a caller holding a stale copy
+     * (the sweeper, or the start path) cannot finalize an attempt another transaction already finalized.
+     */
+    private Attempt lockForFinalization(Attempt attempt) {
+        if (entityManager.contains(attempt)) {
+            entityManager.refresh(attempt, LockModeType.PESSIMISTIC_WRITE);
+            return attempt;
+        }
+        return attemptRepository.findByIdForUpdate(attempt.getId())
+                .orElseThrow(() -> new AttemptNotFoundException(attempt.getId()));
+    }
+
     @Transactional
     public void finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
         if (finalStatus != AttemptStatus.SUBMITTED && finalStatus != AttemptStatus.EXPIRED) {
             throw new IllegalArgumentException("Invalid final attempt status: " + finalStatus);
         }
 
-        Attempt lockedAttempt = attempt;
+        Attempt lockedAttempt = lockForFinalization(attempt);
 
         if (lockedAttempt.getStatus() == AttemptStatus.SUBMITTED
                 || lockedAttempt.getStatus() == AttemptStatus.EXPIRED) {
