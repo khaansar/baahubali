@@ -28,7 +28,6 @@ public class ReportAssembler {
         ReportSummary summary = new ReportSummary(
                 sectionResult.totalScore(),
                 sectionResult.maxScore(),
-                peer.rank(),
                 peer.totalParticipants(),
                 peer.percentile(),
                 sectionResult.accuracyPercentage(),

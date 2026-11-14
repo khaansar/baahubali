@@ -224,7 +224,6 @@ public class UserPerformanceService {
                 calculatePercentage(report.getTotalScore(), report.getMaxScore()),
                 round(report.getAccuracyPercentage()),
                 report.getTimeTakenSeconds(),
-                report.getRankPosition(),
                 round(report.getPercentile()),
                 report.getCreatedAt()
         );

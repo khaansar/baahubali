@@ -32,7 +32,6 @@ public record UserPerformanceResponse(
             BigDecimal scorePercentage,
             BigDecimal accuracyPercentage,
             Integer timeTakenSeconds,
-            Integer rank,
             BigDecimal percentile,
             LocalDateTime completedAt
     ) {
