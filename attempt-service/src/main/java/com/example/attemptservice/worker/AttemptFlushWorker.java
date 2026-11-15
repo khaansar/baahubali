@@ -97,29 +97,19 @@ public class AttemptFlushWorker {
         }
 
         if (!toSave.isEmpty()) {
-    for (AttemptAnswer answer : toSave) {
-        log.warn(
-                "AttemptAnswer DB insert: attemptId={}, questionId={}, selectedOption='{}', selectedOptionLength={}",
-                answer.getAttemptId(),
-                answer.getQuestionId(),
-                answer.getSelectedOption(),
-                answer.getSelectedOption() != null ? answer.getSelectedOption().length() : 0
-        );
-    }
+            attemptAnswerRepository.saveAll(toSave);
 
-    attemptAnswerRepository.saveAll(toSave);
+            com.example.attemptservice.entity.Attempt attempt = attemptRepository.findById(hash.getAttemptId()).orElse(null);
+            if (attempt != null && hash.getSectionTimeSpentJson() != null) {
+                attempt.setSectionTimeSpentJson(hash.getSectionTimeSpentJson());
+                attemptRepository.save(attempt);
+            }
 
-    com.example.attemptservice.entity.Attempt attempt = attemptRepository.findById(hash.getAttemptId()).orElse(null);
-    if (attempt != null && hash.getSectionTimeSpentJson() != null) {
-        attempt.setSectionTimeSpentJson(hash.getSectionTimeSpentJson());
-        attemptRepository.save(attempt);
-    }
-
-    log.debug(
-            "Flushed {} answers for attempt {}",
-            toSave.size(),
-            hash.getAttemptId()
-    );
-}
+            log.debug(
+                    "Flushed {} answers for attempt {}",
+                    toSave.size(),
+                    hash.getAttemptId()
+            );
+        }
     }
 }
