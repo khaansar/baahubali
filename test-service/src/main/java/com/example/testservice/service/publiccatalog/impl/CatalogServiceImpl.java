@@ -71,6 +71,8 @@ public class CatalogServiceImpl {
                 test.getId(),
                 test.getSlug(),
                 test.getSeries().getId(),
+                test.getSeries().getTitle(),
+                test.getSeries().getCategory().getName(),
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),
