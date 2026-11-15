@@ -27,7 +27,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -70,17 +69,18 @@ class AttemptServiceFinalizeTest {
     }
 
     @Test
-    void managedCopyIsRefreshedUnderLockBeforeFinalizing() {
+    void managedCopyIsReloadedUnderTheNativeLockBeforeFinalizing() {
         Attempt managed = attempt(AttemptStatus.IN_PROGRESS);
         when(entityManager.contains(managed)).thenReturn(true);
-        doAnswer(invocation -> {
-            managed.setStatus(AttemptStatus.SUBMITTED);
-            return null;
-        }).when(entityManager).refresh(managed, LockModeType.PESSIMISTIC_WRITE);
+        when(attemptRepository.findByIdForUpdate("a-1")).thenReturn(Optional.of(attempt(AttemptStatus.SUBMITTED)));
 
-        service.finalizeAttempt(managed, AttemptStatus.EXPIRED);
+        Attempt result = service.finalizeAttempt(managed, AttemptStatus.EXPIRED);
 
-        assertEquals(AttemptStatus.SUBMITTED, managed.getStatus());
+        assertEquals(AttemptStatus.SUBMITTED, result.getStatus());
+        verify(entityManager).flush();
+        verify(entityManager).detach(managed);
+        // Hibernate's pessimistic refresh emits FOR UPDATE OF <alias>, which TiDB rejects.
+        verify(entityManager, never()).refresh(any(), any(LockModeType.class));
         verify(outboxEventRepository, never()).save(any());
     }
 

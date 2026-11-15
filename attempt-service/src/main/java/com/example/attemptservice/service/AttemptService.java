@@ -33,7 +33,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -298,8 +297,7 @@ public class AttemptService {
             return toSubmitResponse(attempt);
         }
 
-        finalizeAttempt(attempt, AttemptStatus.SUBMITTED);
-        return toSubmitResponse(attempt);
+        return toSubmitResponse(finalizeAttempt(attempt, AttemptStatus.SUBMITTED));
     }
 
     /**
@@ -321,18 +319,23 @@ public class AttemptService {
     /**
      * Row-locks the attempt and reloads its current state, so a caller holding a stale copy
      * (the sweeper, or the start path) cannot finalize an attempt another transaction already finalized.
+     *
+     * The lock is taken with the native FOR UPDATE query: Hibernate's own pessimistic refresh
+     * emits FOR UPDATE OF <alias>, which TiDB rejects. A managed copy is written and detached
+     * first so the locking read loads the row as it is now, not the cached copy.
      */
     private Attempt lockForFinalization(Attempt attempt) {
         if (entityManager.contains(attempt)) {
-            entityManager.refresh(attempt, LockModeType.PESSIMISTIC_WRITE);
-            return attempt;
+            entityManager.flush();
+            entityManager.detach(attempt);
         }
         return attemptRepository.findByIdForUpdate(attempt.getId())
                 .orElseThrow(() -> new AttemptNotFoundException(attempt.getId()));
     }
 
+    /** Finalizes the attempt and returns its locked, current copy. */
     @Transactional
-    public void finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
+    public Attempt finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
         if (finalStatus != AttemptStatus.SUBMITTED && finalStatus != AttemptStatus.EXPIRED) {
             throw new IllegalArgumentException("Invalid final attempt status: " + finalStatus);
         }
@@ -341,7 +344,7 @@ public class AttemptService {
 
         if (lockedAttempt.getStatus() == AttemptStatus.SUBMITTED
                 || lockedAttempt.getStatus() == AttemptStatus.EXPIRED) {
-            return;
+            return lockedAttempt;
         }
 
         final String attemptId = lockedAttempt.getId();
@@ -447,6 +450,8 @@ public class AttemptService {
                     }
             );
         }
+
+        return lockedAttempt;
     }
 
     @Transactional(readOnly = true)
