@@ -17,6 +17,10 @@ import java.util.Locale;
 @RequiredArgsConstructor
 public class OAuth2UserProvisioningService {
 
+    // Match the users.avatar_url, first_name and last_name column sizes.
+    private static final int MAX_AVATAR_URL_LENGTH = 512;
+    private static final int MAX_NAME_LENGTH = 100;
+
     private final UserRepository userRepository;
     private final UserIdentityRepository userIdentityRepository;
 
@@ -115,14 +119,30 @@ public class OAuth2UserProvisioningService {
 
         return userRepository.save(
                 User.builder()
-                        .firstName(firstName)
-                        .lastName(lastName)
+                        .firstName(fitToColumn(firstName.trim(), MAX_NAME_LENGTH))
+                        .lastName(lastName == null ? null : fitToColumn(lastName.trim(), MAX_NAME_LENGTH))
                         .email(email)
                         .passwordHash(null)
                         .role(Role.STUDENT)
-                        .avatarUrl(oidcUser.getPicture())
+                        .avatarUrl(usableAvatarUrl(oidcUser.getPicture()))
                         .emailVerified(true)
                         .build()
         );
+    }
+
+    /**
+     * Google picture URLs can exceed the avatar column. A cut-off URL would be broken, so an
+     * over-long picture is skipped (the app shows its initials avatar) instead of failing sign-up.
+     */
+    private static String usableAvatarUrl(String pictureUrl) {
+        if (pictureUrl == null || pictureUrl.isBlank()) {
+            return null;
+        }
+        String trimmed = pictureUrl.trim();
+        return trimmed.length() <= MAX_AVATAR_URL_LENGTH ? trimmed : null;
+    }
+
+    private static String fitToColumn(String value, int maxLength) {
+        return value.length() <= maxLength ? value : value.substring(0, maxLength);
     }
 }
