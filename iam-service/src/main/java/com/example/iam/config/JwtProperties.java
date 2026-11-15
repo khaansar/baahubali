@@ -11,6 +11,7 @@ public record JwtProperties(
         String audience,
         long expirationMs,
         long refreshExpirationMs,
+        long refreshReuseGraceMs,
         String cookieName,
         String refreshCookieName,
         String cookieDomain,

@@ -13,6 +13,7 @@ import java.math.BigDecimal;
 public class FeaturedMockTestDto {
     private String id;
     private String slug;
+    private String seriesId;
     private String title;
     private String categoryName;
     private Integer durationMinutes;

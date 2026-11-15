@@ -58,6 +58,19 @@ public class GlobalExceptionHandler {
                 ));
     }
 
+    // Deliberately leaves the cookies alone: they already hold the newer token.
+    @ExceptionHandler(RefreshTokenSupersededException.class)
+    public ResponseEntity<ApiResponse<Void>> handleRefreshTokenSuperseded(
+            RefreshTokenSupersededException ex) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                "REFRESH_TOKEN_SUPERSEDED",
+                List.of()
+        );
+    }
+
     @ExceptionHandler(EmailAlreadyExistsException.class)
     public ResponseEntity<ApiResponse<Void>> handleEmailAlreadyExists(
             EmailAlreadyExistsException ex) {

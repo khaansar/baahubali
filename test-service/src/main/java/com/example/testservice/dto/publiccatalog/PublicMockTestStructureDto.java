@@ -8,6 +8,9 @@ import java.util.UUID;
 public record PublicMockTestStructureDto(
         UUID testId,
         String slug,
+        UUID seriesId,
+        String seriesTitle,
+        String categoryName,
         String title,
         Integer durationMinutes,
         String instructions,

@@ -13,8 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,6 +67,13 @@ public class AttemptFlushWorker {
                 new TypeReference<Map<String, String>>() {}
         );
 
+        Set<String> marked = hash.getMarkedJson() == null || hash.getMarkedJson().isBlank()
+                ? Set.of()
+                : new HashSet<>(objectMapper.readValue(
+                        hash.getMarkedJson(),
+                        new TypeReference<List<String>>() {}
+                ));
+
         List<AttemptAnswer> existingAnswers =
                 attemptAnswerRepository.findByAttemptId(hash.getAttemptId());
 
@@ -92,34 +101,25 @@ public class AttemptFlushWorker {
             }
 
             ans.setSelectedOption(opt);
+            ans.setMarkedForReview(marked.contains(qId));
             ans.setUpdatedAt(now);
             toSave.add(ans);
         }
 
         if (!toSave.isEmpty()) {
-    for (AttemptAnswer answer : toSave) {
-        log.warn(
-                "AttemptAnswer DB insert: attemptId={}, questionId={}, selectedOption='{}', selectedOptionLength={}",
-                answer.getAttemptId(),
-                answer.getQuestionId(),
-                answer.getSelectedOption(),
-                answer.getSelectedOption() != null ? answer.getSelectedOption().length() : 0
-        );
-    }
+            attemptAnswerRepository.saveAll(toSave);
 
-    attemptAnswerRepository.saveAll(toSave);
+            com.example.attemptservice.entity.Attempt attempt = attemptRepository.findById(hash.getAttemptId()).orElse(null);
+            if (attempt != null && hash.getSectionTimeSpentJson() != null) {
+                attempt.setSectionTimeSpentJson(hash.getSectionTimeSpentJson());
+                attemptRepository.save(attempt);
+            }
 
-    com.example.attemptservice.entity.Attempt attempt = attemptRepository.findById(hash.getAttemptId()).orElse(null);
-    if (attempt != null && hash.getSectionTimeSpentJson() != null) {
-        attempt.setSectionTimeSpentJson(hash.getSectionTimeSpentJson());
-        attemptRepository.save(attempt);
-    }
-
-    log.debug(
-            "Flushed {} answers for attempt {}",
-            toSave.size(),
-            hash.getAttemptId()
-    );
-}
+            log.debug(
+                    "Flushed {} answers for attempt {}",
+                    toSave.size(),
+                    hash.getAttemptId()
+            );
+        }
     }
 }

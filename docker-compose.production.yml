@@ -211,7 +211,7 @@ services:
       - .env
     environment:
       SPRING_KAFKA_BOOTSTRAP_SERVERS: baahubali-kafka:29092
-      TEST_SERVICE_URL: ${TEST_SERVICE_URL:-http://test-service:8080}
+      TEST_SERVICE_URL: ${TEST_SERVICE_URL:-http://test-service:8080/tests-api}
     networks:
       - backend-network
     depends_on:

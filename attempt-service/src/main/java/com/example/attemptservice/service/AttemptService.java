@@ -1,6 +1,8 @@
 package com.example.attemptservice.service;
 
+import com.example.attemptservice.client.PaymentClient;
 import com.example.attemptservice.client.TestServiceClient;
+import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.dto.AttemptHistorySummary;
 import com.example.attemptservice.dto.AttemptReviewResponse;
 import com.example.attemptservice.dto.AttemptStateResponse;
@@ -31,7 +33,6 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
 import lombok.extern.slf4j.Slf4j;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.LockModeType;
 import jakarta.persistence.PersistenceContext;
 import org.springframework.context.annotation.Lazy;
 import org.springframework.data.domain.Page;
@@ -95,6 +96,8 @@ public class AttemptService {
         return thread;
     });
     private final TestServiceClient testServiceClient;
+    private final AttemptTimingProperties timingProperties;
+    private final PaymentClient paymentClient;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -107,7 +110,9 @@ public class AttemptService {
                            @Lazy AttemptFlushWorker attemptFlushWorker,
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper,
-                           TestServiceClient testServiceClient) {
+                           TestServiceClient testServiceClient,
+                           AttemptTimingProperties timingProperties,
+                           PaymentClient paymentClient) {
         this.attemptRepository = attemptRepository;
         this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
@@ -118,6 +123,8 @@ public class AttemptService {
         this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceClient = testServiceClient;
+        this.timingProperties = timingProperties;
+        this.paymentClient = paymentClient;
     }
 
     @Transactional
@@ -131,7 +138,8 @@ public class AttemptService {
                     "Test service did not return a test blueprint");
         }
         InternalTestBlueprintDto blueprint = response.data();
-        if (!Boolean.TRUE.equals(blueprint.getFree())) {
+        // Paid tests need an active entitlement on the test or its series.
+        if (!Boolean.TRUE.equals(blueprint.getFree()) && !hasPaidAccess(request)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "A verified entitlement is required for this test");
         }
@@ -289,8 +297,7 @@ public class AttemptService {
             return toSubmitResponse(attempt);
         }
 
-        finalizeAttempt(attempt, AttemptStatus.SUBMITTED);
-        return toSubmitResponse(attempt);
+        return toSubmitResponse(finalizeAttempt(attempt, AttemptStatus.SUBMITTED));
     }
 
     /**
@@ -312,18 +319,23 @@ public class AttemptService {
     /**
      * Row-locks the attempt and reloads its current state, so a caller holding a stale copy
      * (the sweeper, or the start path) cannot finalize an attempt another transaction already finalized.
+     *
+     * The lock is taken with the native FOR UPDATE query: Hibernate's own pessimistic refresh
+     * emits FOR UPDATE OF <alias>, which TiDB rejects. A managed copy is written and detached
+     * first so the locking read loads the row as it is now, not the cached copy.
      */
     private Attempt lockForFinalization(Attempt attempt) {
         if (entityManager.contains(attempt)) {
-            entityManager.refresh(attempt, LockModeType.PESSIMISTIC_WRITE);
-            return attempt;
+            entityManager.flush();
+            entityManager.detach(attempt);
         }
         return attemptRepository.findByIdForUpdate(attempt.getId())
                 .orElseThrow(() -> new AttemptNotFoundException(attempt.getId()));
     }
 
+    /** Finalizes the attempt and returns its locked, current copy. */
     @Transactional
-    public void finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
+    public Attempt finalizeAttempt(Attempt attempt, AttemptStatus finalStatus) {
         if (finalStatus != AttemptStatus.SUBMITTED && finalStatus != AttemptStatus.EXPIRED) {
             throw new IllegalArgumentException("Invalid final attempt status: " + finalStatus);
         }
@@ -332,7 +344,7 @@ public class AttemptService {
 
         if (lockedAttempt.getStatus() == AttemptStatus.SUBMITTED
                 || lockedAttempt.getStatus() == AttemptStatus.EXPIRED) {
-            return;
+            return lockedAttempt;
         }
 
         final String attemptId = lockedAttempt.getId();
@@ -438,6 +450,8 @@ public class AttemptService {
                     }
             );
         }
+
+        return lockedAttempt;
     }
 
     @Transactional(readOnly = true)
@@ -663,6 +677,16 @@ public class AttemptService {
         return answer == null ? null : answer.toString();
     }
 
+    private boolean hasPaidAccess(StartAttemptRequest request) {
+        try {
+            return paymentClient.hasAccess(
+                    UUID.fromString(request.getUserId()),
+                    UUID.fromString(request.getTestId()));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
     private QuestionResult evaluateQuestion(InternalTestBlueprintDto.InternalQuestionDto question,
                                             String selectedOption,
                                             boolean negativeMarkingEnabled) {
@@ -767,17 +791,26 @@ public class AttemptService {
 
     @Transactional
     public Long patchAttempt(String attemptId, String userId, PatchAttemptRequest request) {
-        Attempt attempt = attemptRepository.findById(attemptId)
+        // The row lock serializes saves with finalization, so a save can never land in Redis
+        // after the final flush has run (it would be deleted with the hash and silently lost).
+        Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         verifyOwnership(attempt, userId);
 
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Attempt is no longer in progress");
+        }
+
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
+        long saveGraceSeconds = timingProperties.saveGraceSeconds();
+
         if (existing.getStartedAt() == null
                 || existing.getDurationSec() == null
-                || Instant.now().getEpochSecond() >= existing.getStartedAt() + existing.getDurationSec()) {
+                || Instant.now().getEpochSecond()
+                        >= existing.getStartedAt() + existing.getDurationSec() + saveGraceSeconds) {
             throw new ResponseStatusException(HttpStatus.GONE, "Attempt deadline has expired");
         }
 
@@ -817,7 +850,7 @@ public class AttemptService {
                     spent += (int) (now - current.getCurrentSectionStartedAt());
                 }
                 Integer limit = limitsMap.get(currentSec);
-                if (limit != null && spent > limit) {
+                if (limit != null && spent > limit + saveGraceSeconds) {
                     throw new ResponseStatusException(HttpStatus.GONE, "Section deadline has expired");
                 }
             }
@@ -827,6 +860,17 @@ public class AttemptService {
         answers.put(request.getQuestionId(), request.getSelectedOption());
 
         String updatedAnswers = writeAnswers(answers);
+
+        Set<String> marked = readMarked(current.getMarkedJson());
+        if (request.getMarkedForReview() != null) {
+            if (request.getMarkedForReview()) {
+                marked.add(request.getQuestionId());
+            } else {
+                marked.remove(request.getQuestionId());
+            }
+        }
+        String updatedMarked = writeMarked(marked);
+
         long expectedVersion = current.getVersion();
         long nextVersion = expectedVersion + 1;
 
@@ -835,8 +879,8 @@ public class AttemptService {
                 "if not version or tonumber(version) ~= tonumber(ARGV[1]) then return 0 end " +
                 "local startedAt = tonumber(redis.call('HGET', KEYS[1], 'startedAt')) " +
                 "local durationSec = tonumber(redis.call('HGET', KEYS[1], 'durationSec')) " +
-                "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec then return -1 end " +
-                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8]) " +
+                "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec + tonumber(ARGV[9]) then return -1 end " +
+                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8], 'markedJson', ARGV[10]) " +
                 "return 1",
                 Long.class
         );
@@ -851,7 +895,9 @@ public class AttemptService {
                 Long.toString(now),
                 current.getCurrentSectionId() != null ? current.getCurrentSectionId() : "",
                 current.getCurrentSectionStartedAt() != null ? current.getCurrentSectionStartedAt().toString() : Long.toString(now),
-                current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}"
+                current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}",
+                Long.toString(saveGraceSeconds),
+                updatedMarked
         );
 
         if (result == -1L) {
@@ -957,9 +1003,13 @@ public class AttemptService {
                 attemptAnswerRepository.findByAttemptId(attemptId);
 
         Map<String, String> answers = new java.util.LinkedHashMap<>();
+        Set<String> marked = new java.util.LinkedHashSet<>();
 
         for (AttemptAnswer answer : savedAnswers) {
             answers.put(answer.getQuestionId(), answer.getSelectedOption());
+            if (answer.isMarkedForReview()) {
+                marked.add(answer.getQuestionId());
+            }
         }
 
         AttemptRedisHash rebuilt = AttemptRedisHash.builder()
@@ -972,6 +1022,7 @@ public class AttemptService {
                 .dirtyFlag(false)
                 .currentQuestionIndex(0)
                 .answersJson(writeAnswers(answers))
+                .markedJson(writeMarked(marked))
                 .currentSectionId(null)
                 .sectionTimeSpentJson(attempt.getSectionTimeSpentJson() != null ? attempt.getSectionTimeSpentJson() : "{}")
                 .currentSectionStartedAt(Instant.now().getEpochSecond())
@@ -1026,6 +1077,7 @@ public class AttemptService {
                 .sectionTimeSpentSec(timeSpentMap)
                 .currentSectionStartedAt(hash.getCurrentSectionStartedAt() != null ? Instant.ofEpochSecond(hash.getCurrentSectionStartedAt()) : null)
                 .answers(readAnswers(hash.getAnswersJson()))
+                .markedQuestionIds(List.copyOf(readMarked(hash.getMarkedJson())))
                 .questionOrder(questionOrderMap)
                 .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt())
@@ -1078,6 +1130,28 @@ public class AttemptService {
         }
     }
 
+    private Set<String> readMarked(String json) {
+        if (json == null || json.isBlank()) {
+            return new java.util.LinkedHashSet<>();
+        }
+
+        try {
+            return new java.util.LinkedHashSet<>(
+                    objectMapper.readValue(json, new TypeReference<List<String>>() {})
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("Stored review marks are invalid", e);
+        }
+    }
+
+    private String writeMarked(Set<String> marked) {
+        try {
+            return objectMapper.writeValueAsString(marked);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not serialize review marks", e);
+        }
+    }
+
     private void verifyOwnership(Attempt attempt, String userId) {
         if (!attempt.getUserId().equals(userId)) {
             throw new ResponseStatusException(
@@ -1117,8 +1191,9 @@ public class AttemptService {
                                 entry.getKey()
                         );
 
+                        // The failed send already ends the response (Spring runs the
+                        // emitter's onError cleanup); completing it again would throw.
                         entry.getValue().remove(emitter);
-                        emitter.complete();
 
                         if (entry.getValue().isEmpty()) {
                             emitters.remove(entry.getKey(), entry.getValue());

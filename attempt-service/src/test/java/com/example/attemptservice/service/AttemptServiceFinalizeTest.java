@@ -1,6 +1,8 @@
 package com.example.attemptservice.service;
 
+import com.example.attemptservice.client.PaymentClient;
 import com.example.attemptservice.client.TestServiceClient;
+import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.entity.Attempt;
 import com.example.attemptservice.entity.AttemptStatus;
 import com.example.attemptservice.redis.AttemptRedisRepository;
@@ -25,7 +27,6 @@ import java.util.Optional;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -41,6 +42,7 @@ class AttemptServiceFinalizeTest {
     @Mock private AttemptFlushWorker attemptFlushWorker;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private TestServiceClient testServiceClient;
+    @Mock private PaymentClient paymentClient;
     @Mock private EntityManager entityManager;
 
     private AttemptService service;
@@ -49,7 +51,7 @@ class AttemptServiceFinalizeTest {
     void setUp() {
         service = new AttemptService(attemptRepository, activeAttemptRepository, attemptAnswerRepository,
                 attemptRedisRepository, outboxEventRepository, attemptFlushWorker, redisTemplate,
-                new ObjectMapper(), testServiceClient);
+                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(10), paymentClient);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
     }
 
@@ -67,17 +69,18 @@ class AttemptServiceFinalizeTest {
     }
 
     @Test
-    void managedCopyIsRefreshedUnderLockBeforeFinalizing() {
+    void managedCopyIsReloadedUnderTheNativeLockBeforeFinalizing() {
         Attempt managed = attempt(AttemptStatus.IN_PROGRESS);
         when(entityManager.contains(managed)).thenReturn(true);
-        doAnswer(invocation -> {
-            managed.setStatus(AttemptStatus.SUBMITTED);
-            return null;
-        }).when(entityManager).refresh(managed, LockModeType.PESSIMISTIC_WRITE);
+        when(attemptRepository.findByIdForUpdate("a-1")).thenReturn(Optional.of(attempt(AttemptStatus.SUBMITTED)));
 
-        service.finalizeAttempt(managed, AttemptStatus.EXPIRED);
+        Attempt result = service.finalizeAttempt(managed, AttemptStatus.EXPIRED);
 
-        assertEquals(AttemptStatus.SUBMITTED, managed.getStatus());
+        assertEquals(AttemptStatus.SUBMITTED, result.getStatus());
+        verify(entityManager).flush();
+        verify(entityManager).detach(managed);
+        // Hibernate's pessimistic refresh emits FOR UPDATE OF <alias>, which TiDB rejects.
+        verify(entityManager, never()).refresh(any(), any(LockModeType.class));
         verify(outboxEventRepository, never()).save(any());
     }
 

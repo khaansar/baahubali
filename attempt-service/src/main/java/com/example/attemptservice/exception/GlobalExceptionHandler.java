@@ -16,6 +16,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.client.HttpClientErrorException;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.context.request.async.AsyncRequestNotUsableException;
 
 import java.util.List;
 import java.util.Map;
@@ -86,6 +87,15 @@ public class GlobalExceptionHandler {
         log.error("Test service request failed", ex);
         return failure(HttpStatus.BAD_GATEWAY, "TEST_SERVICE_ERROR",
                 "Test service could not complete the request", null);
+    }
+
+    /*
+     * The client of a streaming response (the live attempt stream) went away.
+     * Nothing can be written to it any more, so there is no error to report.
+     */
+    @ExceptionHandler(AsyncRequestNotUsableException.class)
+    public void handleClientGone(AsyncRequestNotUsableException ex, HttpServletRequest request) {
+        log.debug("Client disconnected from {} {}", request.getMethod(), request.getRequestURI());
     }
 
     @ExceptionHandler(Exception.class)

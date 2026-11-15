@@ -17,6 +17,10 @@ spring:
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # Retire pooled connections before TiDB Cloud closes them on its side.
+    hikari:
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:240000}
+      keepalive-time: ${DB_POOL_KEEPALIVE_MS:60000}
 
   data:
     redis:
@@ -91,6 +95,9 @@ app:
     audience: ${JWT_AUDIENCE}
     expiration-ms: ${JWT_EXPIRATION_MS}
     refresh-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS}
+    # How long a just-rotated refresh token may be presented again (two tabs refreshing at once,
+    # or a lost response) and receive the same replacement instead of revoking the session. 0 disables.
+    refresh-reuse-grace-ms: ${REFRESH_TOKEN_REUSE_GRACE_MS:30000}
     cookie-name: ACCESS_TOKEN
     refresh-cookie-name: REFRESH_TOKEN
     cookie-domain: ${COOKIE_DOMAIN:}

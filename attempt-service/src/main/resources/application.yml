@@ -11,6 +11,10 @@ spring:
     username: ${MYSQL_USER:root}
     password: ${MYSQL_PASSWORD:root}
     driver-class-name: com.mysql.cj.jdbc.Driver
+    # Retire pooled connections before TiDB Cloud closes them on its side.
+    hikari:
+      max-lifetime: ${DB_POOL_MAX_LIFETIME_MS:240000}
+      keepalive-time: ${DB_POOL_KEEPALIVE_MS:60000}
 
   jpa:
     hibernate:
@@ -57,5 +61,8 @@ internal:
     test-url: ${TEST_SERVICE_URL}
 
 app:
+  attempt:
+    # Seconds after the attempt or section deadline that answer saves are still accepted (0-120).
+    save-grace-seconds: ${ATTEMPT_SAVE_GRACE_SECONDS:10}
   api:
     version: ${API_VERSION}
