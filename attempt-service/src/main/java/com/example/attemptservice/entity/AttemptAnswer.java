@@ -48,6 +48,9 @@ public class AttemptAnswer {
     @Column(name = "selected_option", length = 64)
     private String selectedOption;
 
+    @Column(name = "marked_for_review", nullable = false)
+    private boolean markedForReview;
+
     @Column(name = "updated_at", nullable = false)
     private Instant updatedAt;
 }

@@ -855,6 +855,17 @@ public class AttemptService {
         answers.put(request.getQuestionId(), request.getSelectedOption());
 
         String updatedAnswers = writeAnswers(answers);
+
+        Set<String> marked = readMarked(current.getMarkedJson());
+        if (request.getMarkedForReview() != null) {
+            if (request.getMarkedForReview()) {
+                marked.add(request.getQuestionId());
+            } else {
+                marked.remove(request.getQuestionId());
+            }
+        }
+        String updatedMarked = writeMarked(marked);
+
         long expectedVersion = current.getVersion();
         long nextVersion = expectedVersion + 1;
 
@@ -864,7 +875,7 @@ public class AttemptService {
                 "local startedAt = tonumber(redis.call('HGET', KEYS[1], 'startedAt')) " +
                 "local durationSec = tonumber(redis.call('HGET', KEYS[1], 'durationSec')) " +
                 "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec + tonumber(ARGV[9]) then return -1 end " +
-                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8]) " +
+                "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8], 'markedJson', ARGV[10]) " +
                 "return 1",
                 Long.class
         );
@@ -880,7 +891,8 @@ public class AttemptService {
                 current.getCurrentSectionId() != null ? current.getCurrentSectionId() : "",
                 current.getCurrentSectionStartedAt() != null ? current.getCurrentSectionStartedAt().toString() : Long.toString(now),
                 current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}",
-                Long.toString(saveGraceSeconds)
+                Long.toString(saveGraceSeconds),
+                updatedMarked
         );
 
         if (result == -1L) {
@@ -986,9 +998,13 @@ public class AttemptService {
                 attemptAnswerRepository.findByAttemptId(attemptId);
 
         Map<String, String> answers = new java.util.LinkedHashMap<>();
+        Set<String> marked = new java.util.LinkedHashSet<>();
 
         for (AttemptAnswer answer : savedAnswers) {
             answers.put(answer.getQuestionId(), answer.getSelectedOption());
+            if (answer.isMarkedForReview()) {
+                marked.add(answer.getQuestionId());
+            }
         }
 
         AttemptRedisHash rebuilt = AttemptRedisHash.builder()
@@ -1001,6 +1017,7 @@ public class AttemptService {
                 .dirtyFlag(false)
                 .currentQuestionIndex(0)
                 .answersJson(writeAnswers(answers))
+                .markedJson(writeMarked(marked))
                 .currentSectionId(null)
                 .sectionTimeSpentJson(attempt.getSectionTimeSpentJson() != null ? attempt.getSectionTimeSpentJson() : "{}")
                 .currentSectionStartedAt(Instant.now().getEpochSecond())
@@ -1055,6 +1072,7 @@ public class AttemptService {
                 .sectionTimeSpentSec(timeSpentMap)
                 .currentSectionStartedAt(hash.getCurrentSectionStartedAt() != null ? Instant.ofEpochSecond(hash.getCurrentSectionStartedAt()) : null)
                 .answers(readAnswers(hash.getAnswersJson()))
+                .markedQuestionIds(List.copyOf(readMarked(hash.getMarkedJson())))
                 .questionOrder(questionOrderMap)
                 .expiresAt(expiresAt)
                 .createdAt(attempt.getCreatedAt())
@@ -1104,6 +1122,28 @@ public class AttemptService {
                     "Could not serialize answers",
                     e
             );
+        }
+    }
+
+    private Set<String> readMarked(String json) {
+        if (json == null || json.isBlank()) {
+            return new java.util.LinkedHashSet<>();
+        }
+
+        try {
+            return new java.util.LinkedHashSet<>(
+                    objectMapper.readValue(json, new TypeReference<List<String>>() {})
+            );
+        } catch (Exception e) {
+            throw new IllegalStateException("Stored review marks are invalid", e);
+        }
+    }
+
+    private String writeMarked(Set<String> marked) {
+        try {
+            return objectMapper.writeValueAsString(marked);
+        } catch (Exception e) {
+            throw new IllegalStateException("Could not serialize review marks", e);
         }
     }
 

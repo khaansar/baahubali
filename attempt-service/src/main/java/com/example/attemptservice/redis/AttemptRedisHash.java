@@ -45,6 +45,9 @@ public class AttemptRedisHash implements Serializable {
     /** JSON-serialized map of questionId -> selectedOption, e.g. {"q1":"B"} */
     private String answersJson;
 
+    /** JSON array of the question ids marked for review. */
+    private String markedJson;
+
     /** Increments on every write; used for optimistic locking on PATCH. */
     private Long version;
 

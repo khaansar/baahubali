@@ -25,6 +25,7 @@ public class AttemptStateResponse {
     private Map<String, Integer> sectionTimeSpentSec;
     private Instant currentSectionStartedAt;
     private Map<String, String> answers;
+    private List<String> markedQuestionIds;
     private Map<String, List<String>> questionOrder;
     private Instant expiresAt;
     private Instant createdAt;

@@ -13,8 +13,10 @@ import org.springframework.stereotype.Component;
 
 import java.time.Instant;
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 
@@ -65,6 +67,13 @@ public class AttemptFlushWorker {
                 new TypeReference<Map<String, String>>() {}
         );
 
+        Set<String> marked = hash.getMarkedJson() == null || hash.getMarkedJson().isBlank()
+                ? Set.of()
+                : new HashSet<>(objectMapper.readValue(
+                        hash.getMarkedJson(),
+                        new TypeReference<List<String>>() {}
+                ));
+
         List<AttemptAnswer> existingAnswers =
                 attemptAnswerRepository.findByAttemptId(hash.getAttemptId());
 
@@ -92,6 +101,7 @@ public class AttemptFlushWorker {
             }
 
             ans.setSelectedOption(opt);
+            ans.setMarkedForReview(marked.contains(qId));
             ans.setUpdatedAt(now);
             toSave.add(ans);
         }

@@ -16,6 +16,9 @@ public class PatchAttemptRequest {
     private String currentSectionId;
     
     private String selectedOption;
+
+    /** Review flag of the question; null leaves the stored flag unchanged. */
+    private Boolean markedForReview;
     
     @NotNull(message = "currentQuestionIndex is required")
     private Integer currentQuestionIndex;
