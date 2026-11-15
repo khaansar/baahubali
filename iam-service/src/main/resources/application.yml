@@ -91,6 +91,9 @@ app:
     audience: ${JWT_AUDIENCE}
     expiration-ms: ${JWT_EXPIRATION_MS}
     refresh-expiration-ms: ${REFRESH_TOKEN_EXPIRATION_MS}
+    # How long a just-rotated refresh token may be presented again (two tabs refreshing at once,
+    # or a lost response) and receive the same replacement instead of revoking the session. 0 disables.
+    refresh-reuse-grace-ms: ${REFRESH_TOKEN_REUSE_GRACE_MS:30000}
     cookie-name: ACCESS_TOKEN
     refresh-cookie-name: REFRESH_TOKEN
     cookie-domain: ${COOKIE_DOMAIN:}
