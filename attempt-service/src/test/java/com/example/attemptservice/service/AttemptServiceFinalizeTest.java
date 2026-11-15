@@ -1,6 +1,7 @@
 package com.example.attemptservice.service;
 
 import com.example.attemptservice.client.TestServiceClient;
+import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.entity.Attempt;
 import com.example.attemptservice.entity.AttemptStatus;
 import com.example.attemptservice.redis.AttemptRedisRepository;
@@ -49,7 +50,7 @@ class AttemptServiceFinalizeTest {
     void setUp() {
         service = new AttemptService(attemptRepository, activeAttemptRepository, attemptAnswerRepository,
                 attemptRedisRepository, outboxEventRepository, attemptFlushWorker, redisTemplate,
-                new ObjectMapper(), testServiceClient);
+                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(10));
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
     }
 

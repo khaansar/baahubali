@@ -1,6 +1,7 @@
 package com.example.attemptservice.service;
 
 import com.example.attemptservice.client.TestServiceClient;
+import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.dto.AttemptHistorySummary;
 import com.example.attemptservice.dto.AttemptReviewResponse;
 import com.example.attemptservice.dto.AttemptStateResponse;
@@ -95,6 +96,7 @@ public class AttemptService {
         return thread;
     });
     private final TestServiceClient testServiceClient;
+    private final AttemptTimingProperties timingProperties;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -107,7 +109,8 @@ public class AttemptService {
                            @Lazy AttemptFlushWorker attemptFlushWorker,
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper,
-                           TestServiceClient testServiceClient) {
+                           TestServiceClient testServiceClient,
+                           AttemptTimingProperties timingProperties) {
         this.attemptRepository = attemptRepository;
         this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
@@ -118,6 +121,7 @@ public class AttemptService {
         this.objectMapper = objectMapper;
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceClient = testServiceClient;
+        this.timingProperties = timingProperties;
     }
 
     @Transactional
@@ -767,17 +771,26 @@ public class AttemptService {
 
     @Transactional
     public Long patchAttempt(String attemptId, String userId, PatchAttemptRequest request) {
-        Attempt attempt = attemptRepository.findById(attemptId)
+        // The row lock serializes saves with finalization, so a save can never land in Redis
+        // after the final flush has run (it would be deleted with the hash and silently lost).
+        Attempt attempt = attemptRepository.findByIdForUpdate(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
         verifyOwnership(attempt, userId);
 
+        if (attempt.getStatus() != AttemptStatus.IN_PROGRESS) {
+            throw new ResponseStatusException(HttpStatus.GONE, "Attempt is no longer in progress");
+        }
+
         AttemptRedisHash existing = attemptRedisRepository.findById(attemptId)
                 .orElseThrow(() -> new AttemptNotFoundException(attemptId));
 
+        long saveGraceSeconds = timingProperties.saveGraceSeconds();
+
         if (existing.getStartedAt() == null
                 || existing.getDurationSec() == null
-                || Instant.now().getEpochSecond() >= existing.getStartedAt() + existing.getDurationSec()) {
+                || Instant.now().getEpochSecond()
+                        >= existing.getStartedAt() + existing.getDurationSec() + saveGraceSeconds) {
             throw new ResponseStatusException(HttpStatus.GONE, "Attempt deadline has expired");
         }
 
@@ -817,7 +830,7 @@ public class AttemptService {
                     spent += (int) (now - current.getCurrentSectionStartedAt());
                 }
                 Integer limit = limitsMap.get(currentSec);
-                if (limit != null && spent > limit) {
+                if (limit != null && spent > limit + saveGraceSeconds) {
                     throw new ResponseStatusException(HttpStatus.GONE, "Section deadline has expired");
                 }
             }
@@ -835,7 +848,7 @@ public class AttemptService {
                 "if not version or tonumber(version) ~= tonumber(ARGV[1]) then return 0 end " +
                 "local startedAt = tonumber(redis.call('HGET', KEYS[1], 'startedAt')) " +
                 "local durationSec = tonumber(redis.call('HGET', KEYS[1], 'durationSec')) " +
-                "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec then return -1 end " +
+                "if not startedAt or not durationSec or tonumber(ARGV[5]) >= startedAt + durationSec + tonumber(ARGV[9]) then return -1 end " +
                 "redis.call('HSET', KEYS[1], 'answersJson', ARGV[2], 'currentQuestionIndex', ARGV[3], 'dirtyFlag', 'true', 'version', ARGV[4], 'currentSectionId', ARGV[6], 'currentSectionStartedAt', ARGV[7], 'sectionTimeSpentJson', ARGV[8]) " +
                 "return 1",
                 Long.class
@@ -851,7 +864,8 @@ public class AttemptService {
                 Long.toString(now),
                 current.getCurrentSectionId() != null ? current.getCurrentSectionId() : "",
                 current.getCurrentSectionStartedAt() != null ? current.getCurrentSectionStartedAt().toString() : Long.toString(now),
-                current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}"
+                current.getSectionTimeSpentJson() != null ? current.getSectionTimeSpentJson() : "{}",
+                Long.toString(saveGraceSeconds)
         );
 
         if (result == -1L) {

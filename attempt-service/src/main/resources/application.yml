@@ -57,5 +57,8 @@ internal:
     test-url: ${TEST_SERVICE_URL}
 
 app:
+  attempt:
+    # Seconds after the attempt or section deadline that answer saves are still accepted (0-120).
+    save-grace-seconds: ${ATTEMPT_SAVE_GRACE_SECONDS:10}
   api:
     version: ${API_VERSION}
