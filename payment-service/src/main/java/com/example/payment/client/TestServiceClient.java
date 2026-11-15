@@ -32,7 +32,7 @@ public class TestServiceClient {
     public UUID seriesIdOf(UUID testId) {
         try {
             SeriesRef response = http.get()
-                    .uri("/tests-api/internal/tests/{id}/series", testId)
+                    .uri("/internal/tests/{id}/series", testId)
                     .retrieve()
                     .body(SeriesRef.class);
 
@@ -58,7 +58,7 @@ public class TestServiceClient {
 
         try {
             SeriesSlug response = http.get()
-                    .uri("/tests-api/internal/series/{seriesId}", seriesId)
+                    .uri("/internal/series/{seriesId}", seriesId)
                     .retrieve()
                     .body(SeriesSlug.class);
 
