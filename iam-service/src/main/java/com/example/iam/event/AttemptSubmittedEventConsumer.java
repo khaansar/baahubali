@@ -61,7 +61,9 @@ public class AttemptSubmittedEventConsumer {
             );
         }
         
-        calendarAnalyticsService.recordActivity(event.userId(), LocalDate.now(ZoneOffset.UTC));
+        // Use the submission time so a delayed event still lands on the day the user was active.
+        Instant activityAt = event.timestamp() != null ? event.timestamp() : Instant.now();
+        calendarAnalyticsService.recordActivity(event.userId(), LocalDate.ofInstant(activityAt, ZoneOffset.UTC));
 
         log.debug(
                 "Incremented tests_attempted_count for userId={}, attemptId={}",

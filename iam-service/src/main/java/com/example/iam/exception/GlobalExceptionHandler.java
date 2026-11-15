@@ -94,16 +94,66 @@ public class GlobalExceptionHandler {
         );
     }
 
-    @ExceptionHandler(InvalidEmailVerificationTokenException.class)
-    public ResponseEntity<ApiResponse<Void>> handleInvalidEmailVerificationToken(
-            InvalidEmailVerificationTokenException ex) {
+    @ExceptionHandler(AccountDisabledException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccountDisabled(
+            AccountDisabledException ex) {
 
         return buildResponse(
-                HttpStatus.GONE,
+                HttpStatus.FORBIDDEN,
                 ex.getMessage(),
-                "EMAIL_VERIFICATION_TOKEN_INVALID",
+                "ACCOUNT_DISABLED",
                 List.of()
         );
+    }
+
+    @ExceptionHandler(UserNotFoundException.class)
+    public ResponseEntity<ApiResponse<Void>> handleUserNotFound(
+            UserNotFoundException ex) {
+
+        return buildResponse(
+                HttpStatus.NOT_FOUND,
+                ex.getMessage(),
+                "USER_NOT_FOUND",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(AccountActionNotAllowedException.class)
+    public ResponseEntity<ApiResponse<Void>> handleAccountActionNotAllowed(
+            AccountActionNotAllowedException ex) {
+
+        return buildResponse(
+                HttpStatus.CONFLICT,
+                ex.getMessage(),
+                "ACCOUNT_ACTION_NOT_ALLOWED",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(InvalidOtpException.class)
+    public ResponseEntity<ApiResponse<Void>> handleInvalidOtp(
+            InvalidOtpException ex) {
+
+        return buildResponse(
+                HttpStatus.BAD_REQUEST,
+                ex.getMessage(),
+                "OTP_INVALID",
+                List.of()
+        );
+    }
+
+    @ExceptionHandler(OtpCooldownException.class)
+    public ResponseEntity<ApiResponse<Void>> handleOtpCooldown(
+            OtpCooldownException ex) {
+
+        return ResponseEntity.status(HttpStatus.TOO_MANY_REQUESTS)
+                .header("Retry-After", String.valueOf(ex.getRetryAfterSeconds()))
+                .body(ApiResponse.error(
+                        HttpStatus.TOO_MANY_REQUESTS.value(),
+                        ex.getMessage(),
+                        "OTP_COOLDOWN",
+                        List.of()
+                ));
     }
 
     @ExceptionHandler(InvalidPasswordResetTokenException.class)

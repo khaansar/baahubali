@@ -77,4 +77,6 @@ public final class Views {
     public record OrderDetailView(OrderView order, List<PaymentView> payments, List<RefundView> refunds) {}
     public record RefundableView(long captured, long refunded, long inFlight, long refundable) {}
     public record ProductView(UUID id, ProductType type, UUID referenceId, String name, Long currentPriceMinor, String currency) {}
+    public record AdminProductView(UUID id, ProductType type, UUID referenceId, String name, String status,
+                                   Long currentPriceMinor, String currency) {}
 }

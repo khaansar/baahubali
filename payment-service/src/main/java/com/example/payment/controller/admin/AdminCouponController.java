@@ -38,6 +38,11 @@ public class AdminCouponController {
     public ResponseEntity<ApiResponse<CouponView>> create(@Valid @RequestBody CouponRequest body, HttpServletRequest req) {
         return ResponseEntity.status(201).body(ApiResponse.ok(service.create(me.requireAdmin(req), body)));
     }
+    @GetMapping("/{id}")
+    public ApiResponse<CouponView> get(@PathVariable UUID id, HttpServletRequest req) {
+        me.requireAdmin(req);
+        return ApiResponse.ok(service.get(id));
+    }
     @PutMapping("/{id}")
     public ApiResponse<CouponView> update(@PathVariable UUID id, @Valid @RequestBody CouponRequest body, HttpServletRequest req) {
         return ApiResponse.ok(service.update(me.requireAdmin(req), id, body));

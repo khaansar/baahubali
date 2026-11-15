@@ -32,8 +32,7 @@ public class PublicHomepageService {
             "          AND m.status = 'PUBLISHED' " +
             "          AND m.deletedAt IS NULL) " +
             "FROM Category c " +
-            "WHERE c.deletedAt IS NULL " +
-            "  AND EXISTS (" +
+            "WHERE EXISTS (" +
             "      SELECT m2.id " +
             "      FROM MockTest m2 " +
             "      JOIN m2.series s2 " +
@@ -82,7 +81,6 @@ public class PublicHomepageService {
                 "JOIN ts.category c " +
                 "WHERE ts.status = 'PUBLISHED' " +
                 "AND ts.deletedAt IS NULL " +
-                "AND c.deletedAt IS NULL " +
                 "AND EXISTS (" +
                 " SELECT m2.id FROM MockTest m2 " +
                 " WHERE m2.series.id = ts.id " +
@@ -122,7 +120,6 @@ public class PublicHomepageService {
             "AND m.deletedAt IS NULL " +
             "AND s.status = 'PUBLISHED' " +
             "AND s.deletedAt IS NULL " +
-            "AND c.deletedAt IS NULL " +
             "ORDER BY m.createdAt DESC";
 
         List<Object[]> results = entityManager.createQuery(jpql, Object[].class)

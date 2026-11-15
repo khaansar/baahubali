@@ -63,8 +63,6 @@ public class SectionPerformanceEntity {
     private Integer timeSpentSeconds;
 
     /** Reserved for future topic-level analytics; intentionally unused now. */
-    @Column(name = "topic_name", length = 100)
-    private String topicName;
 
     @Column(name = "created_at", insertable = false, updatable = false)
     private LocalDateTime createdAt;

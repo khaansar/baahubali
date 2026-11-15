@@ -52,10 +52,6 @@ public class TestReportEntity {
     @Column(name = "time_taken_seconds", nullable = false)
     private Integer timeTakenSeconds;
 
-    /** DB column is named `rank`, which is reserved in MySQL 8, hence the quoting. */
-    @Column(name = "`rank`")
-    private Integer rankPosition;
-
     @Column(name = "percentile", precision = 5, scale = 2)
     private BigDecimal percentile;
 

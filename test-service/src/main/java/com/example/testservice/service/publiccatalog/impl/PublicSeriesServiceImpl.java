@@ -54,9 +54,6 @@ public class PublicSeriesServiceImpl {
             predicates.add(cb.isNull(root.get("deletedAt")));
 
             predicates.add(cb.isNotNull(root.get("category")));
-            predicates.add(
-                    cb.isNull(root.get("category").get("deletedAt"))
-            );
 
             if (categoryId != null) {
                 predicates.add(
@@ -154,8 +151,7 @@ public class PublicSeriesServiceImpl {
             );
         }
 
-        if (series.getCategory() == null
-                || series.getCategory().getDeletedAt() != null) {
+        if (series.getCategory() == null) {
             throw new ResourceNotFoundException(
                     "Test Series is not available in the public catalog."
             );

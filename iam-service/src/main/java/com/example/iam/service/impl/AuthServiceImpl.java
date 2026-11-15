@@ -5,6 +5,7 @@ import com.example.iam.dto.LoginRequest;
 import com.example.iam.dto.RegisterRequest;
 import com.example.iam.entity.Role;
 import com.example.iam.entity.User;
+import com.example.iam.exception.AccountDisabledException;
 import com.example.iam.exception.EmailAlreadyExistsException;
 import com.example.iam.exception.EmailNotVerifiedException;
 import com.example.iam.exception.InvalidCredentialsException;
@@ -60,7 +61,7 @@ public class AuthServiceImpl implements AuthService {
 
         user = userRepository.save(user);
 
-        emailVerificationService.issueVerificationEmail(user);
+        emailVerificationService.sendVerificationCode(user);
 
         return user;
     }
@@ -78,6 +79,10 @@ public class AuthServiceImpl implements AuthService {
                 user.getPasswordHash()
         )) {
             throw new InvalidCredentialsException();
+        }
+
+        if (!user.canSignIn()) {
+            throw new AccountDisabledException();
         }
 
         if (!Boolean.TRUE.equals(user.getEmailVerified())) {
@@ -102,9 +107,11 @@ public class AuthServiceImpl implements AuthService {
                 refreshTokenService.rotate(refreshToken);
 
         User user = userRepository.findById(rotation.userId())
-                .orElseThrow(
-                        () -> new com.example.iam.exception.InvalidRefreshTokenException()
-                );
+                .filter(User::canSignIn)
+                .orElseThrow(() -> {
+                    logout(rotation.userId().toString());
+                    return new com.example.iam.exception.InvalidRefreshTokenException();
+                });
 
         String accessToken =
                 jwtService.generateToken(user, rotation.sessionId());
@@ -123,18 +130,13 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    public void verifyEmail(String token) {
-        emailVerificationService.verifyEmail(token);
+    public void verifyEmail(String email, String code) {
+        emailVerificationService.verifyEmail(email, code);
     }
 
     @Override
-    public boolean isEmailVerificationTokenValid(String token) {
-        return emailVerificationService.isVerificationTokenValid(token);
-    }
-
-    @Override
-    public void resendVerificationEmail(String email) {
-        emailVerificationService.resendVerificationEmail(email);
+    public void resendVerificationCode(String email) {
+        emailVerificationService.resendVerificationCode(email);
     }
 
     @Value("${app.password-reset.base-url:http://localhost:3000/reset-password}")

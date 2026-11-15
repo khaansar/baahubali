@@ -23,7 +23,7 @@ import java.util.List;
 @Getter
 @Setter
 @SQLRestriction("deleted_at IS NULL")
-public class TestSeries extends BaseEntity {
+public class TestSeries extends SoftDeletableEntity {
 
     @Column(nullable = false)
     private String title;
@@ -45,4 +45,9 @@ public class TestSeries extends BaseEntity {
     @OneToMany(mappedBy = "series", cascade = CascadeType.ALL, orphanRemoval = true)
     @SQLRestriction("deleted_at IS NULL")
     private List<MockTest> mockTests = new ArrayList<>();
+
+    /** Free status is decided per series: a series priced at zero makes all of its tests free. */
+    public boolean isFree() {
+        return basePrice != null && basePrice.compareTo(BigDecimal.ZERO) == 0;
+    }
 }

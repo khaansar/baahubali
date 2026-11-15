@@ -18,4 +18,6 @@ public interface UserIdentityRepository extends JpaRepository<UserIdentity, UUID
             UUID userId,
             OAuthProvider provider
     );
+
+    void deleteByUserId(UUID userId);
 }

@@ -61,8 +61,7 @@ public class CatalogServiceImpl {
             );
         }
 
-        if (test.getSeries().getCategory() == null
-                || test.getSeries().getCategory().getDeletedAt() != null) {
+        if (test.getSeries().getCategory() == null) {
             throw new ResourceNotFoundException(
                     "Test is not available in the public catalog."
             );
@@ -87,14 +86,12 @@ public class CatalogServiceImpl {
                                 section.getDurationMinutes(),
                                 section.getCreatedAt(),
                                 section.getUpdatedAt(),
-                                section.getDeletedAt(),
                                 section.getSectionQuestions().stream()
                                         .map(sq -> {
                                             Question question = sq.getQuestion();
 
                                             QuestionTranslation translation = question.getTranslations()
                                                             .stream()
-                                                            .filter(t -> t.getDeletedAt() == null)
                                                             .findFirst()
                                                             .orElse(null);
 

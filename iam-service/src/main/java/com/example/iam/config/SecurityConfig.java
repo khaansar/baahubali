@@ -94,7 +94,6 @@ public class SecurityConfig {
                                 "/forgot-password",
                                 "/reset-password",
                                 "/reset-password/validate",
-                                "/verify-email/validate",
 
                                 /*
                                  * Spring Security OAuth2 login endpoints.

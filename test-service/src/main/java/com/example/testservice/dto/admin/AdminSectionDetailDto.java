@@ -16,7 +16,6 @@ public record AdminSectionDetailDto(
         int questionCount,
         Instant createdAt,
         Instant updatedAt,
-        Instant deletedAt,
         List<QuestionMappingDto> questions
 ) {
     public record QuestionMappingDto(
@@ -25,7 +24,6 @@ public record AdminSectionDetailDto(
             BigDecimal positiveMarksOverride,
             BigDecimal negativeMarksOverride,
             Instant createdAt,
-            Instant updatedAt,
-            Instant deletedAt
+            Instant updatedAt
     ) {}
 }

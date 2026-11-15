@@ -24,7 +24,7 @@ import java.util.List;
 @Getter
 @Setter
 @SQLRestriction("deleted_at IS NULL")
-public class MockTest extends BaseEntity {
+public class MockTest extends SoftDeletableEntity {
 
     @Column(nullable = false)
     private String title;
@@ -66,6 +66,5 @@ public class MockTest extends BaseEntity {
 
     @OneToMany(mappedBy = "mockTest", cascade = CascadeType.ALL, orphanRemoval = true)
     @jakarta.persistence.OrderBy("sequenceOrder ASC")
-    @SQLRestriction("deleted_at IS NULL")
     private List<Section> sections = new ArrayList<>();
 }

@@ -11,16 +11,21 @@ import com.example.payment.event.EventTypes;
 import com.example.payment.exception.ErrorCode;
 import com.example.payment.exception.PaymentException;
 import com.example.payment.repository.EntitlementRepository;
+import com.example.payment.repository.ProductRepository;
+import com.example.payment.entity.Product;
 import io.micrometer.core.instrument.MeterRegistry;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import java.time.Instant;
+import java.util.LinkedHashMap;
 import java.util.Map;
 import java.util.Optional;
 import java.util.UUID;
 
+@Slf4j
 @Service
 @RequiredArgsConstructor
 public class EntitlementService {
@@ -29,6 +34,7 @@ public class EntitlementService {
     private final DomainEventPublisher events;
     private final AuditService audit;
     private final MeterRegistry metrics;
+    private final ProductRepository products;
 
     @Transactional(propagation = Propagation.MANDATORY)
     public Entitlement grantPurchase(UUID userId, ProductType type, UUID refId, UUID orderId) {
@@ -40,7 +46,31 @@ public class EntitlementService {
                                    EntitlementSource source, String reason, Instant expiresAt) {
         if (source == EntitlementSource.PURCHASE)
             throw new PaymentException(ErrorCode.VALIDATION_FAILED, "Manual grants cannot use source PURCHASE");
-        return grant(userId, type, refId, source, null, "ADMIN", adminId.toString(), reason, expiresAt);
+        boolean alreadyActive = repo.findActive(userId, type, refId).isPresent();
+        Entitlement e = grant(userId, type, refId, source, null, "ADMIN", adminId.toString(), reason, expiresAt);
+        if (!alreadyActive) publishAccessNotice(EventTypes.ACCESS_GRANTED, e, reason);
+        return e;
+    }
+
+    /** Lets the notification service tell the user their access changed. Slug lookup is best-effort. */
+    private void publishAccessNotice(String eventType, Entitlement e, String reason) {
+        Map<String, Object> payload = new LinkedHashMap<>();
+        payload.put("productType", e.getProductType().name());
+        payload.put("productReferenceId", e.getProductReferenceId().toString());
+        payload.put("source", e.getSource().name());
+        products.findByProductTypeAndReferenceId(e.getProductType(), e.getProductReferenceId())
+            .map(Product::getName).ifPresent(name -> payload.put("seriesTitle", name));
+        if (e.getProductType() == ProductType.TEST_SERIES) {
+            try {
+                String slug = testClient.seriesSlugOf(e.getProductReferenceId());
+                if (slug != null && !slug.isBlank()) payload.put("slug", slug);
+            } catch (RuntimeException ex) {
+                log.warn("Could not resolve series slug for access notification: seriesId={}", e.getProductReferenceId(), ex);
+            }
+        }
+        if (reason != null && !reason.isBlank()) payload.put("reason", reason.trim());
+        if (e.getExpiresAt() != null) payload.put("expiresAt", e.getExpiresAt().toString());
+        events.publish("payment", "ENTITLEMENT", e.getId(), e.getUserId(), eventType, payload);
     }
 
     /** Idempotent. uq_ent_active (generated column) is the real guard; a lost race propagates and the caller retries. */
@@ -68,7 +98,11 @@ public class EntitlementService {
     public void revokeById(UUID adminId, UUID entitlementId, String reason) {
         Entitlement e = repo.findById(entitlementId)
             .orElseThrow(() -> new PaymentException(ErrorCode.NOT_FOUND, "Entitlement not found"));
+        // A lapsed grant gave no access any more, so telling the user it was "removed" would only confuse them.
+        boolean userHadAccess = e.getStatus() == EntitlementStatus.ACTIVE
+            && (e.getExpiresAt() == null || e.getExpiresAt().isAfter(Instant.now()));
         revoke(e, reason, "ADMIN", adminId.toString());
+        if (userHadAccess) publishAccessNotice(EventTypes.ACCESS_REVOKED, e, reason);
     }
 
     @Transactional

@@ -67,7 +67,6 @@ public class PublicMockTestServiceImpl {
                     cb.equal(seriesJoin.get("status"), Status.PUBLISHED)
             );
             predicates.add(cb.isNull(seriesJoin.get("deletedAt")));
-            predicates.add(cb.isNull(categoryJoin.get("deletedAt")));
 
             if (categoryId != null) {
                 predicates.add(
@@ -153,7 +152,6 @@ public class PublicMockTestServiceImpl {
                 .filter(mockTest -> mockTest.getSeries().getStatus() == Status.PUBLISHED)
                 .filter(mockTest -> mockTest.getSeries().getDeletedAt() == null)
                 .filter(mockTest -> mockTest.getSeries().getCategory() != null)
-                .filter(mockTest -> mockTest.getSeries().getCategory().getDeletedAt() == null)
                 .orElseThrow(() ->
                         new ResourceNotFoundException("Mock test not found"));
 

@@ -200,12 +200,10 @@ public class ReviewService {
 
         List<Review> reviews = reviewRepository.findAll(
                 (root, query, criteriaBuilder) -> {
-                    Predicate notDeleted = criteriaBuilder.isNull(root.get("deletedAt"));
                     Predicate notRejected = criteriaBuilder.notEqual(root.get("status"), Review.ReviewStatus.REJECTED);
 
                     if (isPlatformOrHomepage) {
                         return criteriaBuilder.and(
-                                notDeleted,
                                 notRejected,
                                 criteriaBuilder.or(
                                         criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
@@ -219,8 +217,7 @@ public class ReviewService {
 
                     return criteriaBuilder.and(
                             criteriaBuilder.equal(root.get("targetId"), normalizedTargetId),
-                            notRejected,
-                            notDeleted
+                            notRejected
                     );
                 },
                 org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Direction.DESC, "createdAt")
@@ -268,8 +265,7 @@ public class ReviewService {
                             authorName,
                             authorAvatar,
                             review.getCreatedAt(),
-                            review.getUpdatedAt(),
-                            review.getDeletedAt()
+                            review.getUpdatedAt()
                     );
                 })
                 .toList();
@@ -294,13 +290,13 @@ public class ReviewService {
 
     @Transactional(readOnly = true)
     public ReviewStatsDto getAdminStats() {
-        long total = reviewRepository.countByDeletedAtIsNull();
+        long total = reviewRepository.count();
 
-        long pending = reviewRepository.countByStatusAndDeletedAtIsNull(Review.ReviewStatus.PENDING);
+        long pending = reviewRepository.countByStatus(Review.ReviewStatus.PENDING);
 
-        long approved = reviewRepository.countByStatusAndDeletedAtIsNull(Review.ReviewStatus.APPROVED);
+        long approved = reviewRepository.countByStatus(Review.ReviewStatus.APPROVED);
 
-        long rejected = reviewRepository.countByStatusAndDeletedAtIsNull(Review.ReviewStatus.REJECTED);
+        long rejected = reviewRepository.countByStatus(Review.ReviewStatus.REJECTED);
 
         Double average = reviewRepository.getAverageApprovedRating(Review.ReviewStatus.APPROVED);
 
@@ -347,8 +343,6 @@ public class ReviewService {
 
         Specification<Review> specification = (root, query, criteriaBuilder) -> {
             List<Predicate> predicates = new ArrayList<>();
-
-            predicates.add(criteriaBuilder.isNull(root.get("deletedAt")));
 
             if (status != null) {
                 predicates.add(criteriaBuilder.equal(root.get("status"), status));
@@ -418,7 +412,6 @@ public class ReviewService {
     @Transactional(readOnly = true)
     public AdminReviewResponseDto getAdminReview(Long reviewId) {
         Review review = reviewRepository.findById(reviewId)
-                .filter(existing -> existing.getDeletedAt() == null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
 
         return toAdminReviewResponse(review);
@@ -442,7 +435,6 @@ public class ReviewService {
         }
 
         Review review = reviewRepository.findById(reviewId)
-                .filter(existing -> existing.getDeletedAt() == null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
 
         String reason = request.moderationReason() == null
@@ -486,7 +478,6 @@ public class ReviewService {
     )
     public AdminReviewResponseDto setReviewHomepageDisplay(Long reviewId, boolean enabled) {
         Review review = reviewRepository.findById(reviewId)
-                .filter(existing -> existing.getDeletedAt() == null)
                 .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Review not found."));
 
         review.setShowOnHomepage(enabled);

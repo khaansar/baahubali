@@ -11,6 +11,5 @@ public record PublicSectionDto(
         Integer durationMinutes,
         Instant createdAt,
         Instant updatedAt,
-        Instant deletedAt,
         List<PublicQuestionDto> questions
 ) {}

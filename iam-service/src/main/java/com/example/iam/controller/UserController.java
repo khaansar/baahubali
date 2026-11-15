@@ -22,6 +22,11 @@ import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 
 import com.example.iam.dto.ChangePasswordRequest;
+import com.example.iam.dto.DeleteAccountRequest;
+import com.example.iam.security.AuthCookieFactory;
+import com.example.iam.service.AccountDeletionService;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseEntity;
 import com.example.iam.dto.UpdateAvatarRequest;
 import com.example.iam.dto.UpdateUserProfileRequest;
 import com.example.iam.service.AvatarProfileService;
@@ -48,6 +53,8 @@ public class UserController {
     private final AvatarUploadService avatarUploadService;
     private final AvatarProfileService avatarProfileService;
     private final UserService userService;
+    private final AccountDeletionService accountDeletionService;
+    private final AuthCookieFactory authCookieFactory;
 
     @GetMapping("/me")
     public ApiResponse<UserResponse> getCurrentUser(Authentication authentication) {
@@ -144,5 +151,32 @@ public class UserController {
         UUID userId = (UUID) authentication.getPrincipal();
         userService.changePassword(userId, request);
         return ApiResponse.success(HttpStatus.OK.value(), "Password changed successfully", Map.of());
+    }
+
+    @PostMapping("/me/deletion-code")
+    public ApiResponse<Map<String, Object>> sendAccountDeletionCode(Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        long expiresInMinutes = accountDeletionService.sendDeletionCode(userId);
+        return ApiResponse.success(
+                HttpStatus.OK.value(),
+                "A confirmation code has been sent to your email",
+                Map.of("expiresInMinutes", expiresInMinutes)
+        );
+    }
+
+    @PostMapping("/me/delete")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> deleteAccount(
+            @jakarta.validation.Valid @RequestBody DeleteAccountRequest request,
+            Authentication authentication) {
+        UUID userId = (UUID) authentication.getPrincipal();
+        accountDeletionService.deleteAccount(userId, request.code());
+
+        return ResponseEntity.ok()
+                .header(
+                        HttpHeaders.SET_COOKIE,
+                        authCookieFactory.buildExpiredAuthCookie().toString(),
+                        authCookieFactory.buildExpiredRefreshCookie().toString()
+                )
+                .body(ApiResponse.success(HttpStatus.OK.value(), "Your account has been deleted", Map.of()));
     }
 }

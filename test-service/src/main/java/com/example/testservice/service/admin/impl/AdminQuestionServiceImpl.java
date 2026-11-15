@@ -61,7 +61,7 @@ public class AdminQuestionServiceImpl {
         question.setNegativeMarks(dto.negativeMarks());
         question.setExplanation(dto.explanation());
         question.setExplanationImages(toImageMaps(dto.explanationImages()));
-        question.setTopic(dto.topic());
+        question.setTopic(normalizeTopic(dto.topic()));
         question.setDifficulty(dto.difficulty());
         question.setCreatedBy(adminId);
         question.setUpdatedBy(adminId);
@@ -209,7 +209,7 @@ public class AdminQuestionServiceImpl {
                 question.setExplanation(row.explanation());
                 question.setExplanationImages(
                         toImageMaps(row.explanationImages()));
-                question.setTopic(row.topic());
+                question.setTopic(normalizeTopic(row.topic()));
                 question.setDifficulty(row.difficulty());
                 question.setCreatedBy(adminId);
                 question.setUpdatedBy(adminId);
@@ -293,7 +293,7 @@ public class AdminQuestionServiceImpl {
         question.setNegativeMarks(dto.negativeMarks());
         question.setExplanation(dto.explanation());
         question.setExplanationImages(toImageMaps(dto.explanationImages()));
-        question.setTopic(dto.topic());
+        question.setTopic(normalizeTopic(dto.topic()));
         question.setDifficulty(dto.difficulty());
         question.setUpdatedBy(adminId);
 
@@ -402,7 +402,6 @@ public class AdminQuestionServiceImpl {
         dto.setOptionImages(toOptionImageDtos(translation.getOptionImages()));
         dto.setCreatedAt(translation.getCreatedAt());
         dto.setUpdatedAt(translation.getUpdatedAt());
-        dto.setDeletedAt(translation.getDeletedAt());
 
         return dto;
     }
@@ -486,5 +485,19 @@ public class AdminQuestionServiceImpl {
                 }
             }
         }
+    }
+
+    private static final int TOPIC_MAX_LENGTH = 100;
+
+    /** Trims the topic, treats blank as no topic, and enforces the column length. */
+    private static String normalizeTopic(String topic) {
+        if (topic == null || topic.isBlank()) {
+            return null;
+        }
+        String trimmed = topic.trim();
+        if (trimmed.length() > TOPIC_MAX_LENGTH) {
+            throw new ValidationException("Topic must be " + TOPIC_MAX_LENGTH + " characters or fewer.");
+        }
+        return trimmed;
     }
 }

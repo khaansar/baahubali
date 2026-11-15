@@ -98,7 +98,7 @@ public class CategoryService {
 
     @Transactional(readOnly = true)
     public CategoryDto getCategoryBySlug(String slug) {
-        return categoryRepository.findBySlugAndDeletedAtIsNull(slug)
+        return categoryRepository.findBySlug(slug)
                 .map(this::mapToDto)
                 .orElseThrow(() -> new ResourceNotFoundException("Category not found"));
     }
@@ -112,7 +112,6 @@ public class CategoryService {
                 .requiredLanguages(category.getRequiredLanguages())
                 .createdAt(category.getCreatedAt())
                 .updatedAt(category.getUpdatedAt())
-                .deletedAt(category.getDeletedAt())
                 .build();
     }
 }

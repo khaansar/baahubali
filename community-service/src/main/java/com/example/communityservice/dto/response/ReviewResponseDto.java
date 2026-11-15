@@ -10,6 +10,5 @@ public record ReviewResponseDto(
         String authorName,
         String authorAvatar,
         Instant createdAt,
-        Instant updatedAt,
-        Instant deletedAt
+        Instant updatedAt
 ) {}

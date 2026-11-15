@@ -1,11 +1,12 @@
 package com.example.attemptservice.client;
 
-import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.util.Map;
 import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
+import org.springframework.http.converter.HttpMessageConversionException;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -30,20 +31,30 @@ public class PaymentClient {
 
     public boolean hasAccess(UUID userId, UUID testId) {
         try {
-            JsonNode response = http.post()
+            AccessCheckResponse response = http.post()
                     .uri("/internal/entitlements/check")
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(Map.of("userId", userId, "testId", testId))
                     .retrieve()
-                    .body(JsonNode.class);
+                    .body(AccessCheckResponse.class);
 
             return response != null
-                    && response.path("data").path("allowed").asBoolean(false);
+                    && response.data() != null
+                    && Boolean.TRUE.equals(response.data().allowed());
 
-        } catch (RestClientException e) {
+        } catch (RestClientException | HttpMessageConversionException e) {
             throw new ResponseStatusException(
                     HttpStatus.SERVICE_UNAVAILABLE,
                     "Unable to verify access");
         }
+    }
+
+    /** Payment service's response envelope; only `data.allowed` is needed. */
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record AccessCheckResponse(AccessCheck data) {
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = true)
+    record AccessCheck(Boolean allowed) {
     }
 }
