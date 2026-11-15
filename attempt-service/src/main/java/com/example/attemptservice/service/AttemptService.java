@@ -1146,8 +1146,9 @@ public class AttemptService {
                                 entry.getKey()
                         );
 
+                        // The failed send already ends the response (Spring runs the
+                        // emitter's onError cleanup); completing it again would throw.
                         entry.getValue().remove(emitter);
-                        emitter.complete();
 
                         if (entry.getValue().isEmpty()) {
                             emitters.remove(entry.getKey(), entry.getValue());
