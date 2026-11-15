@@ -70,6 +70,7 @@ public class CatalogServiceImpl {
         return new PublicMockTestStructureDto(
                 test.getId(),
                 test.getSlug(),
+                test.getSeries().getId(),
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),

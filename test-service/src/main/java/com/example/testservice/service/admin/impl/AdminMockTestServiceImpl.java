@@ -493,6 +493,7 @@ public class AdminMockTestServiceImpl {
         return new PublicMockTestStructureDto(
                 test.getId(),
                 test.getSlug(),
+                test.getSeries() != null ? test.getSeries().getId() : null,
                 test.getTitle(),
                 test.getDurationMinutes(),
                 test.getInstructions(),

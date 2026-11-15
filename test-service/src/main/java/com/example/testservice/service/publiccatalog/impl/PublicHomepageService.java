@@ -112,7 +112,7 @@ public class PublicHomepageService {
     @Transactional(readOnly = true)
     public List<FeaturedMockTestDto> getFeaturedMockTests() {
         String jpql = "SELECT m.id, m.slug, m.title, c.name, " +
-            "m.durationMinutes, m.totalMarks, m.isFree " +
+            "m.durationMinutes, m.totalMarks, m.isFree, s.id " +
             "FROM MockTest m " +
             "JOIN m.series s " +
             "JOIN s.category c " +
@@ -134,10 +134,12 @@ public class PublicHomepageService {
             Integer durationMinutes = row[4] != null ? ((Number) row[4]).intValue() : 0;
             java.math.BigDecimal totalMarks = (java.math.BigDecimal) row[5];
             boolean isFree = Boolean.TRUE.equals(row[6]);
+            String seriesId = row[7] != null ? row[7].toString() : null;
 
             return new FeaturedMockTestDto(
                     id,
                     slug,
+                    seriesId,
                     title,
                     categoryName,
                     durationMinutes,

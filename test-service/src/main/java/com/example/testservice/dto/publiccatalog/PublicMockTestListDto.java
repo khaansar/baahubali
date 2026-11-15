@@ -15,6 +15,7 @@ import java.util.UUID;
 public class PublicMockTestListDto {
     private UUID id;
     private String slug;
+    private UUID seriesId;
     private String title;
     private String type; // This will map to series title
     private String categoryName;

@@ -131,6 +131,7 @@ public class PublicMockTestServiceImpl {
         return PublicMockTestListDto.builder()
                 .id(mockTest.getId())
                 .slug(mockTest.getSlug())
+                .seriesId(mockTest.getSeries() != null ? mockTest.getSeries().getId() : null)
                 .title(mockTest.getTitle())
                 .type(seriesName) // Map series name to 'type'
                 .categoryName(catName)
