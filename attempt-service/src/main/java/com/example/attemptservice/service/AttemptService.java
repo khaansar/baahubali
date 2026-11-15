@@ -1,5 +1,6 @@
 package com.example.attemptservice.service;
 
+import com.example.attemptservice.client.PaymentClient;
 import com.example.attemptservice.client.TestServiceClient;
 import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.dto.AttemptHistorySummary;
@@ -97,6 +98,7 @@ public class AttemptService {
     });
     private final TestServiceClient testServiceClient;
     private final AttemptTimingProperties timingProperties;
+    private final PaymentClient paymentClient;
 
     @PersistenceContext
     private EntityManager entityManager;
@@ -110,7 +112,8 @@ public class AttemptService {
                            StringRedisTemplate redisTemplate,
                            ObjectMapper objectMapper,
                            TestServiceClient testServiceClient,
-                           AttemptTimingProperties timingProperties) {
+                           AttemptTimingProperties timingProperties,
+                           PaymentClient paymentClient) {
         this.attemptRepository = attemptRepository;
         this.activeAttemptRepository = activeAttemptRepository;
         this.attemptAnswerRepository = attemptAnswerRepository;
@@ -122,6 +125,7 @@ public class AttemptService {
         heartbeatExecutor.scheduleAtFixedRate(this::sendHeartbeats, 20, 20, TimeUnit.SECONDS);
         this.testServiceClient = testServiceClient;
         this.timingProperties = timingProperties;
+        this.paymentClient = paymentClient;
     }
 
     @Transactional
@@ -135,7 +139,8 @@ public class AttemptService {
                     "Test service did not return a test blueprint");
         }
         InternalTestBlueprintDto blueprint = response.data();
-        if (!Boolean.TRUE.equals(blueprint.getFree())) {
+        // Paid tests need an active entitlement on the test or its series.
+        if (!Boolean.TRUE.equals(blueprint.getFree()) && !hasPaidAccess(request)) {
             throw new ResponseStatusException(HttpStatus.FORBIDDEN,
                     "A verified entitlement is required for this test");
         }
@@ -665,6 +670,16 @@ public class AttemptService {
             default -> null;
         };
         return answer == null ? null : answer.toString();
+    }
+
+    private boolean hasPaidAccess(StartAttemptRequest request) {
+        try {
+            return paymentClient.hasAccess(
+                    UUID.fromString(request.getUserId()),
+                    UUID.fromString(request.getTestId()));
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
     }
 
     private QuestionResult evaluateQuestion(InternalTestBlueprintDto.InternalQuestionDto question,

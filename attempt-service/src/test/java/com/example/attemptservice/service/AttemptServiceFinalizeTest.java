@@ -1,5 +1,6 @@
 package com.example.attemptservice.service;
 
+import com.example.attemptservice.client.PaymentClient;
 import com.example.attemptservice.client.TestServiceClient;
 import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.entity.Attempt;
@@ -42,6 +43,7 @@ class AttemptServiceFinalizeTest {
     @Mock private AttemptFlushWorker attemptFlushWorker;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private TestServiceClient testServiceClient;
+    @Mock private PaymentClient paymentClient;
     @Mock private EntityManager entityManager;
 
     private AttemptService service;
@@ -50,7 +52,7 @@ class AttemptServiceFinalizeTest {
     void setUp() {
         service = new AttemptService(attemptRepository, activeAttemptRepository, attemptAnswerRepository,
                 attemptRedisRepository, outboxEventRepository, attemptFlushWorker, redisTemplate,
-                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(10));
+                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(10), paymentClient);
         ReflectionTestUtils.setField(service, "entityManager", entityManager);
     }
 

@@ -1,5 +1,6 @@
 package com.example.attemptservice.service;
 
+import com.example.attemptservice.client.PaymentClient;
 import com.example.attemptservice.client.TestServiceClient;
 import com.example.attemptservice.config.AttemptTimingProperties;
 import com.example.attemptservice.dto.PatchAttemptRequest;
@@ -48,6 +49,7 @@ class AttemptServiceSaveGraceTest {
     @Mock private AttemptFlushWorker attemptFlushWorker;
     @Mock private StringRedisTemplate redisTemplate;
     @Mock private TestServiceClient testServiceClient;
+    @Mock private PaymentClient paymentClient;
 
     @Test
     void saveShortlyAfterTheDeadlineIsAcceptedWithinGrace() {
@@ -105,7 +107,7 @@ class AttemptServiceSaveGraceTest {
     private AttemptService service() {
         return new AttemptService(attemptRepository, activeAttemptRepository, attemptAnswerRepository,
                 attemptRedisRepository, outboxEventRepository, attemptFlushWorker, redisTemplate,
-                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(GRACE_SEC));
+                new ObjectMapper(), testServiceClient, new AttemptTimingProperties(GRACE_SEC), paymentClient);
     }
 
     private static PatchAttemptRequest request() {
