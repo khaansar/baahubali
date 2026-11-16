@@ -69,7 +69,7 @@ class AttemptReviewMarkTest {
     @Test
     void flushStoresTheReviewFlagWithEachAnswer() throws Exception {
         AttemptFlushWorker worker = new AttemptFlushWorker(
-                attemptRedisRepository, attemptAnswerRepository, attemptRepository, new ObjectMapper());
+                attemptRedisRepository, attemptAnswerRepository, attemptRepository, new ObjectMapper(), redisTemplate);
         when(attemptAnswerRepository.findByAttemptId("a-1")).thenReturn(List.of());
 
         worker.flushAnswers(AttemptRedisHash.builder()
