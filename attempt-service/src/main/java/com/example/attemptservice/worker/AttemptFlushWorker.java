@@ -8,6 +8,9 @@ import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.script.DefaultRedisScript;
+import org.springframework.data.redis.core.script.RedisScript;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -25,10 +28,25 @@ import java.util.stream.Collectors;
 @RequiredArgsConstructor
 public class AttemptFlushWorker {
 
+    /*
+     * Clears the dirty flag only if no answer was saved while the flush ran, and touches
+     * nothing else. Writing the whole hash back would overwrite answers saved in that window
+     * with the copy read before the flush, silently losing answers the student was told were saved.
+     */
+    static final RedisScript<Long> CLEAR_DIRTY_IF_UNCHANGED = new DefaultRedisScript<>(
+            "if redis.call('HGET', KEYS[1], 'version') == ARGV[1] then " +
+            "redis.call('HSET', KEYS[1], 'dirtyFlag', '0') return 1 end " +
+            "return 0",
+            Long.class
+    );
+
+    private static final String REDIS_KEY_PREFIX = "attempt:";
+
     private final AttemptRedisRepository attemptRedisRepository;
     private final AttemptAnswerRepository attemptAnswerRepository;
     private final com.example.attemptservice.repository.AttemptRepository attemptRepository;
     private final ObjectMapper objectMapper;
+    private final StringRedisTemplate redisTemplate;
 
     @Scheduled(fixedDelayString = "15000")
     public void flushDirtyHashes() {
@@ -43,9 +61,7 @@ public class AttemptFlushWorker {
             if (Boolean.TRUE.equals(hash.getDirtyFlag())) {
                 try {
                     flushAnswers(hash);
-
-                    hash.setDirtyFlag(false);
-                    attemptRedisRepository.save(hash);
+                    clearDirtyIfUnchanged(hash);
                 } catch (Exception e) {
                     log.error(
                             "Failed to flush dirty hash for attemptId: {}",
@@ -55,6 +71,18 @@ public class AttemptFlushWorker {
                 }
             }
         }
+    }
+
+    /** A save during the flush bumps the version, so the hash stays dirty and is flushed next run. */
+    private void clearDirtyIfUnchanged(AttemptRedisHash hash) {
+        if (hash.getVersion() == null) {
+            return;
+        }
+        redisTemplate.execute(
+                CLEAR_DIRTY_IF_UNCHANGED,
+                List.of(REDIS_KEY_PREFIX + hash.getAttemptId()),
+                hash.getVersion().toString()
+        );
     }
 
     public void flushAnswers(AttemptRedisHash hash) throws Exception {
