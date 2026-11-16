@@ -76,6 +76,18 @@ public class AttemptService {
 
     private static final String REDIS_KEY_PREFIX = "attempt:";
 
+    /*
+     * Writes only the section fields, and only while the attempt is still in Redis. Saving the
+     * whole hash would overwrite an answer saved at the same moment with the copy read earlier.
+     */
+    static final DefaultRedisScript<Long> UPDATE_SECTION_FIELDS = new DefaultRedisScript<>(
+            "if redis.call('EXISTS', KEYS[1]) == 0 then return 0 end " +
+            "redis.call('HSET', KEYS[1], 'currentSectionId', ARGV[1], " +
+            "'currentSectionStartedAt', ARGV[2], 'sectionTimeSpentJson', ARGV[3]) " +
+            "return 1",
+            Long.class
+    );
+
     private final OutboxEventRepository outboxEventRepository;
     private final AttemptRepository attemptRepository;
     private final ActiveAttemptRepository activeAttemptRepository;
@@ -959,7 +971,16 @@ public class AttemptService {
                 existing.setSectionTimeSpentJson(objectMapper.writeValueAsString(timeSpentMap));
             } catch (Exception e) {}
 
-            attemptRedisRepository.save(existing);
+            Long updated = redisTemplate.execute(
+                    UPDATE_SECTION_FIELDS,
+                    List.of(REDIS_KEY_PREFIX + attemptId),
+                    newSectionId,
+                    Long.toString(now),
+                    existing.getSectionTimeSpentJson() != null ? existing.getSectionTimeSpentJson() : "{}"
+            );
+            if (updated == null || updated == 0L) {
+                throw new AttemptNotFoundException(attemptId);
+            }
         }
 
         return toStateResponse(existing);
